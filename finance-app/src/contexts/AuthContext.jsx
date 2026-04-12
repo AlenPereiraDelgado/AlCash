@@ -130,7 +130,8 @@ export const AuthProvider = ({ children }) => {
             setAuthError('La contraseña debe tener al menos 8 caracteres.');
             return false;
         }
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const emailRedirectTo = window.location.origin + import.meta.env.BASE_URL;
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } });
         if (error) {
             setAuthError(error.message);
             return false;
@@ -147,7 +148,7 @@ export const AuthProvider = ({ children }) => {
     const requestPasswordReset = async (email) => {
         setAuthError('');
         setAuthInfo('');
-        const redirectTo = `${window.location.origin}/reset-password`;
+        const redirectTo = window.location.origin + import.meta.env.BASE_URL;
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) {
             setAuthError(error.message);
