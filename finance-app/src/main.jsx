@@ -4,14 +4,17 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { FinanceProvider } from './contexts/FinanceContext.jsx'
+import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <FinanceProvider>
-        <App />
-      </FinanceProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <FinanceProvider>
+          <App />
+        </FinanceProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
 
