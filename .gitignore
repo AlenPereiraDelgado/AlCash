@@ -1,0 +1,51 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+**/dist/
+**/build/
+
+# Variables de entorno (NUNCA commitear)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Base de datos local / backups (contienen datos personales)
+finance_db.xlsx
+finance_db.xlsx.bak
+*.xlsx.bak
+*.bak
+
+# Sistema
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Editores
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*.suo
+
+# Binarios / instaladores que no deberían estar aquí
+node-v*/
+*.tar.gz
+*.pkg
+*.dmg
+APP
