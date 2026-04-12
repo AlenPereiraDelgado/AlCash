@@ -3,8 +3,8 @@ import { useFinance } from '../../contexts/FinanceContext';
 import { Plus, ArrowRight, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 
 const DebtsView = () => {
-    const { theme, t, activeColor } = useAuth();
-    const { debts, setDebts } = useFinance();
+    const { t, activeColor } = useAuth();
+    const { debts, addDebt, updateDebt, deleteDebt } = useFinance();
     return (
         <div className="space-y-8 animate-in zoom-in-95">
             <div className={`p-8 rounded-[32px] border flex flex-col md:flex-row items-center justify-between gap-6 ${t.card}`}>
@@ -28,19 +28,17 @@ const DebtsView = () => {
                 {/* Formulario Nueva Deuda */}
                 <div className={`p-6 rounded-[32px] border h-fit ${t.card}`}>
                     <h4 className="font-bold mb-4 flex items-center gap-2"><Plus size={18} /> Registrar Deuda</h4>
-                    <form onSubmit={(e) => {
+                    <form onSubmit={async (e) => {
                         e.preventDefault();
-                        const newDebt = {
-                            id: crypto.randomUUID(),
-                            person: e.target.person.value,
-                            amount: parseFloat(e.target.amount.value),
-                            type: e.target.type.value,
-                            note: e.target.note.value,
+                        const form = e.target;
+                        await addDebt({
+                            person: form.person.value,
+                            amount: parseFloat(form.amount.value),
+                            type: form.type.value,
+                            note: form.note.value,
                             paid: false,
-                            date: new Date().toISOString()
-                        };
-                        setDebts([...debts, newDebt]);
-                        e.target.reset();
+                        });
+                        form.reset();
                     }} className="space-y-3">
                         <div className="flex p-1 rounded-xl bg-black/20 border border-white/5">
                             <label className="flex-1 cursor-pointer">
@@ -70,16 +68,16 @@ const DebtsView = () => {
                                     </div>
                                     <div>
                                         <h4 className={`font-bold ${debt.paid ? 'line-through' : ''}`}>{debt.person}</h4>
-                                        <p className={`text-xs ${t.textSec}`}>{debt.note || new Date(debt.date).toLocaleDateString()}</p>
+                                        <p className={`text-xs ${t.textSec}`}>{debt.note || new Date(debt.created_at || debt.date).toLocaleDateString()}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <span className={`text-lg font-black ${debt.type === 'owed' ? 'text-green-500' : 'text-red-500'}`}>{debt.amount}€</span>
                                     <div className="flex gap-2">
-                                        <button onClick={() => setDebts(debts.map(d => d.id === debt.id ? { ...d, paid: !d.paid } : d))} className={`p-2 rounded-lg ${debt.paid ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'} hover:scale-110 transition-transform`}>
+                                        <button onClick={() => updateDebt(debt.id, { paid: !debt.paid })} className={`p-2 rounded-lg ${debt.paid ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'} hover:scale-110 transition-transform`}>
                                             {debt.paid ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
                                         </button>
-                                        <button onClick={() => setDebts(debts.filter(d => d.id !== debt.id))} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18} /></button>
+                                        <button onClick={() => deleteDebt(debt.id)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18} /></button>
                                     </div>
                                 </div>
                             </div>

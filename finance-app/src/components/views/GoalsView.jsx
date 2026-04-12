@@ -9,7 +9,7 @@ const GoalsView = ({
     handleAddGoal
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { goals, setGoals } = useFinance();
+    const { goals, updateGoal, deleteGoal } = useFinance();
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in zoom-in-95">
             <div className={`p-6 rounded-[32px] border-2 border-dashed flex flex-col items-center justify-center text-center gap-4 min-h-[300px] ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'} ${t.card}`}>
@@ -42,10 +42,10 @@ const GoalsView = ({
                                     const newTarget = prompt("Nuevo objetivo:", goal.target);
                                     const newDate = prompt("Nueva fecha límite:", goal.deadline);
                                     if (newName && newTarget && newDate) {
-                                        setGoals(goals.map(g => g.id === goal.id ? { ...g, name: newName, target: parseFloat(newTarget), deadline: newDate } : g));
+                                        updateGoal(goal.id, { name: newName, target: parseFloat(newTarget), deadline: newDate });
                                     }
                                 }} className="text-gray-400 hover:text-blue-500"><Pencil size={18} /></button>
-                                <button onClick={() => setGoals(goals.filter(g => g.id !== goal.id))} className="text-gray-400 hover:text-red-500"><Trash2 size={18} /></button>
+                                <button onClick={() => deleteGoal(goal.id)} className="text-gray-400 hover:text-red-500"><Trash2 size={18} /></button>
                             </div>
                         </div>
 
@@ -88,7 +88,7 @@ const GoalsView = ({
                                     onClick={() => {
                                         const val = parseFloat(inputVal);
                                         if (!val) return;
-                                        setGoals(goals.map(g => g.id === goal.id ? { ...g, current: Math.max(0, g.current + val) } : g));
+                                        updateGoal(goal.id, { current: Math.max(0, Number(goal.current) + val) });
                                         setGoalInputs({ ...goalInputs, [goal.id]: '' });
                                     }}
                                     className={`flex-1 py-2 rounded-lg text-xs font-bold bg-green-500 text-white active:scale-95 transition-transform disabled:opacity-50`}
@@ -100,7 +100,7 @@ const GoalsView = ({
                                     onClick={() => {
                                         const val = parseFloat(inputVal);
                                         if (!val) return;
-                                        setGoals(goals.map(g => g.id === goal.id ? { ...g, current: Math.max(0, g.current - val) } : g));
+                                        updateGoal(goal.id, { current: Math.max(0, Number(goal.current) - val) });
                                         setGoalInputs({ ...goalInputs, [goal.id]: '' });
                                     }}
                                     className={`flex-1 py-2 rounded-lg text-xs font-bold bg-red-500 text-white active:scale-95 transition-transform disabled:opacity-50`}

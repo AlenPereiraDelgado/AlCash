@@ -1,22 +1,16 @@
 {
-  "name": "finance-app",
+  "name": "alcash",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "concurrently \"node server.js\" \"vite --port 5173 --host\"",
-    "server": "node server.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
-    "body-parser": "^2.2.2",
-    "concurrently": "^9.2.1",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.563.0",

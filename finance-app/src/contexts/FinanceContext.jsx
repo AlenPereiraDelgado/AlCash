@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { DEFAULT_CATEGORIES } from '../constants/theme';
 import { supabase } from '../lib/supabaseClient';
@@ -7,7 +7,7 @@ const FinanceContext = createContext();
 
 export const FinanceProvider = ({ children }) => {
     const { user } = useAuth();
-    
+
     const [transactions, setTransactions] = useState([]);
     const [jointTransactions, setJointTransactions] = useState([]);
     const [goals, setGoals] = useState([]);
@@ -35,9 +35,9 @@ export const FinanceProvider = ({ children }) => {
         try {
             const [transRes, goalsRes, debtsRes, profileRes] = await Promise.all([
                 supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-                supabase.from('goals').select('*').eq('user_id', user.id),
-                supabase.from('debts').select('*').eq('user_id', user.id),
-                supabase.from('profiles').select('categories, global_tags').eq('id', user.id).single()
+                supabase.from('goals').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+                supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+                supabase.from('profiles').select('categories, global_tags').eq('id', user.id).maybeSingle()
             ]);
 
             if (transRes.data) {
@@ -47,7 +47,9 @@ export const FinanceProvider = ({ children }) => {
             if (goalsRes.data) setGoals(goalsRes.data);
             if (debtsRes.data) setDebts(debtsRes.data);
             if (profileRes.data) {
-                if (profileRes.data.categories) setCategories(profileRes.data.categories);
+                if (profileRes.data.categories && Object.keys(profileRes.data.categories).length > 0) {
+                    setCategories(profileRes.data.categories);
+                }
                 if (profileRes.data.global_tags) setGlobalTags(profileRes.data.global_tags);
             }
 
@@ -64,10 +66,11 @@ export const FinanceProvider = ({ children }) => {
         setGoals([]);
         setDebts([]);
         setCategories(DEFAULT_CATEGORIES);
+        setGlobalTags([]);
         setIsDataLoaded(false);
     };
 
-    // 2. OPERACIONES ATÓMICAS (CRUD)
+    // ---- Transactions ----
     const addTransaction = async (newTrans) => {
         setSaveStatus('saving');
         const transRecord = { ...newTrans, user_id: user.id };
@@ -78,6 +81,7 @@ export const FinanceProvider = ({ children }) => {
             setSaveStatus('success');
             return data[0];
         }
+        console.error('addTransaction error', error);
         setSaveStatus('error');
         return null;
     };
@@ -91,6 +95,7 @@ export const FinanceProvider = ({ children }) => {
             setSaveStatus('success');
             return true;
         }
+        console.error('updateTransaction error', error);
         setSaveStatus('error');
         return false;
     };
@@ -104,28 +109,65 @@ export const FinanceProvider = ({ children }) => {
             setSaveStatus('success');
             return true;
         }
+        console.error('deleteTransaction error', error);
         setSaveStatus('error');
         return false;
     };
 
+    // ---- Goals ----
     const addGoal = async (goal) => {
         const { data, error } = await supabase.from('goals').insert([{ ...goal, user_id: user.id }]).select();
-        if (data) setGoals(prev => [...prev, data[0]]);
+        if (!error && data) setGoals(prev => [...prev, data[0]]);
+        else console.error('addGoal error', error);
+        return data?.[0] ?? null;
     };
 
-    const updateGoal = async (id, current) => {
-        await supabase.from('goals').update({ current }).eq('id', id);
-        setGoals(prev => prev.map(g => g.id === id ? { ...g, current } : g));
+    const updateGoal = async (id, updates) => {
+        const { data, error } = await supabase.from('goals').update(updates).eq('id', id).select();
+        if (!error && data) setGoals(prev => prev.map(g => g.id === id ? data[0] : g));
+        else console.error('updateGoal error', error);
     };
 
+    const deleteGoal = async (id) => {
+        const { error } = await supabase.from('goals').delete().eq('id', id);
+        if (!error) setGoals(prev => prev.filter(g => g.id !== id));
+        else console.error('deleteGoal error', error);
+    };
+
+    // ---- Debts ----
+    const addDebt = async (debt) => {
+        const payload = { ...debt, user_id: user.id };
+        delete payload.id;
+        delete payload.date;
+        const { data, error } = await supabase.from('debts').insert([payload]).select();
+        if (!error && data) setDebts(prev => [data[0], ...prev]);
+        else console.error('addDebt error', error);
+        return data?.[0] ?? null;
+    };
+
+    const updateDebt = async (id, updates) => {
+        const { data, error } = await supabase.from('debts').update(updates).eq('id', id).select();
+        if (!error && data) setDebts(prev => prev.map(d => d.id === id ? data[0] : d));
+        else console.error('updateDebt error', error);
+    };
+
+    const deleteDebt = async (id) => {
+        const { error } = await supabase.from('debts').delete().eq('id', id);
+        if (!error) setDebts(prev => prev.filter(d => d.id !== id));
+        else console.error('deleteDebt error', error);
+    };
+
+    // ---- Profile / settings ----
     const updateCategories = async (newCats) => {
         setCategories(newCats);
-        await supabase.from('profiles').update({ categories: newCats }).eq('id', user.id);
+        const { error } = await supabase.from('profiles').update({ categories: newCats }).eq('id', user.id);
+        if (error) console.error('updateCategories error', error);
     };
 
     const updateGlobalTags = async (newTags) => {
         setGlobalTags(newTags);
-        await supabase.from('profiles').update({ global_tags: newTags }).eq('id', user.id);
+        const { error } = await supabase.from('profiles').update({ global_tags: newTags }).eq('id', user.id);
+        if (error) console.error('updateGlobalTags error', error);
     };
 
     return (
@@ -138,7 +180,8 @@ export const FinanceProvider = ({ children }) => {
             budgets, setBudgets,
             isDataLoaded, saveStatus,
             addTransaction, updateTransaction, deleteTransaction,
-            addGoal, updateGoal,
+            addGoal, updateGoal, deleteGoal,
+            addDebt, updateDebt, deleteDebt,
             updateCategories, updateGlobalTags,
             globalTags, setGlobalTags,
             automationItems, setAutomationItems,

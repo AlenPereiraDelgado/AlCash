@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { ACCENT_COLORS } from '../constants/theme';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
+
+const getDisplayName = (user) => {
+    if (!user) return null;
+    if (user.email) return user.email.split('@')[0];
+    return `user_${user.id?.slice(0, 8) ?? ''}`;
+};
 
 export const AuthProvider = ({ children }) => {
     const [session, setSession] = useState(null);
@@ -11,12 +17,13 @@ export const AuthProvider = ({ children }) => {
     const [accent, setAccent] = useState(() => localStorage.getItem('alcash_accent') || 'blue');
     const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem('alcash_privacy') === 'true');
     const [authError, setAuthError] = useState('');
+    const [authInfo, setAuthInfo] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [geminiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
 
     const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS['blue'];
-    
+
     // 1. Monitorizar sesión de Supabase
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,7 +41,7 @@ export const AuthProvider = ({ children }) => {
         return () => subscription.unsubscribe();
     }, []);
 
-    // 2. Cargar perfil cuando hay usuario
+    // 2. Cargar perfil (ya lo crea el trigger handle_new_user en la DB)
     useEffect(() => {
         if (user) {
             fetchProfile();
@@ -47,19 +54,12 @@ export const AuthProvider = ({ children }) => {
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
-            if (data) {
-                if (data.settings?.theme) setTheme(data.settings.theme);
-                if (data.settings?.accent) setAccent(data.settings.accent);
-            } else if (error && error.code === 'PGRST116') {
-                // Si no existe, creamos el perfil inicial
-                await supabase.from('profiles').insert([{ 
-                    id: user.id, 
-                    username: user.email.split('@')[0],
-                    settings: { theme, accent } 
-                }]);
-            }
+            if (error) throw error;
+
+            if (data?.settings?.theme) setTheme(data.settings.theme);
+            if (data?.settings?.accent) setAccent(data.settings.accent);
         } catch (err) {
             console.error("Error al cargar perfil:", err);
         }
@@ -68,11 +68,12 @@ export const AuthProvider = ({ children }) => {
     // 3. Sincronizar ajustes con la DB
     useEffect(() => {
         if (user) {
-            supabase.from('profiles').update({
-                settings: { theme, accent }
-            }).eq('id', user.id).then();
+            supabase.from('profiles')
+                .update({ settings: { theme, accent } })
+                .eq('id', user.id)
+                .then();
         }
-    }, [theme, accent]);
+    }, [theme, accent, user]);
 
     const THEMES = {
         dark: {
@@ -108,9 +109,15 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         setAuthError('');
+        setAuthInfo('');
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-            setAuthError(error.message === "Invalid login credentials" ? "Credenciales incorrectas" : error.message);
+            const msg = error.message === "Invalid login credentials"
+                ? "Credenciales incorrectas"
+                : error.message === "Email not confirmed"
+                    ? "Debes confirmar tu email antes de iniciar sesión"
+                    : error.message;
+            setAuthError(msg);
             return false;
         }
         return true;
@@ -118,13 +125,51 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (email, password) => {
         setAuthError('');
-        const { error } = await supabase.auth.signUp({ email, password });
+        setAuthInfo('');
+        if (!password || password.length < 8) {
+            setAuthError('La contraseña debe tener al menos 8 caracteres.');
+            return false;
+        }
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) {
             setAuthError(error.message);
             return false;
         }
         setIsRegistering(false);
-        setAuthError('¡Registro exitoso! Confirma tu email si es necesario o inicia sesión.');
+        if (data?.user && !data.session) {
+            setAuthInfo('Registro creado. Confirma tu email desde el mensaje que te hemos enviado para poder iniciar sesión.');
+        } else {
+            setAuthInfo('¡Registro exitoso!');
+        }
+        return true;
+    };
+
+    const requestPasswordReset = async (email) => {
+        setAuthError('');
+        setAuthInfo('');
+        const redirectTo = `${window.location.origin}/reset-password`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) {
+            setAuthError(error.message);
+            return false;
+        }
+        setAuthInfo('Te hemos enviado un email con el enlace para restablecer tu contraseña.');
+        return true;
+    };
+
+    const updatePassword = async (newPassword) => {
+        setAuthError('');
+        setAuthInfo('');
+        if (!newPassword || newPassword.length < 8) {
+            setAuthError('La contraseña debe tener al menos 8 caracteres.');
+            return false;
+        }
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) {
+            setAuthError(error.message);
+            return false;
+        }
+        setAuthInfo('Contraseña actualizada correctamente.');
         return true;
     };
 
@@ -136,12 +181,17 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{
-            currentUser: user?.email.split('@')[0] || null,
+            currentUser: getDisplayName(user),
             user, session, isLoading,
-            theme, setTheme, accent, setAccent, 
+            theme, setTheme, accent, setAccent,
             privacyMode, setPrivacyMode,
-            activeColor, t, authError, setAuthError, isRegistering, 
-            setIsRegistering, login, register, logout, geminiKey
+            activeColor, t,
+            authError, setAuthError,
+            authInfo, setAuthInfo,
+            isRegistering, setIsRegistering,
+            login, register, logout,
+            requestPasswordReset, updatePassword,
+            geminiKey
         }}>
             {children}
         </AuthContext.Provider>
