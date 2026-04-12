@@ -9,7 +9,7 @@ import {
     Target, Wallet, ArrowRight, Save, Coins, Globe, Plane, User, LogOut,
     BarChart2, Droplet, Hexagon, Handshake, CheckCircle2, XCircle, Palette,
     Check, Minus, PiggyBank, Timer, Users, Zap, Pencil,
-    ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles,
+    ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles, Key,
 } from 'lucide-react';
 
 import { useAuth } from './contexts/AuthContext';
@@ -78,7 +78,7 @@ export default function App() {
         activeColor, t, authError, setAuthError, authInfo, setAuthInfo,
         isRegistering, setIsRegistering,
         login, register, logout, requestPasswordReset, updatePassword,
-        isLoading: isAuthLoading
+        isLoading: isAuthLoading, geminiKey
     } = useAuth();
 
     const [forgotMode, setForgotMode] = useState(false);
@@ -211,32 +211,6 @@ export default function App() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
-
-    const handleManualSave = async () => {
-        if (!currentUser || !isDataLoaded) return;
-        setSaveStatus('saving');
-        const payload = {
-            transactions,
-            joint_transactions: jointTransactions,
-            goals,
-            debts,
-            categories,
-            automation_items: automationItems,
-            budgets,
-            global_tags: globalTags,
-            settings: { theme, accent }
-        };
-        const success = await saveDataToBackend(payload);
-        if (success) {
-            setSaveStatus('success');
-            showToast("Datos respaldados correctamente en la nube", 'success');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        } else {
-            setSaveStatus('error');
-            showToast("No se pudo sincronizar con el servidor", 'error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
-    };
 
     const exportYearlyPDF = () => {
         generateYearlyPDF(personalTransactions, jointTransactions, selectedChartYear, activeColor);
@@ -1028,16 +1002,10 @@ export default function App() {
                                     <div className="relative flex justify-center text-[10px] uppercase font-black"><span className={`px-4 ${t.bg} text-gray-500`}>O continúa con</span></div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="flex items-center justify-center gap-2 p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all font-bold text-xs uppercase tracking-widest">
-                                        <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                                        Google
-                                    </button>
-                                    <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'apple' })} className="flex items-center justify-center gap-2 p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all font-bold text-xs uppercase tracking-widest">
-                                        <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05 1.72-3.23 1.72-1.15 0-1.6-.72-2.95-.72s-1.85.7-2.93.7c-1.12 0-2.32-1.1-3.32-2.58C3.12 17.2 2 13.9 2 11.23c0-4.22 2.72-6.4 5.4-6.4 1.45 0 2.55.9 3.45.9.82 0 2.1-.98 3.65-.98 1.45 0 2.65.6 3.42 1.6C16.8 7.05 15.65 8.7 15.65 11c0 2.65 2.12 4.18 4.35 5.25-.6 1.75-1.55 3.12-2.95 4.03zM12.18 4.4c.05-2.12 1.75-3.8 3.48-3.8.25 0 .5.02.75.08-.05 2.22-1.8 3.95-3.48 4-.28 0-.52-.05-.75-.28z"/></svg>
-                                        Apple
-                                    </button>
-                                </div>
+                                <button type="button" onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all font-bold text-xs uppercase tracking-widest">
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                                    Continuar con Google
+                                </button>
 
                                 <div className="text-xs text-gray-500 mt-8 cursor-pointer hover:text-white transition-colors" onClick={() => { setIsRegistering(!isRegistering); setForgotMode(false); setAuthError(''); setAuthInfo(''); }}>
                                     {forgotMode ? 'Volver al login'

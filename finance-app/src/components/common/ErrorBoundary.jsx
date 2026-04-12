@@ -34,7 +34,7 @@ class ErrorBoundary extends React.Component {
                     >
                         <RefreshCcw size={18} /> RECARGAR APLICACIÓN
                     </button>
-                    {process.env.NODE_ENV === 'development' && (
+                    {import.meta.env.DEV && (
                         <pre className="mt-8 p-4 bg-black/10 rounded-xl text-left text-[10px] overflow-auto max-w-full font-mono opacity-50">
                             {this.state.error?.toString()}
                         </pre>

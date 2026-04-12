@@ -36,7 +36,7 @@ npm run dev
 3. En **Authentication → Providers** activa:
    - **Email**: marca "Confirm email" para obligar a confirmar antes de loguearse
 4. En **Authentication → URL Configuration** añade el dominio de producción a "Redirect URLs" y "Site URL"
-5. (Opcional) Activa Google/Apple en Providers si quieres login social
+5. (Opcional) Activa Google en Providers si quieres login social
 6. Copia `Project URL` y `anon public key` desde **Settings → API** a tu `.env`
 
 ## Estructura
@@ -68,7 +68,7 @@ finance-app/
 - **Registro** con email + contraseña (mínimo 8 caracteres). Supabase envía un email de confirmación.
 - **Login** con email + contraseña.
 - **Olvidé mi contraseña**: enlace desde la pantalla de login → email con link de recuperación → vuelta a la app en modo `recovery` para fijar nueva contraseña.
-- **Login social** Google/Apple (requiere habilitar el provider en Supabase).
+- **Login social** con Google (requiere habilitar el provider en Supabase).
 
 ## Seguridad
 
