@@ -26,14 +26,13 @@ const TransactionModal = ({
     setNote,
     tags, 
     setTags, 
-    globalTags, 
-    setGlobalTags, 
-    periodicity, 
+    globalTags,
+    periodicity,
     setPeriodicity, 
     onHandleAdd 
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { categories } = useFinance();
+    const { categories, updateGlobalTags } = useFinance();
     const [newTagInput, setNewTagInput] = useState('');
     const [isAddingTag, setIsAddingTag] = useState(false);
 
@@ -49,7 +48,7 @@ const TransactionModal = ({
             const tagName = newTagInput.trim();
             if (!globalTags.find(t => t.name === tagName)) {
                 const newTag = { name: tagName, color: '#' + Math.floor(Math.random()*16777215).toString(16) };
-                setGlobalTags(prev => [...prev, newTag]);
+                updateGlobalTags([...globalTags, newTag]);
             }
             if (!tags.includes(tagName)) toggleTag(tagName);
             setNewTagInput('');

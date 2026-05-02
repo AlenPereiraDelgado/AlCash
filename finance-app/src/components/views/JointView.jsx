@@ -24,7 +24,7 @@ const JointView = ({
     getDynamicFontSize
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { setJointTransactions } = useFinance();
+    const { deleteTransaction } = useFinance();
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Resumen Conjunto */}
@@ -94,7 +94,7 @@ const JointView = ({
                                         </div>
                                         <div className="flex gap-1">
                                             <button onClick={() => handleEdit(tx)} className={`p-2 rounded-lg ${t.hover} ${t.textSec} hover:text-blue-500 transition-all`}><Pencil size={14} /></button>
-                                            <button onClick={() => setJointTransactions(prev => prev.filter(x => x.id !== tx.id))} className={`p-2 rounded-lg ${t.hover} ${t.textSec} hover:text-red-500 transition-all`}><Trash2 size={14} /></button>
+                                            <button onClick={() => { if (confirm('¿Borrar este movimiento conjunto?')) deleteTransaction(tx.id, true); }} className={`p-2 rounded-lg ${t.hover} ${t.textSec} hover:text-red-500 transition-all`}><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                 </div>

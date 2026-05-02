@@ -164,6 +164,36 @@ export const FinanceProvider = ({ children }) => {
         if (error) console.error('updateCategories error', error);
     };
 
+    const addCustomCategory = async (type, name) => {
+        if (!name) return;
+        await updateCategories({ ...categories, [type]: { ...categories[type], [name]: [] } });
+    };
+
+    const deleteCustomCategory = async (type, catName) => {
+        const newSection = { ...categories[type] };
+        delete newSection[catName];
+        await updateCategories({ ...categories, [type]: newSection });
+    };
+
+    const moveCategory = async (type, catName, direction) => {
+        const keys = Object.keys(categories[type]);
+        const index = keys.indexOf(catName);
+        if (index === -1) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= keys.length) return;
+        const newKeys = [...keys];
+        [newKeys[index], newKeys[newIndex]] = [newKeys[newIndex], newKeys[index]];
+        const newSection = {};
+        newKeys.forEach(k => { newSection[k] = categories[type][k]; });
+        await updateCategories({ ...categories, [type]: newSection });
+    };
+
+    const addSubCategory = async (type, cat, sub) => {
+        if (!sub) return;
+        const newSection = { ...categories[type], [cat]: [...(categories[type][cat] || []), sub] };
+        await updateCategories({ ...categories, [type]: newSection });
+    };
+
     const updateGlobalTags = async (newTags) => {
         setGlobalTags(newTags);
         const { error } = await supabase.from('profiles').update({ global_tags: newTags }).eq('id', user.id);
@@ -183,6 +213,7 @@ export const FinanceProvider = ({ children }) => {
             addGoal, updateGoal, deleteGoal,
             addDebt, updateDebt, deleteDebt,
             updateCategories, updateGlobalTags,
+            addCustomCategory, deleteCustomCategory, moveCategory, addSubCategory,
             globalTags, setGlobalTags,
             automationItems, setAutomationItems,
             travelMode, setTravelMode,

@@ -33,7 +33,7 @@ const TransactionListView = ({
     setConfirmModal
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { categories, setTransactions, transactions, globalTags } = useFinance();
+    const { categories, transactions, globalTags, updateTransaction, deleteTransaction } = useFinance();
     const [selectedIds, setSelectedIds] = useState([]);
 
     const toggleSelect = (id) => {
@@ -53,17 +53,18 @@ const TransactionListView = ({
             open: true,
             title: 'Eliminar en Lote',
             message: `¿Estás seguro de que deseas borrar ${selectedIds.length} movimientos permanentemente?`,
-            onConfirm: () => {
-                setTransactions(transactions.filter(tx => !selectedIds.includes(tx.id)));
+            onConfirm: async () => {
+                await Promise.all(selectedIds.map(id => {
+                    const tx = transactions.find(t => t.id === id);
+                    return deleteTransaction(id, tx?.is_joint);
+                }));
                 setSelectedIds([]);
             }
         });
     };
 
-    const handleBulkCategory = (newCat) => {
-        setTransactions(transactions.map(tx => 
-            selectedIds.includes(tx.id) ? { ...tx, category: newCat } : tx
-        ));
+    const handleBulkCategory = async (newCat) => {
+        await Promise.all(selectedIds.map(id => updateTransaction(id, { category: newCat })));
         setSelectedIds([]);
     };
 
@@ -256,7 +257,7 @@ const TransactionListView = ({
                                         <td className="p-8">
                                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
                                                 <button onClick={() => handleEdit(tx)} className="p-2.5 rounded-xl bg-white/5 hover:bg-blue-500/10 hover:text-blue-500 transition-all"><Pencil size={16} /></button>
-                                                <button onClick={() => setConfirmModal({ open: true, title: 'Eliminar', message: '¿Borrar este registro?', onConfirm: () => setTransactions(transactions.filter(x => x.id !== tx.id)) })} className="p-2.5 rounded-xl bg-white/5 hover:bg-red-500/10 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+                                                <button onClick={() => setConfirmModal({ open: true, title: 'Eliminar', message: '¿Borrar este registro?', onConfirm: () => deleteTransaction(tx.id, tx.is_joint) })} className="p-2.5 rounded-xl bg-white/5 hover:bg-red-500/10 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -289,7 +290,7 @@ const TransactionListView = ({
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <button onClick={() => handleEdit(tx)} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'} ${t.textSec}`}><Pencil size={14} /></button>
-                                    <button onClick={() => setConfirmModal({ open: true, title: 'Eliminar Movimiento', message: '¿Borrar este registro?', onConfirm: () => setTransactions(transactions.filter(x => x.id !== tx.id)) })} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-red-500/10 text-red-500' : 'bg-gray-100 text-red-500'}`}><Trash2 size={14} /></button>
+                                    <button onClick={() => setConfirmModal({ open: true, title: 'Eliminar Movimiento', message: '¿Borrar este registro?', onConfirm: () => deleteTransaction(tx.id, tx.is_joint) })} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-red-500/10 text-red-500' : 'bg-gray-100 text-red-500'}`}><Trash2 size={14} /></button>
                                 </div>
                             </div>
                         ))}

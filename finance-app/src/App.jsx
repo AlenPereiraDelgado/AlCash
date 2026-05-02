@@ -94,16 +94,17 @@ export default function App() {
     }, []);
 
     const {
-        transactions, setTransactions,
+        transactions,
         jointTransactions, setJointTransactions,
         goals, setGoals,
-        debts, setDebts,
-        categories, setCategories,
+        debts,
+        categories,
         budgets, setBudgets,
         globalTags, setGlobalTags,
         isDataLoaded, saveStatus,
         addTransaction, updateTransaction, deleteTransaction,
         addGoal, updateGoal,
+        addDebt, updateDebt,
         updateCategories, updateGlobalTags,
         automationItems, setAutomationItems,
         travelMode, setTravelMode,
@@ -624,59 +625,22 @@ export default function App() {
     };
 
     // NUEVA FUNCIÓN: GESTIÓN DE DEUDAS
-    const handleAddDebt = (e) => {
+    const handleAddDebt = async (e) => {
         e.preventDefault();
         const newDebt = {
-            id: crypto.randomUUID(),
             person: e.target.person.value,
             amount: parseFloat(e.target.amount.value),
-            type: e.target.type.value, // 'owe' (debo) | 'owed' (me deben)
+            type: e.target.type.value,
             note: e.target.note.value,
             paid: false,
-            date: new Date().toISOString()
         };
-        setDebts([...debts, newDebt]);
+        await addDebt(newDebt);
         e.target.reset();
     };
 
-    const toggleDebtPaid = (id) => {
-        setDebts(debts.map(d => d.id === id ? { ...d, paid: !d.paid } : d));
-    };
-
-    const addCustomCategory = (type, name) => {
-        if (name) {
-            setCategories(prev => ({
-                ...prev,
-                [type]: { ...prev[type], [name]: [] }
-            }));
-        }
-    };
-
-    const deleteCustomCategory = (type, catName) => {
-        if (confirm(`¿Eliminar categoría "${catName}"?`)) {
-            const newCats = { ...categories[type] };
-            delete newCats[catName];
-            setCategories({ ...categories, [type]: newCats });
-        }
-    };
-
-    const moveCategory = (type, catName, direction) => {
-        const keys = Object.keys(categories[type]);
-        const index = keys.indexOf(catName);
-        if (index === -1) return;
-
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= keys.length) return;
-
-        const newKeys = [...keys];
-        [newKeys[index], newKeys[newIndex]] = [newKeys[newIndex], newKeys[index]];
-
-        const newCategoryObj = {};
-        newKeys.forEach(key => {
-            newCategoryObj[key] = categories[type][key];
-        });
-
-        setCategories({ ...categories, [type]: newCategoryObj });
+    const toggleDebtPaid = async (id) => {
+        const debt = debts.find(d => d.id === id);
+        if (debt) await updateDebt(id, { paid: !debt.paid });
     };
 
     const exportToExcel = () => {
@@ -884,8 +848,9 @@ export default function App() {
         }
     };
 
-    const handleAcceptMagicTx = () => {
-        setTransactions(prev => [pendingMagicTx, ...prev]);
+    const handleAcceptMagicTx = async () => {
+        const { id, ...txData } = pendingMagicTx;
+        await addTransaction({ ...txData, tags: txData.tags || [], is_joint: false });
         setPendingMagicTx(null);
         showToast("¡Movimiento añadido mágicamente!", 'success');
     };
@@ -1301,16 +1266,11 @@ export default function App() {
                     setAmount={setAmount}
                     note={note}
                     setNote={setNote}
-                    onLaunchAll={() => {
+                    onLaunchAll={async () => {
                         if (!confirm(`¿Quieres añadir estos ${automationItems.length} movimientos a tu lista actual?`)) return;
                         const today = new Date().toISOString().split('T')[0];
-                        const newTxs = automationItems.map(item => ({
-                            ...item,
-                            id: crypto.randomUUID(),
-                            date: today,
-                            createdAt: new Date().toISOString()
-                        }));
-                        setTransactions(prev => [...newTxs, ...prev]);
+                        const newTxs = automationItems.map(({ id, ...item }) => ({ ...item, date: today, is_joint: false }));
+                        await Promise.all(newTxs.map(tx => addTransaction(tx)));
                         setIsAutomationModalOpen(false);
                     }}
                 />
@@ -1324,19 +1284,16 @@ export default function App() {
                     setPendingImports={setPendingImports}
                     onHandleFileUpload={handleFileUpload}
                     onRunSmartAnalysis={runSmartAnalysis}
-                    onConfirmAll={() => {
-                        const newTxs = pendingImports.map(({ status, ...item }) => ({
-                            ...item,
-                            createdAt: new Date().toISOString()
-                        }));
-                        setTransactions(prev => [...newTxs, ...prev]);
+                    onConfirmAll={async () => {
+                        const newTxs = pendingImports.map(({ status, id, ...item }) => ({ ...item, is_joint: false }));
+                        await Promise.all(newTxs.map(tx => addTransaction(tx)));
                         setPendingImports([]);
                         setIsImportModalOpen(false);
                         showToast(`${newTxs.length} movimientos añadidos correctamente.`, 'success');
                     }}
-                    onConfirmImportItem={(item) => {
-                        const { status, ...tx } = item;
-                        setTransactions(prev => [{...tx, createdAt: new Date().toISOString()}, ...prev]);
+                    onConfirmImportItem={async (item) => {
+                        const { status, id, ...tx } = item;
+                        await addTransaction({ ...tx, is_joint: false });
                         setPendingImports(pendingImports.filter(i => i.id !== item.id));
                     }}
                 />

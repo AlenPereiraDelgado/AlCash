@@ -9,10 +9,11 @@ const SettingsView = () => {
         currentUser, logout, geminiKey
     } = useAuth();
     
-    const { 
-        categories, setCategories, addCustomCategory, 
-        deleteCustomCategory, moveCategory,
-        globalTags, setGlobalTags
+    const {
+        categories, addCustomCategory,
+        deleteCustomCategory, moveCategory, addSubCategory,
+        updateCategories, updateGlobalTags,
+        globalTags
     } = useFinance();
     return (
         <div className="space-y-8 animate-in fade-in">
@@ -106,17 +107,13 @@ const SettingsView = () => {
                                             <button
                                                 onClick={() => {
                                                     const sub = prompt(`Nueva subcategoría para ${c}:`);
-                                                    if (sub) {
-                                                        const n = { ...categories };
-                                                        n[tk][c] = [...n[tk][c], sub];
-                                                        setCategories(n);
-                                                    }
+                                                    if (sub) addSubCategory(tk, c, sub);
                                                 }}
                                                 className="text-blue-500 text-[10px] font-bold"
                                             >
                                                 + sub
                                             </button>
-                                            <button onClick={() => { if (confirm(`¿Borrar ${c}?`)) { const n = { ...categories }; delete n[tk][c]; setCategories(n); } }} className="text-red-500"><Trash2 size={14} /></button>
+                                            <button onClick={() => { if (confirm(`¿Borrar ${c}?`)) deleteCustomCategory(tk, c); }} className="text-red-500"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -125,9 +122,8 @@ const SettingsView = () => {
                                                 {sub}
                                                 <button
                                                     onClick={() => {
-                                                        const n = { ...categories };
-                                                        n[tk][c] = n[tk][c].filter(x => x !== sub);
-                                                        setCategories(n);
+                                                        const newSection = { ...categories[tk], [c]: categories[tk][c].filter(x => x !== sub) };
+                                                        updateCategories({ ...categories, [tk]: newSection });
                                                     }}
                                                     className="opacity-0 group-hover/sub:opacity-100 text-red-400 hover:text-red-600"
                                                 >
@@ -150,7 +146,7 @@ const SettingsView = () => {
                     <button 
                         onClick={() => {
                             const name = prompt('Nombre de la nueva etiqueta:');
-                            if (name) setGlobalTags([...globalTags, { name, color: '#3B82F6' }]);
+                            if (name) updateGlobalTags([...globalTags, { name, color: '#3B82F6' }]);
                         }}
                         className={`text-[10px] font-black uppercase px-4 py-2 rounded-xl text-white ${activeColor.bg}`}
                     >
@@ -169,7 +165,7 @@ const SettingsView = () => {
                                         type="color" 
                                         value={gt.color} 
                                         onChange={(e) => {
-                                            setGlobalTags(globalTags.map(t => t.name === gt.name ? { ...t, color: e.target.value } : t));
+                                            updateGlobalTags(globalTags.map(t => t.name === gt.name ? { ...t, color: e.target.value } : t));
                                         }}
                                         className="w-6 h-6 rounded-full border-none cursor-pointer bg-transparent overflow-hidden"
                                     />
@@ -178,7 +174,7 @@ const SettingsView = () => {
                                 <button 
                                     onClick={() => {
                                         if (confirm(`¿Eliminar la etiqueta "${gt.name}"? Se quitará de todos los movimientos.`)) {
-                                            setGlobalTags(globalTags.filter(t => t.name !== gt.name));
+                                            updateGlobalTags(globalTags.filter(t => t.name !== gt.name));
                                         }
                                     }}
                                     className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
