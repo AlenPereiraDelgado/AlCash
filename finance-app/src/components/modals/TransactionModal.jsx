@@ -27,7 +27,7 @@ const TransactionModal = ({
     onHandleAdd
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { quickButtons } = useFinance();
+    const { quickButtons, categories } = useFinance();
     const [selectedQuick, setSelectedQuick] = useState(null);
 
     if (!isOpen) return null;
@@ -95,6 +95,16 @@ const TransactionModal = ({
                             <input type="number" value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} className="w-16 bg-transparent text-right outline-none border-b border-yellow-500" />
                         </div>
                     )}
+
+                    {/* CATEGORÍA / SUBCATEGORÍA */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <select value={category} onChange={e => { setCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm ${t.input}`}>
+                            {Object.keys(categories[type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <select value={subCategory} onChange={e => { setSubCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm ${t.input}`}>
+                            {(categories[type]?.[category] || []).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
 
                     {/* FECHA + NOTA */}
                     <div className="grid grid-cols-2 gap-4">
