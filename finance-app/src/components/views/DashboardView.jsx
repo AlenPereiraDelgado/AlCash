@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import { getDynamicFontSize } from '../../utils/helpers';
-import InsightCard from '../common/InsightCard';
 
 const DashboardView = ({
     dateMode,
@@ -329,10 +328,6 @@ const DashboardView = ({
                     </div>
                 </div>
 
-                {/* TENDENCIA Y TOP GASTOS */}
-                <div className="space-y-8">
-                    <InsightCard transactions={filteredTransactions} t={t} activeColor={activeColor} />
-                </div>
             </div>
         </div>
     );
