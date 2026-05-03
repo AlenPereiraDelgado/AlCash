@@ -1012,13 +1012,8 @@ export default function App() {
                 ) : (
                     <>
                         {/* BRANDING MÓVIL (TOP) */}
-                        <div className="md:hidden flex items-center justify-between mb-4 px-1">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-8 h-8 rounded-xl ${activeColor.bg} flex items-center justify-center text-white shadow-lg`}>
-                                    <Sparkles size={16} />
-                                </div>
-                                <span className="font-black text-xl tracking-tighter text-gradient">AlCash</span>
-                            </div>
+                        <div className="md:hidden mb-4 px-1">
+                            <span className="font-black text-xl tracking-tighter text-gradient">AlCash</span>
                         </div>
 
                         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
