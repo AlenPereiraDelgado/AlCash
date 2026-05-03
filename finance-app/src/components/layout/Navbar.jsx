@@ -89,12 +89,15 @@ const Navbar = ({ view, setView, isScrolled, onAdd }) => {
                 {/* BOTÓN PRINCIPAL: AÑADIR */}
                 <button
                     onClick={() => { onAdd?.(); setIsMenuOpen(false); }}
-                    className={`flex flex-col items-center gap-1.5 -translate-y-5 transition-all active:scale-90`}
+                    className="group flex flex-col items-center gap-1 -translate-y-3 transition-all active:scale-90"
                 >
-                    <div className={`w-16 h-16 rounded-2xl ${activeColor.bg} flex items-center justify-center shadow-2xl ring-4 ${theme === 'dark' ? 'ring-black/80' : 'ring-white/95'}`}>
-                        <Plus size={30} strokeWidth={3} className="text-white" />
+                    <div className="relative">
+                        <div className={`absolute inset-0 rounded-full ${activeColor.bg} blur-lg opacity-60 group-active:opacity-90 transition-opacity`} />
+                        <div className={`relative w-11 h-11 rounded-full ${activeColor.bg} flex items-center justify-center shadow-xl ring-2 ring-white/20 group-hover:rotate-90 transition-transform duration-500`}>
+                            <Plus size={22} strokeWidth={3.5} className="text-white drop-shadow" />
+                        </div>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-tighter ${activeColor.text}`}>Añadir</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${activeColor.text}`}>Añadir</span>
                 </button>
 
                 {rightNav.map(nav => (
