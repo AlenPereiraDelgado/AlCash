@@ -1010,24 +1010,15 @@ export default function App() {
             </div>
 
             {/* BARRA DE NAVEGACIÓN INFERIOR (MOBILE) */}
-            <Navbar 
-                view={view} 
-                setView={setView} 
-                activeColor={activeColor} 
-                theme={theme} 
-                t={t} 
-                isScrolled={isScrolled} 
+            <Navbar
+                view={view}
+                setView={setView}
+                activeColor={activeColor}
+                theme={theme}
+                t={t}
+                isScrolled={isScrolled}
+                onAdd={openNewModal}
             />
-
-            {/* BOTÓN FLOTANTE (FAB) - MOBILE */}
-            {!isKeyboardOpen && (
-                <button 
-                    onClick={openNewModal}
-                    className={`md:hidden fixed bottom-24 right-6 z-50 w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transform active:scale-90 transition-all ${activeColor.bg} text-white`}
-                >
-                    <Plus size={28} strokeWidth={3} />
-                </button>
-            )}
 
             <main className="md:ml-20 lg:ml-72 transition-all duration-500 min-h-screen">
                 <div className={`max-w-7xl mx-auto p-4 md:p-12 lg:p-16 space-y-6 md:space-y-10 ${isKeyboardOpen ? 'pb-10' : 'pb-40'} md:pb-16`}>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-    LayoutGrid, List, Users, Target, Settings, TrendingUp, 
-    Eye, EyeOff, BarChart2, Repeat, ShieldCheck, MoreHorizontal, X
+import {
+    LayoutGrid, List, Users, Target, Settings, TrendingUp,
+    Eye, EyeOff, BarChart2, Repeat, ShieldCheck, MoreHorizontal, X, Plus
 } from 'lucide-react';
 
-const Navbar = ({ view, setView, isScrolled }) => {
+const Navbar = ({ view, setView, isScrolled, onAdd }) => {
     const { activeColor, theme, t, privacyMode, setPrivacyMode } = useAuth();
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,14 +22,17 @@ const Navbar = ({ view, setView, isScrolled }) => {
 
     if (isKeyboardOpen) return null;
 
-    const mainNav = [
+    const leftNav = [
         { id: 'dashboard', icon: LayoutGrid, label: 'Panel' },
         { id: 'list', icon: List, label: 'Movim' },
-        { id: 'analysis', icon: BarChart2, label: 'Análisis' },
+    ];
+
+    const rightNav = [
         { id: 'joint', icon: Users, label: 'Social' },
     ];
 
     const secondaryNav = [
+        { id: 'analysis', icon: BarChart2, label: 'Análisis' },
         { id: 'fixed', icon: Repeat, label: 'Gastos Fijos' },
         { id: 'forecasting', icon: TrendingUp, label: 'Proyecciones' },
         { id: 'debts', icon: ShieldCheck, label: 'Gestión Deudas' },
@@ -71,8 +74,8 @@ const Navbar = ({ view, setView, isScrolled }) => {
             )}
 
             {/* BARRA PRINCIPAL */}
-            <div className={`flex items-center justify-around py-2 px-4 pb-6 rounded-t-[32px] border-t shadow-[0_-10px_40px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${theme === 'dark' ? 'bg-black/80 border-white/5' : 'bg-white/95 border-gray-100'}`}>
-                {mainNav.map(nav => (
+            <div className={`relative flex items-end justify-around py-2 px-4 pb-6 rounded-t-[32px] border-t shadow-[0_-10px_40px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${theme === 'dark' ? 'bg-black/80 border-white/5' : 'bg-white/95 border-gray-100'}`}>
+                {leftNav.map(nav => (
                     <button
                         key={nav.id}
                         onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
@@ -82,6 +85,29 @@ const Navbar = ({ view, setView, isScrolled }) => {
                         <span className={`text-[10px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
                     </button>
                 ))}
+
+                {/* BOTÓN PRINCIPAL: AÑADIR */}
+                <button
+                    onClick={() => { onAdd?.(); setIsMenuOpen(false); }}
+                    className={`flex flex-col items-center gap-1.5 -translate-y-5 transition-all active:scale-90`}
+                >
+                    <div className={`w-16 h-16 rounded-2xl ${activeColor.bg} flex items-center justify-center shadow-2xl ring-4 ${theme === 'dark' ? 'ring-black/80' : 'ring-white/95'}`}>
+                        <Plus size={30} strokeWidth={3} className="text-white" />
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-tighter ${activeColor.text}`}>Añadir</span>
+                </button>
+
+                {rightNav.map(nav => (
+                    <button
+                        key={nav.id}
+                        onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
+                        className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
+                    >
+                        <nav.icon size={22} strokeWidth={view === nav.id ? 2.5 : 2} className={`transition-transform duration-300 ${view === nav.id ? 'scale-110 shadow-glow' : 'opacity-60'}`} />
+                        <span className={`text-[10px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
+                    </button>
+                ))}
+
                 <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                     className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${isMenuOpen ? activeColor.text : t.textSec}`}
