@@ -13,7 +13,14 @@ export const FinanceProvider = ({ children }) => {
     const [goals, setGoals] = useState([]);
     const [debts, setDebts] = useState([]);
     const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-    const [budgets, setBudgets] = useState({});
+    const [budgets, _setBudgets] = useState({});
+    const setBudgets = (val) => {
+        _setBudgets(prev => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            try { if (user?.id) localStorage.setItem(`alcash_budgets_${user.id}`, JSON.stringify(next)); } catch {}
+            return next;
+        });
+    };
     const [globalTags, setGlobalTags] = useState([]);
     const [automationItems, setAutomationItems] = useState([]);
 
@@ -60,6 +67,10 @@ export const FinanceProvider = ({ children }) => {
         try {
             const stored = localStorage.getItem(`alcash_rules_${user.id}`);
             if (stored) _setRecurringRules(JSON.parse(stored));
+        } catch {}
+        try {
+            const stored = localStorage.getItem(`alcash_budgets_${user.id}`);
+            if (stored) _setBudgets(JSON.parse(stored));
         } catch {}
     }, [user?.id]);
 
