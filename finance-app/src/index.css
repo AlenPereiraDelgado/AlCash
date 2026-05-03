@@ -124,3 +124,14 @@ body {
 input, select, textarea {
   font-family: var(--font-main);
 }
+
+/* Select options - dark mode compatibility */
+select option {
+  background-color: #1C1C1E;
+  color: #ffffff;
+}
+
+/* Focus ring for selects */
+select:focus {
+  outline: none;
+}

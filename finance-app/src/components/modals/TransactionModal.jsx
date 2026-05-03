@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X } from 'lucide-react';
+import AppSelect from '../common/AppSelect';
 
 const TransactionModal = ({
     isOpen,
@@ -87,7 +88,7 @@ const TransactionModal = ({
                     {/* IMPORTE */}
                     <div className="flex gap-2">
                         <input type="number" step="0.01" required placeholder="0.00" autoFocus value={amount} onChange={e => setAmount(e.target.value)} className="bg-transparent w-full text-3xl font-black outline-none py-4 border-b border-gray-500/30" />
-                        <select value={currency} onChange={e => setCurrency(e.target.value)} className={`bg-transparent font-bold outline-none ${t.textSec}`}>
+                        <select value={currency} onChange={e => setCurrency(e.target.value)} className={`bg-transparent font-bold outline-none appearance-none cursor-pointer ${t.textSec}`}>
                             <option value="EUR">EUR</option>
                             <option value="USD">USD</option>
                             <option value="GBP">GBP</option>
@@ -102,12 +103,14 @@ const TransactionModal = ({
 
                     {/* CATEGORÍA / SUBCATEGORÍA */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <select value={category} onChange={e => { setCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm w-full ${t.input}`}>
+                        <AppSelect value={category} onChange={e => { setCategory(e.target.value); setSelectedQuick(null); }} className="p-3 rounded-xl font-bold text-sm">
+                            <option value="">Categoría…</option>
                             {Object.keys(categories[type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select value={subCategory} onChange={e => { setSubCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm w-full ${t.input}`}>
+                        </AppSelect>
+                        <AppSelect value={subCategory} onChange={e => { setSubCategory(e.target.value); setSelectedQuick(null); }} className="p-3 rounded-xl font-bold text-sm">
+                            <option value="">Subcategoría…</option>
                             {(categories[type]?.[category] || []).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        </AppSelect>
                     </div>
 
                     {/* FECHA + NOTA */}

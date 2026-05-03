@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     LayoutGrid, List, Users, Target, Settings, TrendingUp,
-    Eye, EyeOff, BarChart2, Repeat, ShieldCheck, MoreHorizontal, X, Plus
+    Eye, EyeOff, BarChart2, Repeat, ShieldCheck, X, Plus
 } from 'lucide-react';
 
 const Navbar = ({ view, setView, isScrolled, onAdd }) => {
@@ -79,10 +79,9 @@ const Navbar = ({ view, setView, isScrolled, onAdd }) => {
                     <button
                         key={nav.id}
                         onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
-                        className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
+                        className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
                     >
-                        <nav.icon size={22} strokeWidth={view === nav.id ? 2.5 : 2} className={`transition-transform duration-300 ${view === nav.id ? 'scale-110 shadow-glow' : 'opacity-60'}`} />
-                        <span className={`text-[10px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
+                        <span className={`text-[11px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
                     </button>
                 ))}
 
@@ -104,19 +103,17 @@ const Navbar = ({ view, setView, isScrolled, onAdd }) => {
                     <button
                         key={nav.id}
                         onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
-                        className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
+                        className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
                     >
-                        <nav.icon size={22} strokeWidth={view === nav.id ? 2.5 : 2} className={`transition-transform duration-300 ${view === nav.id ? 'scale-110 shadow-glow' : 'opacity-60'}`} />
-                        <span className={`text-[10px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
+                        <span className={`text-[11px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
                     </button>
                 ))}
 
                 <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${isMenuOpen ? activeColor.text : t.textSec}`}
+                    className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${isMenuOpen ? activeColor.text : t.textSec}`}
                 >
-                    <MoreHorizontal size={22} className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-90 scale-110' : 'opacity-60'}`} />
-                    <span className={`text-[10px] font-black uppercase tracking-tighter ${isMenuOpen ? 'opacity-100' : 'opacity-40'}`}>Más</span>
+                    <span className={`text-[11px] font-black uppercase tracking-tighter ${isMenuOpen ? 'opacity-100' : 'opacity-40'}`}>Más</span>
                 </button>
             </div>
         </div>

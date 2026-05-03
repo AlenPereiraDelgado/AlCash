@@ -456,15 +456,15 @@ export default function App() {
                 if (curr.periodicity === 'mensual') {
                     acc.total += amt;
                     acc.monthly += amt;
+                } else if (curr.periodicity === 'semanal') {
+                    acc.total += (amt * 52 / 12);
+                    acc.weekly += (amt * 52 / 12);
                 } else if (curr.periodicity === 'anual') {
                     acc.total += (amt / 12);
                     acc.annual += (amt / 12);
-                } else if (curr.periodicity === 'bianual') {
-                    acc.total += (amt / 24);
-                    acc.biannual += (amt / 24);
                 }
                 return acc;
-            }, { total: 0, monthly: 0, annual: 0, biannual: 0 });
+            }, { total: 0, monthly: 0, weekly: 0, annual: 0 });
     }, [fixedExpenses]);
 
     const monthlyFixedBreakdown = useMemo(() => {

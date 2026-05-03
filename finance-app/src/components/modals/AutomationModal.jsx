@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X, Zap, Trash2, ToggleLeft, ToggleRight, Plus, Pencil, Check } from 'lucide-react';
+import AppSelect from '../common/AppSelect';
 
 const UNITS = [
     { value: 'day',   label: 'Día'   },
@@ -74,16 +75,16 @@ const AutomationModal = ({ isOpen, onClose }) => {
                             <button type="button" onClick={() => { set('type', 'income'); set('category', ''); set('subCategory', ''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${form.type === 'income' ? 'bg-green-500 text-white shadow' : 'text-gray-500'}`}>Ingreso</button>
                         </div>
 
-                        <select value={form.category} onChange={e => { set('category', e.target.value); set('subCategory', ''); }} className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`}>
+                        <AppSelect value={form.category} onChange={e => { set('category', e.target.value); set('subCategory', ''); }} className="p-3 rounded-xl text-sm font-bold">
                             <option value="">Categoría…</option>
                             {Object.keys(categories[form.type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        </AppSelect>
 
                         {form.category && (
-                            <select value={form.subCategory} onChange={e => set('subCategory', e.target.value)} className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`}>
+                            <AppSelect value={form.subCategory} onChange={e => set('subCategory', e.target.value)} className="p-3 rounded-xl text-sm font-bold">
                                 <option value="">Subcategoría…</option>
                                 {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                            </AppSelect>
                         )}
 
                         <div className="relative">
@@ -96,9 +97,9 @@ const AutomationModal = ({ isOpen, onClose }) => {
                                 <span className={`text-xs font-black ${t.textSec}`}>Cada</span>
                                 <input type="number" min="1" value={form.every} onChange={e => set('every', e.target.value)} className={`w-14 p-2 rounded-xl text-sm font-bold text-center ${t.input}`} />
                             </div>
-                            <select value={form.unit} onChange={e => set('unit', e.target.value)} className={`flex-1 p-2 rounded-xl text-sm font-bold ${t.input}`}>
+                            <AppSelect value={form.unit} onChange={e => set('unit', e.target.value)} className="p-2 rounded-xl text-sm font-bold" wrapperClass="flex-1">
                                 {UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
-                            </select>
+                            </AppSelect>
                         </div>
 
                         <div>

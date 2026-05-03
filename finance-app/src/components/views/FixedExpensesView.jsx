@@ -147,7 +147,7 @@ const FixedExpensesView = ({
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {['mensual', 'anual', 'bianual'].map(period => {
+                {['mensual', 'semanal', 'anual'].map(period => {
                     const uniqueExpenses = Object.values(fixedExpenses.filter(e => e.periodicity === period).reduce((acc, curr) => {
                         const key = `${curr.category}-${curr.subCategory}-${curr.amountVal}`;
                         if (!acc[key]) acc[key] = { ...curr };

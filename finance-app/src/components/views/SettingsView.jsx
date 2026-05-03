@@ -4,6 +4,7 @@ import { useFinance } from '../../contexts/FinanceContext';
 import { ACCENT_COLORS } from '../../constants/theme';
 import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download } from 'lucide-react';
 import { exportMonthlyPDF, generateYearlyPDF } from '../../services/pdfService';
+import AppSelect from '../common/AppSelect';
 
 const SettingsView = () => {
     const {
@@ -151,22 +152,22 @@ const SettingsView = () => {
                             <div className="grid grid-cols-3 gap-3">
                                 <div>
                                     <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Tipo</p>
-                                    <select value={btn.type} onChange={e => { update('type', e.target.value); update('category', Object.keys(categories[e.target.value] || {})[0] || ''); update('subCategory', ''); }} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`}>
+                                    <AppSelect value={btn.type} onChange={e => { update('type', e.target.value); update('category', Object.keys(categories[e.target.value] || {})[0] || ''); update('subCategory', ''); }} className="p-2 rounded-xl text-xs font-bold">
                                         <option value="expense">Gasto</option>
                                         <option value="income">Ingreso</option>
-                                    </select>
+                                    </AppSelect>
                                 </div>
                                 <div>
                                     <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Categoría</p>
-                                    <select value={btn.category} onChange={e => { update('category', e.target.value); update('subCategory', (categories[btn.type] || {})[e.target.value]?.[0] || ''); }} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`}>
+                                    <AppSelect value={btn.category} onChange={e => { update('category', e.target.value); update('subCategory', (categories[btn.type] || {})[e.target.value]?.[0] || ''); }} className="p-2 rounded-xl text-xs font-bold">
                                         {catOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    </AppSelect>
                                 </div>
                                 <div>
                                     <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Sub</p>
-                                    <select value={btn.subCategory} onChange={e => update('subCategory', e.target.value)} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`}>
+                                    <AppSelect value={btn.subCategory} onChange={e => update('subCategory', e.target.value)} className="p-2 rounded-xl text-xs font-bold">
                                         {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
+                                    </AppSelect>
                                 </div>
                             </div>
                         </div>
@@ -253,11 +254,11 @@ const SettingsView = () => {
 
                     {reportMode === 'month' && (
                         <div className="grid grid-cols-2 gap-3">
-                            <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className={`p-3 rounded-xl font-bold text-sm ${t.input}`}>
+                            <AppSelect value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="p-3 rounded-xl font-bold text-sm">
                                 {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, i) => (
                                     <option key={m} value={m}>{new Date(2000, i).toLocaleString('es-ES',{month:'long'})}</option>
                                 ))}
-                            </select>
+                            </AppSelect>
                             <input type="number" value={reportYear} onChange={e => setReportYear(e.target.value)} placeholder="Año" className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
                         </div>
                     )}
