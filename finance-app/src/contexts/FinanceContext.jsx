@@ -17,6 +17,26 @@ export const FinanceProvider = ({ children }) => {
     const [globalTags, setGlobalTags] = useState([]);
     const [automationItems, setAutomationItems] = useState([]);
 
+    // --- REGLAS RECURRENTES ---
+    const calcNextRun = (fromDate, every, unit) => {
+        const d = new Date(fromDate + 'T12:00:00');
+        if (unit === 'day')   d.setDate(d.getDate() + Number(every));
+        if (unit === 'week')  d.setDate(d.getDate() + Number(every) * 7);
+        if (unit === 'month') d.setMonth(d.getMonth() + Number(every));
+        if (unit === 'year')  d.setFullYear(d.getFullYear() + Number(every));
+        return d.toISOString().split('T')[0];
+    };
+
+    const [recurringRules, _setRecurringRules] = useState([]);
+
+    const setRecurringRules = (rulesOrFn) => {
+        _setRecurringRules(prev => {
+            const next = typeof rulesOrFn === 'function' ? rulesOrFn(prev) : rulesOrFn;
+            try { if (user?.id) localStorage.setItem(`alcash_rules_${user.id}`, JSON.stringify(next)); } catch {}
+            return next;
+        });
+    };
+
     const DEFAULT_QUICK_BUTTONS = Array.from({ length: 6 }, (_, i) => ({
         id: i + 1, emoji: '', label: '', type: 'expense', category: '', subCategory: ''
     }));
@@ -35,12 +55,48 @@ export const FinanceProvider = ({ children }) => {
         }
     }, [user?.id]);
 
+    useEffect(() => {
+        if (!user?.id) return;
+        try {
+            const stored = localStorage.getItem(`alcash_rules_${user.id}`);
+            if (stored) _setRecurringRules(JSON.parse(stored));
+        } catch {}
+    }, [user?.id]);
+
+    const addRecurringRule    = (rule) => setRecurringRules(prev => [...prev, { ...rule, id: crypto.randomUUID() }]);
+    const deleteRecurringRule = (id)   => setRecurringRules(prev => prev.filter(r => r.id !== id));
+    const updateRecurringRule = (id, updates) => setRecurringRules(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+
     const updateQuickButtons = (newQB) => {
         setQuickButtons(newQB);
         if (user?.id) {
             try { localStorage.setItem(`alcash_qb_${user.id}`, JSON.stringify(newQB)); } catch {}
         }
     };
+
+    // Auto-ejecutar reglas vencidas al cargar datos
+    useEffect(() => {
+        if (!isDataLoaded || !user?.id || recurringRules.length === 0) return;
+        const today = new Date().toISOString().split('T')[0];
+        const due = recurringRules.filter(r => r.active && r.nextRun <= today && (r.indefinite || !r.endDate || r.nextRun <= r.endDate));
+        if (!due.length) return;
+        (async () => {
+            const updated = recurringRules.map(rule => ({ ...rule }));
+            for (const rule of due) {
+                let cur = { ...rule };
+                while (cur.nextRun <= today) {
+                    if (!cur.indefinite && cur.endDate && cur.nextRun > cur.endDate) break;
+                    await addTransaction({ amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR', type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || '', tags: [], periodicity: 'puntual', date: cur.nextRun, is_joint: false });
+                    cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
+                }
+                if (!cur.indefinite && cur.endDate && cur.nextRun > cur.endDate) cur.active = false;
+                const idx = updated.findIndex(r => r.id === rule.id);
+                if (idx !== -1) updated[idx] = cur;
+            }
+            setRecurringRules(updated);
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDataLoaded]);
 
     // 1. CARGA INICIAL
     useEffect(() => {
@@ -240,6 +296,7 @@ export const FinanceProvider = ({ children }) => {
             addCustomCategory, deleteCustomCategory, moveCategory, addSubCategory,
             globalTags, setGlobalTags,
             quickButtons, updateQuickButtons,
+            recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, calcNextRun,
             automationItems, setAutomationItems,
             travelMode, setTravelMode,
             travelConfig, setTravelConfig

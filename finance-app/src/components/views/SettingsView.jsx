@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { ACCENT_COLORS } from '../../constants/theme';
-import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap } from 'lucide-react';
+import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download } from 'lucide-react';
+import { exportMonthlyPDF, generateYearlyPDF } from '../../services/pdfService';
 
 const SettingsView = () => {
     const {
@@ -13,10 +14,42 @@ const SettingsView = () => {
     const {
         categories, addCustomCategory,
         deleteCustomCategory, moveCategory, addSubCategory,
-        updateCategories, quickButtons, updateQuickButtons
+        updateCategories, quickButtons, updateQuickButtons,
+        transactions, jointTransactions
     } = useFinance();
 
     const [editingQuick, setEditingQuick] = useState(null);
+    const [reportMode, setReportMode] = useState('month');
+    const now = new Date();
+    const [reportMonth, setReportMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
+    const [reportYear, setReportYear]   = useState(String(now.getFullYear()));
+    const [reportStart, setReportStart] = useState('');
+    const [reportEnd, setReportEnd]     = useState('');
+
+    const handleDownloadReport = () => {
+        const year = parseInt(reportYear);
+        if (reportMode === 'year') {
+            generateYearlyPDF(transactions, jointTransactions, year, activeColor);
+            return;
+        }
+        let filtered = transactions;
+        let label = '';
+        if (reportMode === 'month') {
+            const month = parseInt(reportMonth);
+            filtered = transactions.filter(tx => {
+                const d = new Date(tx.date);
+                return d.getFullYear() === year && d.getMonth() + 1 === month;
+            });
+            label = `${reportMonth}/${reportYear}`;
+        } else {
+            filtered = transactions.filter(tx => tx.date >= reportStart && tx.date <= reportEnd);
+            label = `${reportStart} — ${reportEnd}`;
+        }
+        const income  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amountVal, 0);
+        const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amountVal, 0);
+        const stats = { income, expense, balance: income - expense };
+        exportMonthlyPDF(filtered, stats, label, activeColor, theme);
+    };
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* INTELIGENCIA ARTIFICIAL SIEMPRE ACTIVA */}
@@ -202,6 +235,45 @@ const SettingsView = () => {
                             ))}
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* INFORMES */}
+            <div className={`p-8 rounded-[32px] border ${t.card}`}>
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Download className={activeColor.text} /> Descargar Informe</h3>
+                <div className="space-y-4 max-w-sm">
+                    {/* Modo */}
+                    <div className={`flex p-1 rounded-xl border ${theme === 'dark' ? 'bg-black border-white/10' : 'bg-gray-100 border-gray-200'}`}>
+                        {['month','year','range'].map(m => (
+                            <button key={m} type="button" onClick={() => setReportMode(m)} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase transition-all ${reportMode === m ? `${activeColor.bg} text-white shadow` : 'text-gray-500'}`}>
+                                {m === 'month' ? 'Mes' : m === 'year' ? 'Año' : 'Rango'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {reportMode === 'month' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className={`p-3 rounded-xl font-bold text-sm ${t.input}`}>
+                                {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, i) => (
+                                    <option key={m} value={m}>{new Date(2000, i).toLocaleString('es-ES',{month:'long'})}</option>
+                                ))}
+                            </select>
+                            <input type="number" value={reportYear} onChange={e => setReportYear(e.target.value)} placeholder="Año" className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
+                        </div>
+                    )}
+                    {reportMode === 'year' && (
+                        <input type="number" value={reportYear} onChange={e => setReportYear(e.target.value)} placeholder="Año" className={`w-full p-3 rounded-xl font-bold text-sm ${t.input}`} />
+                    )}
+                    {reportMode === 'range' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
+                            <input type="date" value={reportEnd}   onChange={e => setReportEnd(e.target.value)}   className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
+                        </div>
+                    )}
+
+                    <button onClick={handleDownloadReport} className={`w-full py-3 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 ${activeColor.bg} shadow-lg active:scale-95 transition-all`}>
+                        <Download size={16} /> Generar PDF
+                    </button>
                 </div>
             </div>
 

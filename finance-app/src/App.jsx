@@ -41,7 +41,6 @@ import TransactionModal from './components/modals/TransactionModal';
 import AutomationModal from './components/modals/AutomationModal';
 import ImportModal from './components/modals/ImportModal';
 import BudgetModal from './components/modals/BudgetModal';
-import { generateYearlyPDF, exportMonthlyPDF } from './services/pdfService';
 import { parseWithGemini } from './services/aiService';
 import { ToastContainer } from './components/common/Toast';
 import { ProgressBar, CircularProgress } from './components/common/Progress';
@@ -105,7 +104,6 @@ export default function App() {
         addGoal, updateGoal,
         addDebt, updateDebt,
         updateCategories, updateGlobalTags,
-        automationItems, setAutomationItems,
         travelMode, setTravelMode,
         travelConfig, setTravelConfig
     } = useFinance();
@@ -212,15 +210,7 @@ export default function App() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const exportYearlyPDF = () => {
-        generateYearlyPDF(personalTransactions, jointTransactions, selectedChartYear, activeColor);
-        showToast("Generando reporte anual PDF...", 'info');
-    };
 
-    const handleExportMonthlyPDF = () => {
-        exportMonthlyPDF(filteredTransactions, stats, getDateLabel(), activeColor, theme);
-        showToast("Generando reporte mensual detallado...", 'info');
-    };
 
 
 
@@ -1097,8 +1087,6 @@ export default function App() {
                                 setIsDateMenuOpen={setIsDateMenuOpen}
                                 getDateLabel={getDateLabel}
                                 handleNavigate={handleNavigate}
-                                exportYearlyPDF={exportYearlyPDF}
-                                exportMonthlyPDF={handleExportMonthlyPDF}
                                 stats={stats}
                                 jointStats={jointStats}
                                 netWorth={netWorth}
@@ -1246,21 +1234,6 @@ export default function App() {
                 <AutomationModal
                     isOpen={isAutomationModalOpen}
                     onClose={() => setIsAutomationModalOpen(false)}
-                    type={type}
-                    setType={setType}
-                    category={category}
-                    setCategory={setCategory}
-                    amount={amount}
-                    setAmount={setAmount}
-                    note={note}
-                    setNote={setNote}
-                    onLaunchAll={async () => {
-                        if (!confirm(`¿Quieres añadir estos ${automationItems.length} movimientos a tu lista actual?`)) return;
-                        const today = new Date().toISOString().split('T')[0];
-                        const newTxs = automationItems.map(({ id, ...item }) => ({ ...item, date: today, is_joint: false }));
-                        await Promise.all(newTxs.map(tx => addTransaction(tx)));
-                        setIsAutomationModalOpen(false);
-                    }}
                 />
 
                 <ImportModal

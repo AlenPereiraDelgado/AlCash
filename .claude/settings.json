@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/alen/Desktop/FINANZAS status)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS stash list)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS diff --stat)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS add finance-app/src/App.jsx finance-app/src/components/modals/TransactionModal.jsx finance-app/src/components/views/FixedExpensesView.jsx finance-app/src/components/views/JointView.jsx finance-app/src/components/views/SettingsView.jsx finance-app/src/components/views/TransactionListView.jsx finance-app/src/contexts/FinanceContext.jsx)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS log -1 --format=\"%H %s\")",
+      "Bash(git commit -m ' *)",
+      "Bash(gh run *)",
+      "Bash(curl -sI https://alenpereiradelgado.github.io/AlCash/)",
+      "Bash(curl -s https://alenpereiradelgado.github.io/AlCash/)",
+      "Bash(env)",
+      "Read(//Users/alen/**)"
+    ]
+  }
+}

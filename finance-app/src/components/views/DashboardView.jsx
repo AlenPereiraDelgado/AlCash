@@ -3,9 +3,9 @@ import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { 
-    Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
-    Download, TrendingUp, TrendingDown, Wallet, ShieldCheck, 
-    Target, Box, ArrowUpRight, PieChart 
+    Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
+    TrendingUp, TrendingDown, Wallet, ShieldCheck,
+    Target, Box, ArrowUpRight
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import { getDynamicFontSize } from '../../utils/helpers';
@@ -20,8 +20,6 @@ const DashboardView = ({
     setIsDateMenuOpen,
     getDateLabel,
     handleNavigate,
-    exportYearlyPDF,
-    exportMonthlyPDF,
     stats,
     jointStats,
     netWorth,
@@ -75,20 +73,6 @@ const DashboardView = ({
                     <button onClick={() => handleNavigate(1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronRight size={20} /></button>
                 </div>
 
-                <div className="flex gap-4 w-full md:w-auto">
-                    <button
-                        onClick={exportMonthlyPDF}
-                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-xs transition-all hover:scale-105 active:scale-95 bg-blue-500/10 text-blue-500 border border-blue-500/20`}
-                    >
-                        <PieChart size={18} /> <span className="hidden sm:inline">Reporte</span>
-                    </button>
-                    <button
-                        onClick={exportYearlyPDF}
-                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-xs transition-all hover:scale-105 active:scale-95 bg-red-500/10 text-red-500 border border-red-500/20`}
-                    >
-                        <Download size={18} /> <span className="hidden sm:inline">Anual</span>
-                    </button>
-                </div>
             </div>
             {/* ALERTAS CRÍTICAS DE PRESUPUESTO */}
             {(() => {
