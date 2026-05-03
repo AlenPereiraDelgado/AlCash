@@ -78,18 +78,17 @@ export const FinanceProvider = ({ children }) => {
     useEffect(() => {
         if (!isDataLoaded || !user?.id || recurringRules.length === 0) return;
         const today = new Date().toISOString().split('T')[0];
-        const due = recurringRules.filter(r => r.active && r.nextRun <= today && (r.indefinite || !r.endDate || r.nextRun <= r.endDate));
+        const due = recurringRules.filter(r => r.active && r.nextRun <= today);
         if (!due.length) return;
+        const periodFor = (unit) => unit === 'month' ? 'mensual' : unit === 'year' ? 'anual' : 'puntual';
         (async () => {
             const updated = recurringRules.map(rule => ({ ...rule }));
             for (const rule of due) {
                 let cur = { ...rule };
                 while (cur.nextRun <= today) {
-                    if (!cur.indefinite && cur.endDate && cur.nextRun > cur.endDate) break;
-                    await addTransaction({ amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR', type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || '', tags: [], periodicity: 'puntual', date: cur.nextRun, is_joint: false });
+                    await addTransaction({ amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR', type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || '', tags: [], periodicity: periodFor(cur.unit), date: cur.nextRun, is_joint: false });
                     cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
                 }
-                if (!cur.indefinite && cur.endDate && cur.nextRun > cur.endDate) cur.active = false;
                 const idx = updated.findIndex(r => r.id === rule.id);
                 if (idx !== -1) updated[idx] = cur;
             }

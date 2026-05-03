@@ -105,7 +105,8 @@ export default function App() {
         addDebt, updateDebt,
         updateCategories, updateGlobalTags,
         travelMode, setTravelMode,
-        travelConfig, setTravelConfig
+        travelConfig, setTravelConfig,
+        recurringRules,
     } = useFinance();
 
     // --- ESTADOS LOCALES (UI & FORMS) ---
@@ -418,42 +419,20 @@ export default function App() {
 
     // GASTOS FIJOS
     const fixedExpenses = useMemo(() => {
-        const allFixed = personalTransactions.filter(t => t.periodicity && t.periodicity !== 'puntual' && t.type === 'expense');
-        const now = new Date();
-        const curMonth = now.getMonth();
-        const curYear = now.getFullYear();
-
-        // Agrupar por "Concepto" para evitar duplicar el gasto fijo si se mete el pago cada mes
-        const definitions = new Map();
-        
-        // Ordenamos por fecha para procesar; si hay un pago este mes, lo usamos como referencia principal
-        allFixed.forEach(t => {
-            const key = `${t.category}-${t.subCategory}-${t.note}`;
-            const tDate = new Date(t.date);
-            const isThisMonth = tDate.getMonth() === curMonth && tDate.getFullYear() === curYear;
-
-            if (!definitions.has(key)) {
-                definitions.set(key, t);
-            } else {
-                const existing = definitions.get(key);
-                const existingDate = new Date(existing.date);
-                const existingIsThisMonth = existingDate.getMonth() === curMonth && existingDate.getFullYear() === curYear;
-                
-                // Prioridad 1: Gasto del mes actual (es el pago real)
-                // Prioridad 2: El más reciente cronológicamente
-                if (isThisMonth && !existingIsThisMonth) {
-                    definitions.set(key, t);
-                } else if (!existingIsThisMonth && tDate > existingDate) {
-                    definitions.set(key, t);
-                } else if (isThisMonth && existingIsThisMonth && tDate > existingDate) {
-                    // Si ambos son de este mes, quedarnos con el último metido
-                    definitions.set(key, t);
-                }
-            }
-        });
-        
-        return Array.from(definitions.values());
-    }, [personalTransactions]);
+        return recurringRules
+            .filter(r => r.active && r.type === 'expense' && (r.unit === 'month' || r.unit === 'year' || r.unit === 'week'))
+            .map(r => ({
+                id: r.id,
+                type: r.type,
+                category: r.category,
+                subCategory: r.subCategory || '',
+                note: r.name || '',
+                amountVal: r.amount,
+                date: r.nextRun,
+                periodicity: r.unit === 'month' ? 'mensual' : r.unit === 'year' ? 'anual' : 'semanal',
+                every: r.every,
+            }));
+    }, [recurringRules]);
 
     const pagadoFijoEsteMes = useMemo(() => {
         const now = new Date();

@@ -15,7 +15,7 @@ const FixedExpensesView = ({
     monthlyFixedBreakdown
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { deleteTransaction } = useFinance();
+    const { deleteRecurringRule } = useFinance();
     return (
         <div className="space-y-8 animate-in slide-in-from-right">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -162,7 +162,7 @@ const FixedExpensesView = ({
                                     <div key={e.id} className={`flex justify-between items-center group gap-3 border-b pb-2 last:border-0 ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
                                         <div className="flex flex-col min-w-0 flex-1"><span className="text-sm font-bold truncate" title={e.note || e.subCategory || e.category}>{e.note || e.subCategory || e.category}</span><span className={`text-[9px] uppercase font-bold truncate ${t.textSec}`}>{e.category}</span></div>
                                         <div className="flex items-center gap-2 shrink-0"><span className="text-sm font-mono font-bold whitespace-nowrap">{Number(e.amountVal).toFixed(0)}€</span>
-                                            <button onClick={() => { if (confirm('¿Borrar este gasto fijo?')) deleteTransaction(e.id, false); }} className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+                                            <button onClick={() => { if (confirm('¿Borrar este gasto fijo?')) deleteRecurringRule(e.id); }} className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                 ))}
