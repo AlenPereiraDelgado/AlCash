@@ -1011,10 +1011,6 @@ export default function App() {
                     </div>
                 ) : (
                     <>
-                        {/* BRANDING MÓVIL (TOP) */}
-                        <div className="md:hidden mb-4 px-1">
-                            <span className="font-black text-xl tracking-tighter text-gradient">AlCash</span>
-                        </div>
 
                         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                             <div>

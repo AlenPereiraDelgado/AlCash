@@ -284,6 +284,22 @@ export const FinanceProvider = ({ children }) => {
         await updateCategories({ ...categories, [type]: newSection });
     };
 
+    const resetAllData = async () => {
+        await Promise.all([
+            supabase.from('transactions').delete().eq('user_id', user.id),
+            supabase.from('goals').delete().eq('user_id', user.id),
+            supabase.from('debts').delete().eq('user_id', user.id),
+        ]);
+        try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
+        try { localStorage.removeItem(`alcash_rules_${user.id}`); } catch {}
+        setTransactions([]);
+        setJointTransactions([]);
+        setGoals([]);
+        setDebts([]);
+        _setBudgets({});
+        _setRecurringRules([]);
+    };
+
     const updateGlobalTags = async (newTags) => {
         setGlobalTags(newTags);
         const { error } = await supabase.from('profiles').update({ global_tags: newTags }).eq('id', user.id);
@@ -309,7 +325,8 @@ export const FinanceProvider = ({ children }) => {
             recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, calcNextRun,
             automationItems, setAutomationItems,
             travelMode, setTravelMode,
-            travelConfig, setTravelConfig
+            travelConfig, setTravelConfig,
+            resetAllData
         }}>
             {children}
         </FinanceContext.Provider>

@@ -16,7 +16,7 @@ const SettingsView = () => {
         categories, addCustomCategory,
         deleteCustomCategory, moveCategory, addSubCategory,
         updateCategories, quickButtons, updateQuickButtons,
-        transactions, jointTransactions
+        transactions, jointTransactions, resetAllData
     } = useFinance();
 
     const [editingQuick, setEditingQuick] = useState(null);
@@ -291,9 +291,17 @@ const SettingsView = () => {
                             <p className={`text-xs ${t.textSec}`}>Sesión activa localmente</p>
                         </div>
                     </div>
-                    <button onClick={logout} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all">
-                        <LogOut size={18} /> Cerrar Sesión
-                    </button>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={() => { if (confirm('⚠️ ¿Borrar TODOS los datos? Esto elimina todas tus transacciones, metas, deudas y automatizaciones. No se puede deshacer.')) resetAllData(); }}
+                            className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-orange-500/10 text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all text-sm"
+                        >
+                            <Trash2 size={16} /> Borrar Datos
+                        </button>
+                        <button onClick={logout} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all">
+                            <LogOut size={18} /> Cerrar Sesión
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
