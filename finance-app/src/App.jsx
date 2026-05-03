@@ -1046,7 +1046,6 @@ export default function App() {
                                 </div>
                                 <span className="font-black text-xl tracking-tighter text-gradient">AlCash</span>
                             </div>
-                            <div className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest border border-blue-500/20">Premium</div>
                         </div>
 
                         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
