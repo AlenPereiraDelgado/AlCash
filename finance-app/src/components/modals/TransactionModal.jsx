@@ -101,17 +101,17 @@ const TransactionModal = ({
                     )}
 
                     {/* CATEGORÍA / SUBCATEGORÍA */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <select value={category} onChange={e => { setCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm ${t.input}`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <select value={category} onChange={e => { setCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm w-full ${t.input}`}>
                             {Object.keys(categories[type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <select value={subCategory} onChange={e => { setSubCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm ${t.input}`}>
+                        <select value={subCategory} onChange={e => { setSubCategory(e.target.value); setSelectedQuick(null); }} className={`p-3 rounded-xl font-bold text-sm w-full ${t.input}`}>
                             {(categories[type]?.[category] || []).map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
 
                     {/* FECHA + NOTA */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <input type="date" value={date} onChange={e => setDate(e.target.value)} className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
                         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Nota" className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
                     </div>
