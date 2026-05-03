@@ -16,10 +16,36 @@ export const FinanceProvider = ({ children }) => {
     const [budgets, setBudgets] = useState({});
     const [globalTags, setGlobalTags] = useState([]);
     const [automationItems, setAutomationItems] = useState([]);
+
+    const DEFAULT_QUICK_BUTTONS = [
+        { id: 1, emoji: '🛒', label: 'Super',   type: 'expense', category: 'Alimentación', subCategory: 'Supermercado' },
+        { id: 2, emoji: '🍕', label: 'Comer',   type: 'expense', category: 'Alimentación', subCategory: 'Restaurantes' },
+        { id: 3, emoji: '🚌', label: 'Trans',   type: 'expense', category: 'Transporte',   subCategory: 'Transporte Público' },
+        { id: 4, emoji: '🎮', label: 'Ocio',    type: 'expense', category: 'Suscripciones',subCategory: 'Streaming' },
+        { id: 5, emoji: '🏠', label: 'Casa',    type: 'expense', category: 'Hogar',        subCategory: 'Alquiler/Hipoteca' },
+        { id: 6, emoji: '💰', label: 'Sueldo',  type: 'income',  category: 'Salario',      subCategory: 'Nómina Principal' },
+    ];
+    const [quickButtons, setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
     const [travelMode, setTravelMode] = useState(false);
     const [travelConfig, setTravelConfig] = useState({ currency: 'USD', rate: 1.1 });
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [saveStatus, setSaveStatus] = useState('idle');
+
+    useEffect(() => {
+        if (user?.id) {
+            try {
+                const stored = localStorage.getItem(`alcash_qb_${user.id}`);
+                if (stored) setQuickButtons(JSON.parse(stored));
+            } catch {}
+        }
+    }, [user?.id]);
+
+    const updateQuickButtons = (newQB) => {
+        setQuickButtons(newQB);
+        if (user?.id) {
+            try { localStorage.setItem(`alcash_qb_${user.id}`, JSON.stringify(newQB)); } catch {}
+        }
+    };
 
     // 1. CARGA INICIAL
     useEffect(() => {
@@ -215,6 +241,7 @@ export const FinanceProvider = ({ children }) => {
             updateCategories, updateGlobalTags,
             addCustomCategory, deleteCustomCategory, moveCategory, addSubCategory,
             globalTags, setGlobalTags,
+            quickButtons, updateQuickButtons,
             automationItems, setAutomationItems,
             travelMode, setTravelMode,
             travelConfig, setTravelConfig

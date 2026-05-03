@@ -100,7 +100,6 @@ export default function App() {
         debts,
         categories,
         budgets, setBudgets,
-        globalTags, setGlobalTags,
         isDataLoaded, saveStatus,
         addTransaction, updateTransaction, deleteTransaction,
         addGoal, updateGoal,
@@ -261,13 +260,17 @@ export default function App() {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [note, setNote] = useState('');
     const [tags, setTags] = useState([]);
-    const [periodicity, setPeriodicity] = useState('puntual');
     const [editingId, setEditingId] = useState(null); // Nuevo estado para controlar la edición
 
     // --- STATE PARA INPUTS DE METAS ---
     const [goalInputs, setGoalInputs] = useState({});
 
     // --- LOGIC ---
+
+    useEffect(() => {
+        document.body.style.overflow = isModalOpen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isModalOpen]);
 
     useEffect(() => {
         if (isModalOpen) {
@@ -598,6 +601,7 @@ export default function App() {
             originalAmount: parseFloat(amount),
             originalCurrency: currency,
             type, category, subCategory, date, note, tags,
+            periodicity: 'puntual',
             is_joint: view === 'joint'
         };
 
@@ -1236,12 +1240,6 @@ export default function App() {
                     setDate={setDate}
                     note={note}
                     setNote={setNote}
-                    tags={tags}
-                    setTags={setTags}
-                    globalTags={globalTags}
-                    setGlobalTags={setGlobalTags}
-                    periodicity={periodicity}
-                    setPeriodicity={setPeriodicity}
                     onHandleAdd={handleAdd}
                 />
 

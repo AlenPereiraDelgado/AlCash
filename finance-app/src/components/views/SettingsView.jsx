@@ -1,20 +1,23 @@
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { ACCENT_COLORS } from '../../constants/theme';
-import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Tag, Sparkles, Key } from 'lucide-react';
+import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Tag, Sparkles, Zap } from 'lucide-react';
 
 const SettingsView = () => {
-    const { 
-        theme, setTheme, t, accent, setAccent, activeColor, 
-        currentUser, logout, geminiKey
+    const {
+        theme, setTheme, t, accent, setAccent, activeColor,
+        currentUser, logout
     } = useAuth();
-    
+
     const {
         categories, addCustomCategory,
         deleteCustomCategory, moveCategory, addSubCategory,
         updateCategories, updateGlobalTags,
-        globalTags
+        globalTags, quickButtons, updateQuickButtons
     } = useFinance();
+
+    const [editingQuick, setEditingQuick] = useState(null);
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* INTELIGENCIA ARTIFICIAL SIEMPRE ACTIVA */}
@@ -73,6 +76,70 @@ const SettingsView = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* ACCESOS RÁPIDOS */}
+            <div className={`p-8 rounded-[32px] border ${t.card}`}>
+                <h3 className="text-xl font-bold mb-2 flex items-center gap-2"><Zap className={activeColor.text} /> Accesos Rápidos (+)</h3>
+                <p className={`text-xs mb-6 ${t.textSec}`}>6 botones del modal de añadir. Toca uno para configurarlo.</p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
+                    {quickButtons.map((btn, i) => (
+                        <button
+                            key={btn.id}
+                            type="button"
+                            onClick={() => setEditingQuick(editingQuick === i ? null : i)}
+                            className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all ${editingQuick === i ? `${activeColor.bg} border-transparent text-white` : `${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'} hover:border-blue-500/30`}`}
+                        >
+                            <span className="text-2xl">{btn.emoji}</span>
+                            <span className="text-[9px] font-black uppercase tracking-tight">{btn.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {editingQuick !== null && (() => {
+                    const btn = quickButtons[editingQuick];
+                    const update = (field, val) => {
+                        const next = quickButtons.map((b, i) => i === editingQuick ? { ...b, [field]: val } : b);
+                        updateQuickButtons(next);
+                    };
+                    const catOptions = Object.keys(categories[btn.type] || {});
+                    const subOptions = (categories[btn.type] || {})[btn.category] || [];
+                    return (
+                        <div className={`p-5 rounded-2xl border space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Emoji</p>
+                                    <input value={btn.emoji} onChange={e => update('emoji', e.target.value)} maxLength={2} className={`w-full p-2 rounded-xl text-center text-2xl ${t.input}`} />
+                                </div>
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Etiqueta</p>
+                                    <input value={btn.label} onChange={e => update('label', e.target.value)} maxLength={6} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Tipo</p>
+                                    <select value={btn.type} onChange={e => { update('type', e.target.value); update('category', Object.keys(categories[e.target.value] || {})[0] || ''); update('subCategory', ''); }} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`}>
+                                        <option value="expense">Gasto</option>
+                                        <option value="income">Ingreso</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Categoría</p>
+                                    <select value={btn.category} onChange={e => { update('category', e.target.value); update('subCategory', (categories[btn.type] || {})[e.target.value]?.[0] || ''); }} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`}>
+                                        {catOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textSec}`}>Sub</p>
+                                    <select value={btn.subCategory} onChange={e => update('subCategory', e.target.value)} className={`w-full p-2 rounded-xl text-xs font-bold ${t.input}`}>
+                                        {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* GESTIÓN CATEGORÍAS */}
