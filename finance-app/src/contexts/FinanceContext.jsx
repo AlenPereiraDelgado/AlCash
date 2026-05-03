@@ -17,14 +17,9 @@ export const FinanceProvider = ({ children }) => {
     const [globalTags, setGlobalTags] = useState([]);
     const [automationItems, setAutomationItems] = useState([]);
 
-    const DEFAULT_QUICK_BUTTONS = [
-        { id: 1, emoji: '🛒', label: 'Super',   type: 'expense', category: 'Alimentación', subCategory: 'Supermercado' },
-        { id: 2, emoji: '🍕', label: 'Comer',   type: 'expense', category: 'Alimentación', subCategory: 'Restaurantes' },
-        { id: 3, emoji: '🚌', label: 'Trans',   type: 'expense', category: 'Transporte',   subCategory: 'Transporte Público' },
-        { id: 4, emoji: '🎮', label: 'Ocio',    type: 'expense', category: 'Suscripciones',subCategory: 'Streaming' },
-        { id: 5, emoji: '🏠', label: 'Casa',    type: 'expense', category: 'Hogar',        subCategory: 'Alquiler/Hipoteca' },
-        { id: 6, emoji: '💰', label: 'Sueldo',  type: 'income',  category: 'Salario',      subCategory: 'Nómina Principal' },
-    ];
+    const DEFAULT_QUICK_BUTTONS = Array.from({ length: 6 }, (_, i) => ({
+        id: i + 1, emoji: '', label: '', type: 'expense', category: '', subCategory: ''
+    }));
     const [quickButtons, setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
     const [travelMode, setTravelMode] = useState(false);
     const [travelConfig, setTravelConfig] = useState({ currency: 'USD', rate: 1.1 });
@@ -73,8 +68,11 @@ export const FinanceProvider = ({ children }) => {
             if (goalsRes.data) setGoals(goalsRes.data);
             if (debtsRes.data) setDebts(debtsRes.data);
             if (profileRes.data) {
-                if (profileRes.data.categories && Object.keys(profileRes.data.categories).length > 0) {
-                    setCategories(profileRes.data.categories);
+                if (profileRes.data.categories) {
+                    const cats = profileRes.data.categories;
+                    const hasExpense = cats.expense && Object.keys(cats.expense).length > 0;
+                    const hasIncome = cats.income && Object.keys(cats.income).length > 0;
+                    if (hasExpense || hasIncome) setCategories(cats);
                 }
                 if (profileRes.data.global_tags) setGlobalTags(profileRes.data.global_tags);
             }

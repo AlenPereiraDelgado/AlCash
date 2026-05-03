@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { ACCENT_COLORS } from '../../constants/theme';
-import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Tag, Sparkles, Zap } from 'lucide-react';
+import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap } from 'lucide-react';
 
 const SettingsView = () => {
     const {
@@ -13,8 +13,7 @@ const SettingsView = () => {
     const {
         categories, addCustomCategory,
         deleteCustomCategory, moveCategory, addSubCategory,
-        updateCategories, updateGlobalTags,
-        globalTags, quickButtons, updateQuickButtons
+        updateCategories, quickButtons, updateQuickButtons
     } = useFinance();
 
     const [editingQuick, setEditingQuick] = useState(null);
@@ -204,54 +203,6 @@ const SettingsView = () => {
                         </div>
                     ))}
                 </div>
-            </div>
-
-            {/* GESTIÓN DE ETIQUETAS */}
-            <div className={`p-8 rounded-[32px] border ${t.card}`}>
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold flex items-center gap-2"><Tag size={20} className={activeColor.text} /> Centro de Etiquetas</h3>
-                    <button 
-                        onClick={() => {
-                            const name = prompt('Nombre de la nueva etiqueta:');
-                            if (name) updateGlobalTags([...globalTags, { name, color: '#3B82F6' }]);
-                        }}
-                        className={`text-[10px] font-black uppercase px-4 py-2 rounded-xl text-white ${activeColor.bg}`}
-                    >
-                        + Crear Etiqueta
-                    </button>
-                </div>
-
-                {globalTags.length === 0 ? (
-                    <div className="text-center py-10 opacity-30 italic text-sm">No has creado ninguna etiqueta todavía.</div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {globalTags.map(gt => (
-                            <div key={gt.name} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-gray-100 border-gray-200'} hover:border-blue-500/30`}>
-                                <div className="flex items-center gap-3">
-                                    <input 
-                                        type="color" 
-                                        value={gt.color} 
-                                        onChange={(e) => {
-                                            updateGlobalTags(globalTags.map(t => t.name === gt.name ? { ...t, color: e.target.value } : t));
-                                        }}
-                                        className="w-6 h-6 rounded-full border-none cursor-pointer bg-transparent overflow-hidden"
-                                    />
-                                    <span className="font-bold text-sm tracking-tight">{gt.name}</span>
-                                </div>
-                                <button 
-                                    onClick={() => {
-                                        if (confirm(`¿Eliminar la etiqueta "${gt.name}"? Se quitará de todos los movimientos.`)) {
-                                            updateGlobalTags(globalTags.filter(t => t.name !== gt.name));
-                                        }
-                                    }}
-                                    className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
             </div>
 
             {/* SEGURIDAD / CUENTA */}

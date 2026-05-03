@@ -56,28 +56,32 @@ const TransactionModal = ({
                         <button type="button" onClick={() => setType('income')} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${type === 'income' ? 'bg-green-500 text-white shadow' : 'text-gray-500'}`}>Ingreso</button>
                     </div>
 
-                    {/* ACCESOS RÁPIDOS */}
-                    <div className="grid grid-cols-6 gap-2">
-                        {quickButtons.map((btn, i) => (
-                            <button
-                                key={btn.id}
-                                type="button"
-                                onClick={() => handleQuickSelect(btn, i)}
-                                className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all border ${
-                                    selectedQuick === i
-                                        ? `${activeColor.bg} border-transparent text-white shadow-lg scale-105`
-                                        : `${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'} hover:scale-105`
-                                }`}
-                            >
-                                <span className="text-lg leading-none">{btn.emoji}</span>
-                                <span className="text-[9px] font-black uppercase tracking-tight leading-none truncate w-full text-center">{btn.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                    {selectedQuick !== null && (
-                        <p className={`text-[10px] font-bold text-center -mt-2 ${t.textSec}`}>
-                            {quickButtons[selectedQuick].category} · {quickButtons[selectedQuick].subCategory}
-                        </p>
+                    {/* ACCESOS RÁPIDOS — solo si hay alguno configurado */}
+                    {quickButtons.some(b => b.category) && (
+                        <>
+                            <div className="grid grid-cols-6 gap-2">
+                                {quickButtons.map((btn, i) => btn.category ? (
+                                    <button
+                                        key={btn.id}
+                                        type="button"
+                                        onClick={() => handleQuickSelect(btn, i)}
+                                        className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all border ${
+                                            selectedQuick === i
+                                                ? `${activeColor.bg} border-transparent text-white shadow-lg scale-105`
+                                                : `${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'} hover:scale-105`
+                                        }`}
+                                    >
+                                        <span className="text-lg leading-none">{btn.emoji || '·'}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-tight leading-none truncate w-full text-center">{btn.label || btn.category}</span>
+                                    </button>
+                                ) : null)}
+                            </div>
+                            {selectedQuick !== null && quickButtons[selectedQuick]?.category && (
+                                <p className={`text-[10px] font-bold text-center -mt-2 ${t.textSec}`}>
+                                    {quickButtons[selectedQuick].category} · {quickButtons[selectedQuick].subCategory}
+                                </p>
+                            )}
+                        </>
                     )}
 
                     {/* IMPORTE */}
