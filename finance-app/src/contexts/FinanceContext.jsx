@@ -32,6 +32,7 @@ const txToDb = (tx) => {
     for (const [k, v] of Object.entries(tx)) {
         out[TX_KEY_MAP[k] || k] = v;
     }
+    if (out.amount_val !== undefined && out.amount === undefined) out.amount = out.amount_val;
     return out;
 };
 
