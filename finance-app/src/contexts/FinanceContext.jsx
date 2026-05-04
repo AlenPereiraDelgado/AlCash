@@ -74,7 +74,27 @@ export const FinanceProvider = ({ children }) => {
         } catch {}
     }, [user?.id]);
 
-    const addRecurringRule    = (rule) => setRecurringRules(prev => [...prev, { ...rule, id: crypto.randomUUID() }]);
+    const periodFor = (unit) => unit === 'month' ? 'mensual' : unit === 'year' ? 'anual' : 'semanal';
+
+    const addRecurringRule = async (rule) => {
+        const withId = { ...rule, id: crypto.randomUUID() };
+        const today = new Date().toISOString().split('T')[0];
+        let finalRule = withId;
+        if (withId.active && withId.nextRun <= today) {
+            let cur = { ...withId };
+            while (cur.nextRun <= today) {
+                await addTransaction({
+                    amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR',
+                    type: cur.type, category: cur.category, subCategory: cur.subCategory || '',
+                    note: cur.name || '', tags: [], periodicity: periodFor(cur.unit),
+                    date: cur.nextRun, is_joint: false
+                });
+                cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
+            }
+            finalRule = cur;
+        }
+        setRecurringRules(prev => [...prev, finalRule]);
+    };
     const deleteRecurringRule = (id)   => setRecurringRules(prev => prev.filter(r => r.id !== id));
     const updateRecurringRule = (id, updates) => setRecurringRules(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
 
@@ -91,13 +111,13 @@ export const FinanceProvider = ({ children }) => {
         const today = new Date().toISOString().split('T')[0];
         const due = recurringRules.filter(r => r.active && r.nextRun <= today);
         if (!due.length) return;
-        const periodFor = (unit) => unit === 'month' ? 'mensual' : unit === 'year' ? 'anual' : 'puntual';
+        const periodForLocal = (unit) => unit === 'month' ? 'mensual' : unit === 'year' ? 'anual' : 'semanal';
         (async () => {
             const updated = recurringRules.map(rule => ({ ...rule }));
             for (const rule of due) {
                 let cur = { ...rule };
                 while (cur.nextRun <= today) {
-                    await addTransaction({ amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR', type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || '', tags: [], periodicity: periodFor(cur.unit), date: cur.nextRun, is_joint: false });
+                    await addTransaction({ amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR', type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || '', tags: [], periodicity: periodForLocal(cur.unit), date: cur.nextRun, is_joint: false });
                     cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
                 }
                 const idx = updated.findIndex(r => r.id === rule.id);
