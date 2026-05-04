@@ -27,7 +27,9 @@ const AutomationModal = ({ isOpen, onClose }) => {
     const { theme, t, activeColor } = useAuth();
     const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule } = useFinance();
     const [form, setForm] = useState(emptyForm());
-    const [editingNextRun, setEditingNextRun] = useState(null); // rule id being edited
+    const [editingNextRun, setEditingNextRun] = useState(null);
+    const [reactivating, setReactivating] = useState(null); // { id, date }
+    const today = new Date().toISOString().split('T')[0];
 
     if (!isOpen) return null;
 
@@ -128,12 +130,11 @@ const AutomationModal = ({ isOpen, onClose }) => {
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
                                         <button onClick={() => {
-                                            const nowActive = !rule.active;
-                                            const today = new Date().toISOString().split('T')[0];
-                                            updateRecurringRule(rule.id, {
-                                                active: nowActive,
-                                                ...(nowActive && { nextRun: today })
-                                            });
+                                            if (rule.active) {
+                                                updateRecurringRule(rule.id, { active: false });
+                                            } else {
+                                                setReactivating({ id: rule.id, date: today });
+                                            }
                                         }}>
                                             {rule.active ? <ToggleRight size={22} className={activeColor.text} /> : <ToggleLeft size={22} className={t.textSec} />}
                                         </button>
@@ -169,6 +170,36 @@ const AutomationModal = ({ isOpen, onClose }) => {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* REACTIVACIÓN: elegir fecha de inicio */}
+                                {reactivating?.id === rule.id && (
+                                    <div className={`mt-3 pt-3 border-t flex flex-col gap-2 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
+                                        <p className={`text-[10px] font-black uppercase ${t.textSec}`}>¿Desde cuándo reactivar?</p>
+                                        <input
+                                            type="date"
+                                            value={reactivating.date}
+                                            onChange={e => setReactivating({ ...reactivating, date: e.target.value })}
+                                            className={`p-2 rounded-xl text-sm font-bold ${t.input}`}
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    updateRecurringRule(rule.id, { active: true, nextRun: reactivating.date });
+                                                    setReactivating(null);
+                                                }}
+                                                className={`flex-1 py-2 rounded-xl text-xs font-black text-white ${activeColor.bg}`}
+                                            >
+                                                Reactivar
+                                            </button>
+                                            <button
+                                                onClick={() => setReactivating(null)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-black ${t.hover} ${t.textSec}`}
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
