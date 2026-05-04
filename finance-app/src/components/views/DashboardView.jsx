@@ -54,25 +54,52 @@ const DashboardView = ({
                         </button>
                         {isDateMenuOpen && createPortal(
                             <>
-                                <div className="fixed inset-0 z-[150]" onClick={() => setIsDateMenuOpen(false)} />
-                                <div className={`fixed left-1/2 -translate-x-1/2 top-32 p-4 rounded-2xl shadow-2xl border w-72 z-[200] animate-in zoom-in-95 ${t.card}`}>
-                                    <div className="grid grid-cols-2 gap-2 mb-4">
+                                {/* Backdrop */}
+                                <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm" onClick={() => setIsDateMenuOpen(false)} />
+
+                                {/* Mobile: bottom sheet / Desktop: floating card */}
+                                <div className={`
+                                    fixed z-[200]
+                                    bottom-0 left-0 right-0 rounded-t-[32px]
+                                    md:bottom-auto md:left-auto md:right-auto
+                                    md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
+                                    md:rounded-[24px] md:w-72
+                                    p-6 shadow-2xl border animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200
+                                    ${t.card}
+                                `}>
+                                    {/* Handle bar (mobile) */}
+                                    <div className="md:hidden w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
+
+                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-4 ${t.textSec}`}>Período de tiempo</p>
+
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
                                         {[
                                             { val: 'day', label: 'Día' },
                                             { val: 'month', label: 'Mes' },
                                             { val: 'year', label: 'Año' },
                                             { val: 'range', label: 'Rango' },
                                         ].map(m => (
-                                            <button key={m.val} onClick={() => { setDateMode(m.val); if (m.val !== 'range') setIsDateMenuOpen(false); }} className={`p-2 text-xs font-bold rounded-xl uppercase ${dateMode === m.val ? `${activeColor.bg} text-white` : `${t.hover} ${t.textSec}`}`}>{m.label}</button>
+                                            <button
+                                                key={m.val}
+                                                onClick={() => { setDateMode(m.val); if (m.val !== 'range') setIsDateMenuOpen(false); }}
+                                                className={`py-3 text-sm font-black rounded-2xl uppercase transition-all active:scale-95 ${dateMode === m.val ? `${activeColor.bg} text-white shadow-lg` : `${t.hover} ${t.textSec} border border-white/5`}`}
+                                            >
+                                                {m.label}
+                                            </button>
                                         ))}
                                     </div>
+
                                     {dateMode === 'range' && (
-                                        <div className="space-y-2 pt-2 border-t border-gray-500/20">
-                                            <input type="date" className={`w-full p-2 rounded-xl text-xs ${t.input}`} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
-                                            <input type="date" className={`w-full p-2 rounded-xl text-xs ${t.input}`} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
-                                            <button onClick={() => setIsDateMenuOpen(false)} className={`w-full py-2 ${activeColor.bg} text-white rounded-xl text-xs font-bold`}>Aplicar</button>
+                                        <div className="space-y-3 pt-4 border-t border-white/5">
+                                            <input type="date" className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
+                                            <input type="date" className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
+                                            <button onClick={() => setIsDateMenuOpen(false)} className={`w-full py-3 ${activeColor.bg} text-white rounded-2xl text-sm font-black active:scale-95 transition-all`}>Aplicar</button>
                                         </div>
                                     )}
+
+                                    <button onClick={() => setIsDateMenuOpen(false)} className={`mt-3 w-full py-3 rounded-2xl text-sm font-black ${t.hover} ${t.textSec} active:scale-95 transition-all`}>
+                                        Cancelar
+                                    </button>
                                 </div>
                             </>,
                             document.body
