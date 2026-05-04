@@ -130,11 +130,6 @@ const DashboardView = ({
                                 <div className={`p-2 md:p-4 rounded-xl md:rounded-2xl ${kpi.bg}`}>
                                     <kpi.icon size={18} className={`${kpi.color} md:size-[24px]`} strokeWidth={2.5} />
                                 </div>
-                                {kpi.trend && (
-                                    <div className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-black ${kpi.trend === 'up' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                        {kpi.trend === 'up' ? '+12%' : '-3%'}
-                                    </div>
-                                )}
                             </div>
                             
                             <p className={`text-[8px] md:text-[10px] uppercase font-black tracking-widest md:tracking-[0.2em] mb-1 opacity-40 truncate`}>{kpi.label}</p>
