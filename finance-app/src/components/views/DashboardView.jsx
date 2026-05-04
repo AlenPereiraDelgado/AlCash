@@ -1,4 +1,4 @@
-import React, { createElement } from 'react';
+import React, { createElement, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,6 +37,7 @@ const DashboardView = ({
 }) => {
     const { theme, t, activeColor, privacyMode } = useAuth();
     const { budgets } = useFinance();
+    const swipeStartY = useRef(null);
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Controles de Fecha en Dashboard */}
@@ -58,15 +59,19 @@ const DashboardView = ({
                                 <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm" onClick={() => setIsDateMenuOpen(false)} />
 
                                 {/* Mobile: bottom sheet / Desktop: floating card */}
-                                <div className={`
-                                    fixed z-[200]
-                                    bottom-0 left-0 right-0 rounded-t-[32px]
-                                    md:bottom-auto md:left-auto md:right-auto
-                                    md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
-                                    md:rounded-[24px] md:w-72
-                                    p-6 shadow-2xl border animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200
-                                    ${t.card}
-                                `}>
+                                <div
+                                    className={`
+                                        fixed z-[200]
+                                        bottom-0 left-0 right-0 rounded-t-[32px]
+                                        md:bottom-auto md:left-auto md:right-auto
+                                        md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
+                                        md:rounded-[24px] md:w-72
+                                        p-6 shadow-2xl border animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200
+                                        ${t.card}
+                                    `}
+                                    onTouchStart={e => { swipeStartY.current = e.touches[0].clientY; }}
+                                    onTouchEnd={e => { if (swipeStartY.current !== null && e.changedTouches[0].clientY - swipeStartY.current > 60) setIsDateMenuOpen(false); swipeStartY.current = null; }}
+                                >
                                     {/* Handle bar (mobile) */}
                                     <div className="md:hidden w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
-import { X, Zap, Trash2, ToggleLeft, ToggleRight, Plus, Pencil, Check } from 'lucide-react';
+import { X, Zap, Trash2, Plus, Pencil, Check } from 'lucide-react';
 import AppSelect from '../common/AppSelect';
 
 const UNITS = [
@@ -25,11 +25,18 @@ const emptyForm = () => ({
 
 const AutomationModal = ({ isOpen, onClose }) => {
     const { theme, t, activeColor } = useAuth();
-    const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule } = useFinance();
+    const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun } = useFinance();
     const [form, setForm] = useState(emptyForm());
-    const [editingNextRun, setEditingNextRun] = useState(null);
-    const [reactivating, setReactivating] = useState(null); // { id, date }
+    const [editingStartDate, setEditingStartDate] = useState(null);
+    const [reactivating, setReactivating] = useState(null);
     const today = new Date().toISOString().split('T')[0];
+
+    const calcNextFromStart = (startDate, every, unit) => {
+        if (startDate > today) return startDate;
+        let cur = startDate;
+        while (cur <= today) cur = calcNextRun(cur, every, unit);
+        return cur;
+    };
 
     if (!isOpen) return null;
 
@@ -117,89 +124,103 @@ const AutomationModal = ({ isOpen, onClose }) => {
                     {/* LISTA */}
                     <div className="p-6 space-y-3">
                         <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Reglas ({recurringRules.length})</p>
-                        <p className={`text-[10px] ${t.textSec} -mt-2`}>Toca <Pencil size={10} className="inline" /> para ajustar el día si no te cobran siempre el mismo.</p>
+                        <p className={`text-[10px] ${t.textSec} -mt-2`}>Toca <Pencil size={10} className="inline" /> en Inicio para cambiar la fecha de comienzo.</p>
 
                         {recurringRules.length === 0 ? (
                             <div className={`py-10 text-center text-xs font-bold opacity-30 ${t.textSec}`}>Sin reglas.</div>
                         ) : recurringRules.map(rule => (
-                            <div key={rule.id} className={`p-4 rounded-2xl border group transition-all ${rule.active ? (theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200') : 'opacity-40 border-dashed'}`}>
-                                <div className="flex justify-between items-start gap-2">
-                                    <div className="min-w-0 flex-1">
+                            <div key={rule.id} className={`rounded-2xl border group transition-all ${rule.active ? (theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200') : (theme === 'dark' ? 'border-white/10 border-dashed' : 'border-gray-200 border-dashed')}`}>
+                                {/* Fila superior: info + toggle (toggle NUNCA opaco) */}
+                                <div className="flex justify-between items-center gap-2 p-4">
+                                    <div className={`min-w-0 flex-1 transition-opacity ${rule.active ? 'opacity-100' : 'opacity-40'}`}>
                                         <p className="font-black text-sm truncate">{rule.name || rule.category}</p>
                                         <p className={`text-[10px] font-bold ${t.textSec} truncate`}>{rule.category}{rule.subCategory ? ` · ${rule.subCategory}` : ''}</p>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                        <button onClick={() => {
-                                            if (rule.active) {
-                                                updateRecurringRule(rule.id, { active: false });
-                                            } else {
-                                                setReactivating({ id: rule.id, date: today });
-                                            }
-                                        }}>
-                                            {rule.active ? <ToggleRight size={22} className={activeColor.text} /> : <ToggleLeft size={22} className={t.textSec} />}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {/* Toggle grande — sin heredar opacity del padre */}
+                                        <button
+                                            onClick={() => {
+                                                if (rule.active) {
+                                                    updateRecurringRule(rule.id, { active: false });
+                                                } else {
+                                                    setReactivating({ id: rule.id, date: today });
+                                                }
+                                            }}
+                                            className={`relative w-14 h-8 rounded-full transition-all duration-300 flex-shrink-0 shadow-inner ${rule.active ? activeColor.bg : (theme === 'dark' ? 'bg-white/15' : 'bg-gray-300')}`}
+                                        >
+                                            <span className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${rule.active ? 'left-7' : 'left-1'}`} />
                                         </button>
-                                        <button onClick={() => { if (confirm(`¿Eliminar "${rule.name || rule.category}"?`)) deleteRecurringRule(rule.id); }} className="p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 rounded-lg">
-                                            <Trash2 size={14} />
+                                        <button onClick={() => { if (confirm(`¿Eliminar "${rule.name || rule.category}"?`)) deleteRecurringRule(rule.id); }} className="p-1.5 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 rounded-lg">
+                                            <Trash2 size={15} />
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 gap-2 flex-wrap">
+                                {/* Resto del contenido, opaco si inactivo */}
+                                <div className={`px-4 pb-4 transition-opacity ${rule.active ? 'opacity-100' : 'opacity-40'}`}>
+                                <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2 flex-wrap">
                                     <span className={`text-[10px] font-black ${rule.type === 'expense' ? 'text-red-400' : 'text-green-400'}`}>
                                         {rule.type === 'expense' ? '-' : '+'}{rule.amount.toFixed(2)}€
                                     </span>
                                     <span className={`text-[10px] font-bold ${t.textSec}`}>{unitLabel(rule.every, rule.unit)}</span>
 
-                                    {/* Fecha próxima ejecución editable */}
+                                    {/* Inicio editable */}
                                     <div className="flex items-center gap-1">
-                                        {editingNextRun === rule.id ? (
+                                        {editingStartDate === rule.id ? (
                                             <>
                                                 <input
                                                     type="date"
-                                                    defaultValue={rule.nextRun}
-                                                    onBlur={e => { updateRecurringRule(rule.id, { nextRun: e.target.value }); setEditingNextRun(null); }}
+                                                    defaultValue={rule.startDate}
+                                                    onBlur={e => {
+                                                        const newStart = e.target.value;
+                                                        if (newStart) updateRecurringRule(rule.id, { startDate: newStart, nextRun: calcNextFromStart(newStart, rule.every, rule.unit) });
+                                                        setEditingStartDate(null);
+                                                    }}
                                                     autoFocus
                                                     className={`p-1 rounded-lg text-[10px] font-bold w-28 ${t.input}`}
                                                 />
-                                                <button onClick={() => setEditingNextRun(null)} className={`p-1 rounded-lg ${t.hover}`}><Check size={12} /></button>
+                                                <button onClick={() => setEditingStartDate(null)} className={`p-1 rounded-lg ${t.hover}`}><Check size={12} /></button>
                                             </>
                                         ) : (
-                                            <button onClick={() => setEditingNextRun(rule.id)} className={`flex items-center gap-1 text-[10px] font-bold ${t.textSec} hover:${activeColor.text} transition-colors`}>
-                                                <span>Próx: {rule.nextRun}</span>
+                                            <button onClick={() => setEditingStartDate(rule.id)} className={`flex items-center gap-1 text-[10px] font-bold ${t.textSec} transition-colors`}>
+                                                <span>Inicio: {rule.startDate ?? '—'}</span>
                                                 <Pencil size={9} />
                                             </button>
                                         )}
                                     </div>
+                                    {/* Próximo: solo informativo */}
+                                    <span className={`text-[10px] font-bold ${t.textSec}`}>Próx: {rule.nextRun}</span>
                                 </div>
 
                                 {/* REACTIVACIÓN: elegir fecha de inicio */}
                                 {reactivating?.id === rule.id && (
-                                    <div className={`mt-3 pt-3 border-t flex flex-col gap-2 ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
-                                        <p className={`text-[10px] font-black uppercase ${t.textSec}`}>¿Desde cuándo reactivar?</p>
+                                    <div className={`mt-3 rounded-2xl p-4 flex flex-col gap-3 border-2 animate-in fade-in slide-in-from-top-2 duration-200 ${theme === 'dark' ? 'bg-white/5 border-white/15' : 'bg-blue-50 border-blue-200'}`}>
+                                        <p className={`text-xs font-black uppercase tracking-wide ${activeColor.text}`}>¿Desde cuándo reactivar?</p>
                                         <input
                                             type="date"
                                             value={reactivating.date}
                                             onChange={e => setReactivating({ ...reactivating, date: e.target.value })}
-                                            className={`p-2 rounded-xl text-sm font-bold ${t.input}`}
+                                            className={`w-full p-3 rounded-xl text-sm font-bold ${t.input} border ${theme === 'dark' ? 'border-white/20' : 'border-blue-200'}`}
                                         />
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => {
-                                                    updateRecurringRule(rule.id, { active: true, nextRun: reactivating.date });
+                                                    reactivateRule(rule.id, reactivating.date);
                                                     setReactivating(null);
                                                 }}
-                                                className={`flex-1 py-2 rounded-xl text-xs font-black text-white ${activeColor.bg}`}
+                                                className={`flex-1 py-3 rounded-xl text-sm font-black text-white shadow-lg active:scale-95 transition-all ${activeColor.bg}`}
                                             >
                                                 Reactivar
                                             </button>
                                             <button
                                                 onClick={() => setReactivating(null)}
-                                                className={`px-4 py-2 rounded-xl text-xs font-black ${t.hover} ${t.textSec}`}
+                                                className={`px-5 py-3 rounded-xl text-sm font-black active:scale-95 transition-all ${theme === 'dark' ? 'bg-white/10 text-white' : 'bg-gray-200 text-gray-700'}`}
                                             >
                                                 Cancelar
                                             </button>
                                         </div>
                                     </div>
                                 )}
+                                </div>
                             </div>
                         ))}
                     </div>

@@ -5,6 +5,45 @@ import { supabase } from '../lib/supabaseClient';
 
 const FinanceContext = createContext();
 
+const DEFAULT_QUICK_BUTTONS = Array.from({ length: 6 }, (_, i) => ({
+    id: i + 1, emoji: '', label: '', type: 'expense', category: '', subCategory: ''
+}));
+
+const persistProfileField = async (userId, field, value) => {
+    if (!userId) return;
+    const { error } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, [field]: value }, { onConflict: 'id' });
+    if (error) console.error(`persistProfileField ${field} error`, error);
+};
+
+// --- Mapeo camelCase (código) ↔ snake_case (DB) para transactions ---
+const TX_KEY_MAP = {
+    amountVal: 'amount_val',
+    subCategory: 'sub_category',
+    originalAmount: 'original_amount',
+    originalCurrency: 'original_currency',
+};
+const TX_KEY_MAP_REV = Object.fromEntries(Object.entries(TX_KEY_MAP).map(([k, v]) => [v, k]));
+
+const txToDb = (tx) => {
+    if (!tx || typeof tx !== 'object') return tx;
+    const out = {};
+    for (const [k, v] of Object.entries(tx)) {
+        out[TX_KEY_MAP[k] || k] = v;
+    }
+    return out;
+};
+
+const txFromDb = (row) => {
+    if (!row || typeof row !== 'object') return row;
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+        out[TX_KEY_MAP_REV[k] || k] = v;
+    }
+    return out;
+};
+
 export const FinanceProvider = ({ children }) => {
     const { user } = useAuth();
 
@@ -13,18 +52,35 @@ export const FinanceProvider = ({ children }) => {
     const [goals, setGoals] = useState([]);
     const [debts, setDebts] = useState([]);
     const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-    const [budgets, _setBudgets] = useState({});
-    const setBudgets = (val) => {
-        _setBudgets(prev => {
-            const next = typeof val === 'function' ? val(prev) : val;
-            try { if (user?.id) localStorage.setItem(`alcash_budgets_${user.id}`, JSON.stringify(next)); } catch {}
-            return next;
-        });
-    };
     const [globalTags, setGlobalTags] = useState([]);
     const [automationItems, setAutomationItems] = useState([]);
 
-    // --- REGLAS RECURRENTES ---
+    // --- ESTADO SINCRONIZADO EN SUPABASE (profiles) ---
+    const [budgets, _setBudgets] = useState({});
+    const [recurringRules, _setRecurringRules] = useState([]);
+    const [quickButtons, _setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
+
+    const setBudgets = (val) => {
+        _setBudgets(prev => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            persistProfileField(user?.id, 'budgets', next);
+            return next;
+        });
+    };
+
+    const setRecurringRules = (rulesOrFn) => {
+        _setRecurringRules(prev => {
+            const next = typeof rulesOrFn === 'function' ? rulesOrFn(prev) : rulesOrFn;
+            persistProfileField(user?.id, 'recurring_rules', next);
+            return next;
+        });
+    };
+
+    const updateQuickButtons = (newQB) => {
+        _setQuickButtons(newQB);
+        persistProfileField(user?.id, 'quick_buttons', newQB);
+    };
+
     const calcNextRun = (fromDate, every, unit) => {
         const d = new Date(fromDate + 'T12:00:00');
         if (unit === 'day')   d.setDate(d.getDate() + Number(every));
@@ -34,47 +90,24 @@ export const FinanceProvider = ({ children }) => {
         return d.toISOString().split('T')[0];
     };
 
-    const [recurringRules, _setRecurringRules] = useState([]);
-
-    const setRecurringRules = (rulesOrFn) => {
-        _setRecurringRules(prev => {
-            const next = typeof rulesOrFn === 'function' ? rulesOrFn(prev) : rulesOrFn;
-            try { if (user?.id) localStorage.setItem(`alcash_rules_${user.id}`, JSON.stringify(next)); } catch {}
-            return next;
-        });
-    };
-
-    const DEFAULT_QUICK_BUTTONS = Array.from({ length: 6 }, (_, i) => ({
-        id: i + 1, emoji: '', label: '', type: 'expense', category: '', subCategory: ''
-    }));
-    const [quickButtons, setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
     const [travelMode, setTravelMode] = useState(false);
     const [travelConfig, setTravelConfig] = useState({ currency: 'USD', rate: 1.1 });
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [saveStatus, setSaveStatus] = useState('idle');
 
-    useEffect(() => {
-        if (user?.id) {
-            try {
-                const stored = localStorage.getItem(`alcash_qb_${user.id}`);
-                if (stored) setQuickButtons(JSON.parse(stored));
-            } catch {}
-        }
-    }, [user?.id]);
-
-    useEffect(() => {
-        if (!user?.id) return;
-        try {
-            const stored = localStorage.getItem(`alcash_rules_${user.id}`);
-            if (stored) _setRecurringRules(JSON.parse(stored));
-        } catch {}
-        try {
-            const stored = localStorage.getItem(`alcash_budgets_${user.id}`);
-            if (stored) _setBudgets(JSON.parse(stored));
-        } catch {}
-    }, [user?.id]);
-
     const periodFor = (unit) => unit === 'month' ? 'mensual' : unit === 'year' ? 'anual' : 'semanal';
+
+    const makeAutoTx = (cur) => ({
+        amountVal: cur.amount,
+        type: cur.type,
+        category: cur.category,
+        subCategory: cur.subCategory || '',
+        note: cur.name || cur.category,
+        tags: ['__auto__'],
+        periodicity: periodFor(cur.unit),
+        date: cur.nextRun,
+        is_joint: false,
+    });
 
     const addRecurringRule = async (rule) => {
         const withId = { ...rule, id: crypto.randomUUID() };
@@ -83,26 +116,28 @@ export const FinanceProvider = ({ children }) => {
         if (withId.active && withId.nextRun <= today) {
             let cur = { ...withId };
             while (cur.nextRun <= today) {
-                await addTransaction({
-                    amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR',
-                    type: cur.type, category: cur.category, subCategory: cur.subCategory || '',
-                    note: cur.name || '', tags: [], periodicity: periodFor(cur.unit),
-                    date: cur.nextRun, is_joint: false
-                });
+                const result = await addTransaction(makeAutoTx(cur));
+                if (!result) console.error('[Auto] Insert falló para fecha', cur.nextRun);
                 cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
             }
             finalRule = cur;
         }
         setRecurringRules(prev => [...prev, finalRule]);
     };
-    const deleteRecurringRule = (id)   => setRecurringRules(prev => prev.filter(r => r.id !== id));
+    const deleteRecurringRule = (id) => setRecurringRules(prev => prev.filter(r => r.id !== id));
     const updateRecurringRule = (id, updates) => setRecurringRules(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
 
-    const updateQuickButtons = (newQB) => {
-        setQuickButtons(newQB);
-        if (user?.id) {
-            try { localStorage.setItem(`alcash_qb_${user.id}`, JSON.stringify(newQB)); } catch {}
+    const reactivateRule = async (id, fromDate) => {
+        const today = new Date().toISOString().split('T')[0];
+        const rule = recurringRules.find(r => r.id === id);
+        if (!rule) return;
+        let cur = { ...rule, nextRun: fromDate };
+        while (cur.nextRun <= today) {
+            const result = await addTransaction(makeAutoTx(cur));
+            if (!result) console.error('[Auto] Reactivate insert falló para fecha', cur.nextRun);
+            cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
         }
+        updateRecurringRule(id, { active: true, nextRun: cur.nextRun, lastRun: cur.lastRun });
     };
 
     // Auto-ejecutar reglas vencidas al cargar datos
@@ -117,7 +152,7 @@ export const FinanceProvider = ({ children }) => {
             for (const rule of due) {
                 let cur = { ...rule };
                 while (cur.nextRun <= today) {
-                    await addTransaction({ amountVal: cur.amount, originalAmount: cur.amount, originalCurrency: 'EUR', type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || '', tags: [], periodicity: periodForLocal(cur.unit), date: cur.nextRun, is_joint: false });
+                    await addTransaction({ amountVal: cur.amount, type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || cur.category, tags: ['__auto__'], periodicity: periodForLocal(cur.unit), date: cur.nextRun, is_joint: false });
                     cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
                 }
                 const idx = updated.findIndex(r => r.id === rule.id);
@@ -144,15 +179,51 @@ export const FinanceProvider = ({ children }) => {
                 supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
                 supabase.from('goals').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
                 supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('profiles').select('categories, global_tags').eq('id', user.id).maybeSingle()
+                supabase.from('profiles').select('categories, global_tags, recurring_rules, budgets, quick_buttons').eq('id', user.id).maybeSingle()
             ]);
 
             if (transRes.data) {
-                setTransactions(transRes.data.filter(t => !t.is_joint));
-                setJointTransactions(transRes.data.filter(t => t.is_joint));
+                const mapped = transRes.data.map(txFromDb);
+                setTransactions(mapped.filter(t => !t.is_joint));
+                setJointTransactions(mapped.filter(t => t.is_joint));
             }
             if (goalsRes.data) setGoals(goalsRes.data);
             if (debtsRes.data) setDebts(debtsRes.data);
+
+            // Migración localStorage -> Supabase (una vez)
+            const lsRules = (() => { try { return JSON.parse(localStorage.getItem(`alcash_rules_${user.id}`) || 'null'); } catch { return null; } })();
+            const lsBudgets = (() => { try { return JSON.parse(localStorage.getItem(`alcash_budgets_${user.id}`) || 'null'); } catch { return null; } })();
+            const lsQB = (() => { try { return JSON.parse(localStorage.getItem(`alcash_qb_${user.id}`) || 'null'); } catch { return null; } })();
+
+            const profile = profileRes.data || {};
+            const remoteRules = Array.isArray(profile.recurring_rules) ? profile.recurring_rules : [];
+            const remoteBudgets = profile.budgets && typeof profile.budgets === 'object' ? profile.budgets : {};
+            const remoteQB = Array.isArray(profile.quick_buttons) ? profile.quick_buttons : [];
+
+            const finalRules = remoteRules.length ? remoteRules : (Array.isArray(lsRules) ? lsRules : []);
+            const finalBudgets = Object.keys(remoteBudgets).length ? remoteBudgets : (lsBudgets && typeof lsBudgets === 'object' ? lsBudgets : {});
+            const finalQB = remoteQB.length ? remoteQB : (Array.isArray(lsQB) && lsQB.length ? lsQB : DEFAULT_QUICK_BUTTONS);
+
+            _setRecurringRules(finalRules);
+            _setBudgets(finalBudgets);
+            _setQuickButtons(finalQB);
+
+            // Si Supabase estaba vacío y migramos desde localStorage → persistir y limpiar LS
+            const migrations = [];
+            if (!remoteRules.length && Array.isArray(lsRules) && lsRules.length) {
+                migrations.push(persistProfileField(user.id, 'recurring_rules', finalRules));
+                try { localStorage.removeItem(`alcash_rules_${user.id}`); } catch {}
+            }
+            if (!Object.keys(remoteBudgets).length && lsBudgets && typeof lsBudgets === 'object' && Object.keys(lsBudgets).length) {
+                migrations.push(persistProfileField(user.id, 'budgets', finalBudgets));
+                try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
+            }
+            if (!remoteQB.length && Array.isArray(lsQB) && lsQB.length) {
+                migrations.push(persistProfileField(user.id, 'quick_buttons', finalQB));
+                try { localStorage.removeItem(`alcash_qb_${user.id}`); } catch {}
+            }
+            if (migrations.length) await Promise.all(migrations);
+
             if (profileRes.data) {
                 if (profileRes.data.categories) {
                     const cats = profileRes.data.categories;
@@ -177,19 +248,23 @@ export const FinanceProvider = ({ children }) => {
         setDebts([]);
         setCategories(DEFAULT_CATEGORIES);
         setGlobalTags([]);
+        _setBudgets({});
+        _setRecurringRules([]);
+        _setQuickButtons(DEFAULT_QUICK_BUTTONS);
         setIsDataLoaded(false);
     };
 
     // ---- Transactions ----
     const addTransaction = async (newTrans) => {
         setSaveStatus('saving');
-        const transRecord = { ...newTrans, user_id: user.id };
+        const transRecord = txToDb({ ...newTrans, user_id: user.id });
         const { data, error } = await supabase.from('transactions').insert([transRecord]).select();
         if (!error && data) {
-            if (newTrans.is_joint) setJointTransactions(prev => [data[0], ...prev]);
-            else setTransactions(prev => [data[0], ...prev]);
+            const mapped = txFromDb(data[0]);
+            if (mapped.is_joint) setJointTransactions(prev => [mapped, ...prev]);
+            else setTransactions(prev => [mapped, ...prev]);
             setSaveStatus('success');
-            return data[0];
+            return mapped;
         }
         console.error('addTransaction error', error);
         setSaveStatus('error');
@@ -198,10 +273,11 @@ export const FinanceProvider = ({ children }) => {
 
     const updateTransaction = async (id, updates) => {
         setSaveStatus('saving');
-        const { data, error } = await supabase.from('transactions').update(updates).eq('id', id).select();
+        const { data, error } = await supabase.from('transactions').update(txToDb(updates)).eq('id', id).select();
         if (!error && data) {
-            setTransactions(prev => prev.map(t => t.id === id ? data[0] : t));
-            setJointTransactions(prev => prev.map(t => t.id === id ? data[0] : t));
+            const mapped = txFromDb(data[0]);
+            setTransactions(prev => prev.map(t => t.id === id ? mapped : t));
+            setJointTransactions(prev => prev.map(t => t.id === id ? mapped : t));
             setSaveStatus('success');
             return true;
         }
@@ -309,15 +385,22 @@ export const FinanceProvider = ({ children }) => {
             supabase.from('transactions').delete().eq('user_id', user.id),
             supabase.from('goals').delete().eq('user_id', user.id),
             supabase.from('debts').delete().eq('user_id', user.id),
+            supabase.from('profiles').update({
+                recurring_rules: [],
+                budgets: {},
+                quick_buttons: DEFAULT_QUICK_BUTTONS,
+            }).eq('id', user.id),
         ]);
         try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
         try { localStorage.removeItem(`alcash_rules_${user.id}`); } catch {}
+        try { localStorage.removeItem(`alcash_qb_${user.id}`); } catch {}
         setTransactions([]);
         setJointTransactions([]);
         setGoals([]);
         setDebts([]);
         _setBudgets({});
         _setRecurringRules([]);
+        _setQuickButtons(DEFAULT_QUICK_BUTTONS);
     };
 
     const updateGlobalTags = async (newTags) => {
@@ -342,7 +425,7 @@ export const FinanceProvider = ({ children }) => {
             addCustomCategory, deleteCustomCategory, moveCategory, addSubCategory,
             globalTags, setGlobalTags,
             quickButtons, updateQuickButtons,
-            recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, calcNextRun,
+            recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun,
             automationItems, setAutomationItems,
             travelMode, setTravelMode,
             travelConfig, setTravelConfig,

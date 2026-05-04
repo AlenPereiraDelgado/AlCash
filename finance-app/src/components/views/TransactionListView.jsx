@@ -3,10 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import EmptyState from '../common/EmptyState';
-import { 
-    ChevronLeft, ChevronRight, Search, Filter, Download, 
-    Layers, Calendar as CalendarIcon, Activity, Box, 
-    Pencil, Trash2, Tag, CheckSquare, Square
+import {
+    ChevronLeft, ChevronRight, Search, Filter, Download,
+    Layers, Calendar as CalendarIcon, Activity, Box,
+    Pencil, Trash2, Tag, CheckSquare, Square, Zap
 } from 'lucide-react';
 
 const TransactionListView = ({
@@ -235,12 +235,13 @@ const TransactionListView = ({
                                         <td className="p-8">
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs font-bold opacity-60">{tx.category}</span>
+                                                {tx.tags?.includes('__auto__') && <span className="flex items-center gap-1 text-[9px] w-fit px-2 py-0.5 rounded-lg bg-yellow-500/15 text-yellow-400 font-black"><Zap size={9} />Auto</span>}
                                                 {tx.originalCurrency !== 'EUR' && <span className="text-[9px] w-fit px-2 py-0.5 rounded-lg bg-yellow-500/10 text-yellow-500 font-black">{tx.originalCurrency}</span>}
                                             </div>
                                         </td>
                                         <td className="p-8">
                                             <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                                                {tx.tags?.map(tagName => {
+                                                {tx.tags?.filter(t => t !== '__auto__').map(tagName => {
                                                     const tagData = globalTags.find(gt => gt.name === tagName);
                                                     return (
                                                         <span key={tagName} className="px-3 py-1 rounded-full text-[9px] font-bold text-white shadow-sm" style={{ backgroundColor: tagData?.color || '#8E8E93' }}>
@@ -248,7 +249,7 @@ const TransactionListView = ({
                                                         </span>
                                                     );
                                                 })}
-                                                {(!tx.tags || tx.tags.length === 0) && <span className="text-[10px] opacity-20 italic">Sin tags</span>}
+                                                {(!tx.tags || tx.tags.filter(t => t !== '__auto__').length === 0) && <span className="text-[10px] opacity-20 italic">Sin tags</span>}
                                             </div>
                                         </td>
                                         <td className={`p-8 text-right font-black text-lg tracking-tighter ${tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -284,7 +285,10 @@ const TransactionListView = ({
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider">
-                                        <span className={t.textSec}>{tx.category}</span>
+                                        <span className={`flex items-center gap-1.5 ${t.textSec}`}>
+                                            {tx.category}
+                                            {tx.tags?.includes('__auto__') && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-yellow-500/15 text-yellow-400 normal-case tracking-normal"><Zap size={8} />Auto</span>}
+                                        </span>
                                         <span className="opacity-40">{tx.date}</span>
                                     </div>
                                 </div>
