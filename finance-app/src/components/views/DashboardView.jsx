@@ -52,22 +52,29 @@ const DashboardView = ({
                             <span className="font-black uppercase tracking-widest text-sm">{getDateLabel()}</span>
                         </button>
                         {isDateMenuOpen && (
-                            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-4 p-4 rounded-2xl shadow-2xl border w-64 z-50 animate-in zoom-in-95 ${t.card} ${t.bg}`}>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    {['day', 'month', 'year', 'range'].map(m => (
-                                        <button key={m} onClick={() => { setDateMode(m); if (m !== 'range') setIsDateMenuOpen(false); }} className={`p-2 text-xs font-bold rounded uppercase ${dateMode === m ? `${activeColor.bg} text-white` : `${t.hover} ${t.textSec}`}`}>{m}</button>
-                                    ))}
-                                </div>
-                                {dateMode === 'range' && (
-                                    <div className="space-y-2 pt-2 border-t border-gray-500/20">
-                                        <input type="date" className={`w-full p-2 rounded text-xs ${t.input}`} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
-                                        <input type="date" className={`w-full p-2 rounded text-xs ${t.input}`} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
-                                        <button onClick={() => setIsDateMenuOpen(false)} className={`w-full py-2 ${activeColor.bg} text-white rounded text-xs font-bold`}>Aplicar</button>
+                            <>
+                                <div className="fixed inset-0 z-[150]" onClick={() => setIsDateMenuOpen(false)} />
+                                <div className={`fixed left-1/2 -translate-x-1/2 top-32 md:absolute md:top-full md:left-1/2 md:-translate-x-1/2 md:top-auto p-4 rounded-2xl shadow-2xl border w-72 z-[200] animate-in zoom-in-95 ${t.card}`}>
+                                    <div className="grid grid-cols-2 gap-2 mb-4">
+                                        {[
+                                            { val: 'day', label: 'Día' },
+                                            { val: 'month', label: 'Mes' },
+                                            { val: 'year', label: 'Año' },
+                                            { val: 'range', label: 'Rango' },
+                                        ].map(m => (
+                                            <button key={m.val} onClick={() => { setDateMode(m.val); if (m.val !== 'range') setIsDateMenuOpen(false); }} className={`p-2 text-xs font-bold rounded-xl uppercase ${dateMode === m.val ? `${activeColor.bg} text-white` : `${t.hover} ${t.textSec}`}`}>{m.label}</button>
+                                        ))}
                                     </div>
-                                )}
-                            </div>
+                                    {dateMode === 'range' && (
+                                        <div className="space-y-2 pt-2 border-t border-gray-500/20">
+                                            <input type="date" className={`w-full p-2 rounded-xl text-xs ${t.input}`} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
+                                            <input type="date" className={`w-full p-2 rounded-xl text-xs ${t.input}`} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
+                                            <button onClick={() => setIsDateMenuOpen(false)} className={`w-full py-2 ${activeColor.bg} text-white rounded-xl text-xs font-bold`}>Aplicar</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
                         )}
-                        {isDateMenuOpen && <div className="fixed inset-0 z-40" onClick={() => setIsDateMenuOpen(false)}></div>}
                     </div>
                     <button onClick={() => handleNavigate(1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronRight size={20} /></button>
                 </div>
