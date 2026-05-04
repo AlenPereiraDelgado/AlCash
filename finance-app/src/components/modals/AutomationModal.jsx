@@ -127,7 +127,14 @@ const AutomationModal = ({ isOpen, onClose }) => {
                                         <p className={`text-[10px] font-bold ${t.textSec} truncate`}>{rule.category}{rule.subCategory ? ` · ${rule.subCategory}` : ''}</p>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
-                                        <button onClick={() => updateRecurringRule(rule.id, { active: !rule.active })}>
+                                        <button onClick={() => {
+                                            const nowActive = !rule.active;
+                                            const today = new Date().toISOString().split('T')[0];
+                                            updateRecurringRule(rule.id, {
+                                                active: nowActive,
+                                                ...(nowActive && { nextRun: today })
+                                            });
+                                        }}>
                                             {rule.active ? <ToggleRight size={22} className={activeColor.text} /> : <ToggleLeft size={22} className={t.textSec} />}
                                         </button>
                                         <button onClick={() => { if (confirm(`¿Eliminar "${rule.name || rule.category}"?`)) deleteRecurringRule(rule.id); }} className="p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 rounded-lg">
