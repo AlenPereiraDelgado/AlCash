@@ -1,4 +1,5 @@
 import React, { createElement } from 'react';
+import { createPortal } from 'react-dom';
 import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
@@ -51,10 +52,10 @@ const DashboardView = ({
                             {dateMode === 'range' ? <Layers size={18} className="text-purple-500" /> : <CalendarIcon size={18} className={activeColor.text} />}
                             <span className="font-black uppercase tracking-widest text-sm">{getDateLabel()}</span>
                         </button>
-                        {isDateMenuOpen && (
+                        {isDateMenuOpen && createPortal(
                             <>
                                 <div className="fixed inset-0 z-[150]" onClick={() => setIsDateMenuOpen(false)} />
-                                <div className={`fixed left-1/2 -translate-x-1/2 top-32 md:absolute md:top-full md:left-1/2 md:-translate-x-1/2 md:top-auto p-4 rounded-2xl shadow-2xl border w-72 z-[200] animate-in zoom-in-95 ${t.card}`}>
+                                <div className={`fixed left-1/2 -translate-x-1/2 top-32 p-4 rounded-2xl shadow-2xl border w-72 z-[200] animate-in zoom-in-95 ${t.card}`}>
                                     <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[
                                             { val: 'day', label: 'Día' },
@@ -73,7 +74,8 @@ const DashboardView = ({
                                         </div>
                                     )}
                                 </div>
-                            </>
+                            </>,
+                            document.body
                         )}
                     </div>
                     <button onClick={() => handleNavigate(1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronRight size={20} /></button>
