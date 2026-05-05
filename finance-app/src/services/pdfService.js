@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { parseLocalDate } from '../utils/helpers';
 
 /**
  * Genera un reporte PDF profesional con los datos anuales.
@@ -49,7 +50,7 @@ export const generateYearlyPDF = (personalTransactions, jointTransactions, year,
     };
 
     const renderAccountReport = (transList, accountLabel) => {
-        const yearTrans = transList.filter(t => new Date(t.date).getFullYear() === year);
+        const yearTrans = transList.filter(t => parseLocalDate(t.date).getFullYear() === year);
         const totalIncome = yearTrans.filter(t => t.type === 'income').reduce((a, b) => a + b.amountVal, 0);
         const totalExpense = yearTrans.filter(t => t.type === 'expense').reduce((a, b) => a + b.amountVal, 0);
         const balance = totalIncome - totalExpense;
@@ -91,7 +92,7 @@ export const generateYearlyPDF = (personalTransactions, jointTransactions, year,
         for (let m = 0; m < 12; m++) {
             const y = startY + 14 + (m * 7);
             const monthName = new Date(year, m, 1).toLocaleString('es-ES', { month: 'long' }).toUpperCase();
-            const mTrans = yearTrans.filter(t => new Date(t.date).getMonth() === m);
+            const mTrans = yearTrans.filter(t => parseLocalDate(t.date).getMonth() === m);
             const mInc = mTrans.filter(t => t.type === 'income').reduce((a, b) => a + b.amountVal, 0);
             const mExp = mTrans.filter(t => t.type === 'expense').reduce((a, b) => a + b.amountVal, 0);
             const mBal = mInc - mExp;

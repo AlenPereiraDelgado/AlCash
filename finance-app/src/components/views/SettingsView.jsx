@@ -5,6 +5,8 @@ import { ACCENT_COLORS } from '../../constants/theme';
 import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download } from 'lucide-react';
 import { exportMonthlyPDF, generateYearlyPDF } from '../../services/pdfService';
 import AppSelect from '../common/AppSelect';
+import PromptModal from '../common/PromptModal';
+import { parseLocalDate } from '../../utils/helpers';
 
 const SettingsView = () => {
     const {
@@ -21,6 +23,8 @@ const SettingsView = () => {
 
     const [editingQuick, setEditingQuick] = useState(null);
     const [reportMode, setReportMode] = useState('month');
+    const [catPrompt, setCatPrompt] = useState(null);
+    const [subPrompt, setSubPrompt] = useState(null);
     const now = new Date();
     const [reportMonth, setReportMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
     const [reportYear, setReportYear]   = useState(String(now.getFullYear()));
@@ -38,7 +42,7 @@ const SettingsView = () => {
         if (reportMode === 'month') {
             const month = parseInt(reportMonth);
             filtered = transactions.filter(tx => {
-                const d = new Date(tx.date);
+                const d = parseLocalDate(tx.date);
                 return d.getFullYear() === year && d.getMonth() + 1 === month;
             });
             label = `${reportMonth}/${reportYear}`;
@@ -184,10 +188,7 @@ const SettingsView = () => {
                             <div className="flex justify-between items-center border-b pb-2">
                                 <h4 className="uppercase font-black text-xs opacity-50">{tk === 'expense' ? 'Gastos' : 'Ingresos'}</h4>
                                 <button
-                                    onClick={() => {
-                                        const name = prompt(`Nueva categoría de ${tk}:`);
-                                        if (name) addCustomCategory(tk, name);
-                                    }}
+                                    onClick={() => setCatPrompt({ type: tk })}
                                     className={`text-xs font-bold px-2 py-1 rounded-lg ${activeColor.bg} text-white`}
                                 >
                                     + Añadir
@@ -205,10 +206,7 @@ const SettingsView = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => {
-                                                    const sub = prompt(`Nueva subcategoría para ${c}:`);
-                                                    if (sub) addSubCategory(tk, c, sub);
-                                                }}
+                                                onClick={() => setSubPrompt({ type: tk, category: c })}
                                                 className="text-blue-500 text-[10px] font-bold"
                                             >
                                                 + sub
@@ -304,6 +302,24 @@ const SettingsView = () => {
                     </div>
                 </div>
             </div>
+
+            <PromptModal
+                isOpen={!!catPrompt}
+                title={catPrompt?.type === 'income' ? 'Nueva categoría de ingreso' : 'Nueva categoría de gasto'}
+                label="Nombre"
+                placeholder="Ej: Hogar, Transporte…"
+                onConfirm={(name) => addCustomCategory(catPrompt.type, name)}
+                onClose={() => setCatPrompt(null)}
+            />
+
+            <PromptModal
+                isOpen={!!subPrompt}
+                title={`Nueva subcategoría · ${subPrompt?.category || ''}`}
+                label="Nombre"
+                placeholder="Ej: Alquiler, Luz…"
+                onConfirm={(sub) => addSubCategory(subPrompt.type, subPrompt.category, sub)}
+                onClose={() => setSubPrompt(null)}
+            />
         </div>
     );
 };

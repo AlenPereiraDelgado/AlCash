@@ -85,13 +85,13 @@ const AutomationModal = ({ isOpen, onClose }) => {
                         </div>
 
                         <AppSelect value={form.category} onChange={e => { set('category', e.target.value); set('subCategory', ''); }} className="p-3 rounded-xl text-sm font-bold">
-                            <option value="">Categoría…</option>
+                            <option value="">Selecciona…</option>
                             {Object.keys(categories[form.type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
                         </AppSelect>
 
                         {form.category && (
                             <AppSelect value={form.subCategory} onChange={e => set('subCategory', e.target.value)} className="p-3 rounded-xl text-sm font-bold">
-                                <option value="">Subcategoría…</option>
+                                <option value="">Selecciona…</option>
                                 {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
                             </AppSelect>
                         )}

@@ -6,9 +6,10 @@ import {
     Zap, ChevronLeft, ChevronRight, Activity, TrendingUp, 
     PieChart as PieChartIcon, Layers 
 } from 'lucide-react';
-import { 
-    GaugeChart, DailyEvolutionChart, CategoryDonutChart, RadarChart 
+import {
+    GaugeChart, DailyEvolutionChart, CategoryDonutChart, RadarChart
 } from '../charts/FinanceCharts';
+import { parseLocalDate } from '../../utils/helpers';
 
 const AnalysisView = ({
     analysisType,
@@ -23,7 +24,7 @@ const AnalysisView = ({
     // 1. FILTRADO DE TRANSACCIONES PARA EL PERIODO
     const periodTransactions = React.useMemo(() => {
         return personalTransactions.filter(tx => {
-            const d = new Date(tx.date);
+            const d = parseLocalDate(tx.date);
             if (analysisType === 'month') {
                 return d.getMonth() === analysisDate.getMonth() && d.getFullYear() === analysisDate.getFullYear();
             }
@@ -38,14 +39,14 @@ const AnalysisView = ({
             return Array.from({ length: daysInMonth }, (_, i) => {
                 const day = i + 1;
                 const val = periodTransactions
-                    .filter(tx => tx.type === 'expense' && new Date(tx.date).getDate() <= day)
+                    .filter(tx => tx.type === 'expense' && parseLocalDate(tx.date).getDate() <= day)
                     .reduce((a, b) => a + b.amountVal, 0);
                 return { name: day.toString(), value: val };
             });
         } else {
             return Array.from({ length: 12 }, (_, i) => {
                 const val = personalTransactions
-                    .filter(tx => tx.type === 'expense' && new Date(tx.date).getMonth() === i && new Date(tx.date).getFullYear() === analysisDate.getFullYear())
+                    .filter(tx => { const d = parseLocalDate(tx.date); return tx.type === 'expense' && d.getMonth() === i && d.getFullYear() === analysisDate.getFullYear(); })
                     .reduce((a, b) => a + b.amountVal, 0);
                 return { name: new Date(2024, i, 1).toLocaleString('es-ES', { month: 'short' }), value: val };
             });

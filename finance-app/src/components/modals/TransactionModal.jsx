@@ -104,11 +104,11 @@ const TransactionModal = ({
                     {/* CATEGORÍA / SUBCATEGORÍA */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <AppSelect value={category} onChange={e => { setCategory(e.target.value); setSelectedQuick(null); }} className="p-3 rounded-xl font-bold text-sm">
-                            <option value="">Categoría…</option>
+                            <option value="">Selecciona…</option>
                             {Object.keys(categories[type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
                         </AppSelect>
                         <AppSelect value={subCategory} onChange={e => { setSubCategory(e.target.value); setSelectedQuick(null); }} className="p-3 rounded-xl font-bold text-sm">
-                            <option value="">Subcategoría…</option>
+                            <option value="">Selecciona…</option>
                             {(categories[type]?.[category] || []).map(s => <option key={s} value={s}>{s}</option>)}
                         </AppSelect>
                     </div>

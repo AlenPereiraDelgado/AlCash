@@ -1,4 +1,19 @@
 /**
+ * Parse YYYY-MM-DD date string forzando mediodía local.
+ * Evita el bug de zona horaria: new Date('2026-01-01') crea UTC midnight,
+ * que en España (UTC+1/+2) se convierte en 31-dic 23:00 → mes/día equivocados.
+ */
+export const parseLocalDate = (dateStr) => {
+    if (!dateStr) return new Date(NaN);
+    if (dateStr instanceof Date) return dateStr;
+    const s = String(dateStr);
+    if (s.length === 10 && s[4] === '-' && s[7] === '-') {
+        return new Date(s + 'T12:00:00');
+    }
+    return new Date(s);
+};
+
+/**
  * Calcula el Hue (matiz) a partir de un color Hexadecimal.
  */
 export const getHue = (hex) => {

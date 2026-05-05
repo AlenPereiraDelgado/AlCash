@@ -2,6 +2,7 @@ import React from 'react';
 import { Check, X, Pencil, Calendar, Tag, Wallet, Box } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
+import { parseLocalDate } from '../../utils/helpers';
 
 const MagicPreviewCard = ({ transaction, onAccept, onCancel, onEdit }) => {
     const { theme, t, activeColor } = useAuth();
@@ -37,7 +38,7 @@ const MagicPreviewCard = ({ transaction, onAccept, onCancel, onEdit }) => {
                         <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Calendar size={18} /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase opacity-40">Fecha</p>
-                            <p className="text-sm font-bold">{new Date(transaction.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                            <p className="text-sm font-bold">{parseLocalDate(transaction.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">

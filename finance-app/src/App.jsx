@@ -21,7 +21,7 @@ import {
     ACCENT_COLORS
 } from './constants/theme';
 
-import { getHue, getBucketIndex, getDynamicFontSize } from './utils/helpers';
+import { getHue, getBucketIndex, getDynamicFontSize, parseLocalDate } from './utils/helpers';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -329,7 +329,7 @@ export default function App() {
 
     const filterData = (dataList) => {
         return dataList.filter(tx => {
-            const tDate = new Date(tx.date + 'T12:00:00'); // Forza mediodía para evitar problemas de zona horaria
+            const tDate = parseLocalDate(tx.date);
             let matchesDate = false;
 
             if (dateMode === 'day') {
@@ -388,7 +388,7 @@ export default function App() {
         for (let m = 0; m < 12; m++) {
             const d = new Date(selectedChartYear, m, 1);
             const mTrans = personalTransactions.filter(t => {
-                const td = new Date(t.date);
+                const td = parseLocalDate(t.date);
                 return td.getMonth() === m && td.getFullYear() === selectedChartYear;
             });
             result.push({
@@ -405,7 +405,7 @@ export default function App() {
         for (let m = 0; m < 12; m++) {
             const d = new Date(selectedJointChartYear, m, 1);
             const mTrans = jointTransactions.filter(t => {
-                const td = new Date(t.date);
+                const td = parseLocalDate(t.date);
                 return td.getMonth() === m && td.getFullYear() === selectedJointChartYear;
             });
             result.push({
@@ -442,7 +442,7 @@ export default function App() {
         return personalTransactions
             .filter(t => t.type === 'expense' && t.periodicity && t.periodicity !== 'puntual')
             .filter(t => {
-                const d = new Date(t.date);
+                const d = parseLocalDate(t.date);
                 return d.getMonth() === curMonth && d.getFullYear() === curYear;
             })
             .reduce((acc, curr) => acc + curr.amountVal, 0);
@@ -470,7 +470,7 @@ export default function App() {
     const monthlyFixedBreakdown = useMemo(() => {
         const breakdown = Array(12).fill(0).map(() => ({ total: 0, specials: [], details: [] }));
         fixedExpenses.filter(t => t.type === 'expense').forEach(expense => {
-            const expenseDate = new Date(expense.date);
+            const expenseDate = parseLocalDate(expense.date);
             const expenseMonth = expenseDate.getMonth();
             const amt = Number(expense.amountVal) || 0;
             const detail = { name: expense.note || expense.subCategory || expense.category, amount: amt };

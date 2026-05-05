@@ -1,6 +1,6 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
-import { getDynamicFontSize } from '../../utils/helpers';
+import { getDynamicFontSize, parseLocalDate } from '../../utils/helpers';
 import { 
     Calendar as CalendarIcon, LayoutGrid, List, Check, 
     Repeat, Trash2 
@@ -71,7 +71,7 @@ const FixedExpensesView = ({
                                 const currentMonth = new Date().getMonth();
                                 const expensesOnDay = fixedExpenses.filter(e => {
                                     if (!e.date || parseInt(e.date.split('-')[2]) !== day) return false;
-                                    const eDate = new Date(e.date);
+                                    const eDate = parseLocalDate(e.date);
                                     const eMonth = eDate.getMonth();
 
                                     if (e.periodicity === 'mensual') return true;
@@ -102,7 +102,7 @@ const FixedExpensesView = ({
 
                                 const now = new Date();
                                 const isPaid = expensesOnDay.some(e => {
-                                    const d = new Date(e.date);
+                                    const d = parseLocalDate(e.date);
                                     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
                                 });
 

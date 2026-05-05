@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Sparkles, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from 'lucide-react';
+import { parseLocalDate } from '../../utils/helpers';
 
 const InsightCard = ({ transactions, t, activeColor }) => {
     const { theme } = useAuth();
@@ -12,12 +13,12 @@ const InsightCard = ({ transactions, t, activeColor }) => {
         const lastYear = thisMonth === 0 ? thisYear - 1 : thisYear;
 
         const currentMonthData = transactions.filter(tx => {
-            const d = new Date(tx.date);
+            const d = parseLocalDate(tx.date);
             return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
         });
 
         const lastMonthData = transactions.filter(tx => {
-            const d = new Date(tx.date);
+            const d = parseLocalDate(tx.date);
             return d.getMonth() === lastMonth && d.getFullYear() === lastYear;
         });
 
