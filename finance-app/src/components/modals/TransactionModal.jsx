@@ -27,7 +27,8 @@ const TransactionModal = ({
     note,
     setNote,
     onHandleAdd,
-    onSwitchTab
+    onSwitchTab,
+    onConvertToAuto
 }) => {
     const { theme, t, activeColor } = useAuth();
     const { quickButtons, categories } = useFinance();
@@ -126,6 +127,11 @@ const TransactionModal = ({
                         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Nota" className={`p-3 rounded-xl font-bold text-sm ${t.input}`} />
                     </div>
 
+                    {editingId && onConvertToAuto && (
+                        <button type="button" onClick={onConvertToAuto} className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-yellow-500/40 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 active:scale-95 transition-all flex items-center justify-center gap-2`}>
+                            ⚡ Convertir en automatización
+                        </button>
+                    )}
                     <button type="submit" className={`w-full py-4 ${activeColor.bg} text-white rounded-xl font-black text-lg ${activeColor.hover} shadow-lg active:scale-95 transition-all`}>Guardar</button>
                 </form>
             </div>

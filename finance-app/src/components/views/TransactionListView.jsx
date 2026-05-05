@@ -110,26 +110,22 @@ const TransactionListView = ({
                 </div>
             )}
             {/* FILTROS DE ETIQUETAS (HORIZONTAL SCROLL) */}
-            <div className="flex flex-col gap-4">
-                <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
-                    <button 
-                        onClick={() => setFilterTag('Todas')}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filterTag === 'Todas' ? `${activeColor.bg} text-white border-transparent` : `${t.hover} border-white/5 opacity-60`}`}
-                    >
-                        Todas las etiquetas
-                    </button>
-                    {globalTags.map(tag => (
-                        <button 
-                            key={tag.name}
-                            onClick={() => setFilterTag(tag.name)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filterTag === tag.name ? 'text-white border-transparent shadow-lg' : `${t.hover} border-white/5 opacity-60`}`}
-                            style={{ backgroundColor: filterTag === tag.name ? tag.color : 'transparent' }}
-                        >
-                            {tag.name}
-                        </button>
-                    ))}
+            {globalTags.length > 0 && (
+                <div className="flex flex-col gap-4">
+                    <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
+                        {globalTags.map(tag => (
+                            <button
+                                key={tag.name}
+                                onClick={() => setFilterTag(filterTag === tag.name ? 'Todas' : tag.name)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filterTag === tag.name ? 'text-white border-transparent shadow-lg' : `${t.hover} border-white/5 opacity-60`}`}
+                                style={{ backgroundColor: filterTag === tag.name ? tag.color : 'transparent' }}
+                            >
+                                {tag.name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Controles */}
             <div className={`p-3 rounded-3xl border flex flex-col lg:flex-row justify-between items-center gap-4 ${t.card}`}>
@@ -160,34 +156,36 @@ const TransactionListView = ({
                     </div>
                     <button onClick={() => handleNavigate(1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronRight size={20} /></button>
                 </div>
-                <div className="grid grid-cols-2 gap-2 w-full lg:flex lg:w-auto lg:gap-3">
-                    <div className={`col-span-2 lg:col-span-1 flex items-center px-3 py-2.5 rounded-xl border lg:w-56 ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                <div className="flex flex-col gap-2 w-full lg:w-auto lg:flex-row lg:gap-3">
+                    <div className={`flex items-center px-3 py-2.5 rounded-xl border lg:w-56 ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
                         <Search size={15} className={t.textSec} />
                         <input placeholder="Buscar…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs ml-2 w-full font-bold" />
                     </div>
-                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
-                        <Filter size={14} className={t.textSec} />
-                        <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setFilterSubCategory('Todas'); }} className="bg-transparent border-none outline-none text-[11px] ml-1.5 font-black uppercase tracking-wider appearance-none cursor-pointer w-full">
-                            <option value="Todas">Cat</option>
-                            {Object.keys(categories.expense || {}).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
-                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
-                        <Filter size={14} className={t.textSec} />
-                        <select value={filterSubCategory} onChange={e => setFilterSubCategory(e.target.value)} disabled={filterCategory === 'Todas'} className="bg-transparent border-none outline-none text-[11px] ml-1.5 font-black uppercase tracking-wider appearance-none cursor-pointer w-full disabled:opacity-30">
-                            <option value="Todas">Sub</option>
-                            {(categories.expense?.[filterCategory] || []).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
-                        <Filter size={14} className={t.textSec} />
-                        <select value={filterPeriodicity} onChange={e => setFilterPeriodicity(e.target.value)} className="bg-transparent border-none outline-none text-[11px] ml-1.5 font-black uppercase tracking-wider appearance-none cursor-pointer w-full">
-                            <option value="Todas">Per</option>
-                            <option value="Puntual">Puntual</option>
-                            <option value="Mensual">Mensual</option>
-                            <option value="Anual">Anual</option>
-                            <option value="Bianual">Bianual</option>
-                        </select>
+                    <div className="grid grid-cols-3 gap-2 lg:flex lg:gap-3">
+                        <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                            <Filter size={13} className={`${t.textSec} shrink-0`} />
+                            <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setFilterSubCategory('Todas'); }} className="bg-transparent border-none outline-none text-[11px] ml-1 font-black uppercase tracking-wider appearance-none cursor-pointer w-full truncate">
+                                <option value="Todas">Categoría</option>
+                                {Object.keys(categories.expense || {}).map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                            <Filter size={13} className={`${t.textSec} shrink-0`} />
+                            <select value={filterSubCategory} onChange={e => setFilterSubCategory(e.target.value)} disabled={filterCategory === 'Todas'} className="bg-transparent border-none outline-none text-[11px] ml-1 font-black uppercase tracking-wider appearance-none cursor-pointer w-full truncate disabled:opacity-30">
+                                <option value="Todas">Subcategoría</option>
+                                {(categories.expense?.[filterCategory] || []).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                            <Filter size={13} className={`${t.textSec} shrink-0`} />
+                            <select value={filterPeriodicity} onChange={e => setFilterPeriodicity(e.target.value)} className="bg-transparent border-none outline-none text-[11px] ml-1 font-black uppercase tracking-wider appearance-none cursor-pointer w-full truncate">
+                                <option value="Todas">Periodo</option>
+                                <option value="Puntual">Puntual</option>
+                                <option value="Mensual">Mensual</option>
+                                <option value="Anual">Anual</option>
+                                <option value="Bianual">Bianual</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -222,7 +220,7 @@ const TransactionListView = ({
                             </thead>
                             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-gray-50'}`}>
                                 {filteredTransactions.map((tx, idx) => (
-                                    <tr key={tx.id} className={`group transition-all duration-300 animate-in fade-in slide-in-from-left-4 delay-${Math.min(idx * 50, 500)} ${selectedIds.includes(tx.id) ? 'bg-blue-600/5' : 'hover:bg-white/[0.02]'}`}>
+                                    <tr key={tx.id} className={`group transition-all duration-300 animate-in fade-in slide-in-from-left-4 delay-${Math.min(idx * 50, 500)} ${selectedIds.includes(tx.id) ? 'bg-blue-600/5' : tx.tags?.includes('__auto__') ? 'bg-yellow-500/[0.04] hover:bg-yellow-500/[0.08]' : 'hover:bg-white/[0.02]'}`}>
                                         <td className="p-8 w-10">
                                             <button onClick={() => toggleSelect(tx.id)} className="p-2 rounded-xl hover:bg-white/5 transition-all">
                                                 {selectedIds.includes(tx.id) ? <CheckSquare size={18} className="text-blue-500" /> : <Square size={18} className="opacity-20 group-hover:opacity-100" />}
@@ -277,7 +275,7 @@ const TransactionListView = ({
                     {/* LISTA DE TARJETAS (MOBILE) */}
                     <div className="md:hidden space-y-3">
                         {filteredTransactions.map(tx => (
-                            <div key={tx.id} className={`p-4 rounded-[24px] border transition-all active:scale-[0.98] flex items-center gap-4 ${selectedIds.includes(tx.id) ? 'border-blue-500 bg-blue-500/5' : t.card}`}>
+                            <div key={tx.id} className={`p-4 rounded-[24px] border transition-all active:scale-[0.98] flex items-center gap-4 ${selectedIds.includes(tx.id) ? 'border-blue-500 bg-blue-500/5' : tx.tags?.includes('__auto__') ? 'border-yellow-500/40 bg-yellow-500/[0.04] shadow-[0_0_24px_-8px_rgba(234,179,8,0.4)]' : t.card}`}>
                                 <button onClick={() => toggleSelect(tx.id)} className="shrink-0">
                                     {selectedIds.includes(tx.id) ? <CheckSquare size={20} className={activeColor.text} /> : <Square size={20} className="opacity-20" />}
                                 </button>

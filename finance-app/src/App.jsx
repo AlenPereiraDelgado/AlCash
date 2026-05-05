@@ -221,10 +221,22 @@ export default function App() {
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
     const [isSharedModalOpen, setIsSharedModalOpen] = useState(false);
+    const [autoPrefill, setAutoPrefill] = useState(null);
     const switchAddTab = (tab) => {
         setIsModalOpen(tab === 'tx');
         setIsAutomationModalOpen(tab === 'auto');
         setIsSharedModalOpen(tab === 'shared');
+    };
+    const handleConvertToAuto = () => {
+        setAutoPrefill({
+            note,
+            type,
+            category,
+            subCategory,
+            amount: parseFloat(amount) || 0,
+            date,
+        });
+        switchAddTab('auto');
     };
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importText, setImportText] = useState('');
@@ -1191,6 +1203,7 @@ export default function App() {
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSwitchTab={switchAddTab}
+                    onConvertToAuto={handleConvertToAuto}
                     editingId={editingId}
                     view={view}
                     type={type}
@@ -1216,6 +1229,8 @@ export default function App() {
                     isOpen={isAutomationModalOpen}
                     onClose={() => setIsAutomationModalOpen(false)}
                     onSwitchTab={switchAddTab}
+                    prefill={autoPrefill}
+                    onPrefillConsumed={() => setAutoPrefill(null)}
                 />
 
                 <SharedExpenseModal

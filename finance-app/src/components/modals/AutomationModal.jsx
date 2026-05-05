@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X, Zap, Trash2, Plus, Pencil, Check } from 'lucide-react';
@@ -24,13 +24,29 @@ const emptyForm = () => ({
     startDate: new Date().toISOString().split('T')[0],
 });
 
-const AutomationModal = ({ isOpen, onClose, onSwitchTab }) => {
+const AutomationModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsumed }) => {
     const { theme, t, activeColor } = useAuth();
     const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun } = useFinance();
     const [form, setForm] = useState(emptyForm());
     const [editingStartDate, setEditingStartDate] = useState(null);
     const [reactivating, setReactivating] = useState(null);
     const today = new Date().toISOString().split('T')[0];
+
+    useEffect(() => {
+        if (!isOpen || !prefill) return;
+        setForm({
+            name: prefill.note || prefill.category || '',
+            type: prefill.type || 'expense',
+            category: prefill.category || '',
+            subCategory: prefill.subCategory || '',
+            amount: prefill.amount ? String(prefill.amount) : '',
+            every: 1,
+            unit: 'month',
+            startDate: prefill.date || today,
+        });
+        if (onPrefillConsumed) onPrefillConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, prefill]);
 
     const calcNextFromStart = (startDate, every, unit) => {
         if (startDate > today) return startDate;

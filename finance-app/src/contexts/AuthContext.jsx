@@ -105,6 +105,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('alcash_theme', theme);
         localStorage.setItem('alcash_accent', accent);
         localStorage.setItem('alcash_privacy', privacyMode);
+        document.body.setAttribute('data-theme', theme);
     }, [theme, accent, privacyMode]);
 
     const login = async (email, password) => {
