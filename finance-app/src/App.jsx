@@ -252,6 +252,7 @@ export default function App() {
     const [note, setNote] = useState('');
     const [tags, setTags] = useState([]);
     const [editingId, setEditingId] = useState(null); // Nuevo estado para controlar la edición
+    const [editingMeta, setEditingMeta] = useState(null); // periodicity / is_joint del tx editado para no sobrescribir
 
     // --- STATE PARA INPUTS DE METAS ---
     const [goalInputs, setGoalInputs] = useState({});
@@ -524,6 +525,7 @@ export default function App() {
         setNote('');
         setTags([]);
         setEditingId(null);
+        setEditingMeta(null);
         setCurrency('EUR');
         setExchangeRate(1);
         setDate(new Date().toISOString().split('T')[0]);
@@ -537,11 +539,13 @@ export default function App() {
 
     const handleEdit = (tx) => {
         setEditingId(tx.id);
-        setAmount(tx.originalAmount);
+        setEditingMeta({ periodicity: tx.periodicity, is_joint: !!tx.is_joint, tags: tx.tags || [] });
+        const editAmount = tx.originalAmount ?? tx.amountVal ?? '';
+        setAmount(editAmount === '' ? '' : String(editAmount));
         setCurrency(tx.originalCurrency || 'EUR');
 
         // Calcular exchange rate aproximado si no es EUR
-        if (tx.originalCurrency && tx.originalCurrency !== 'EUR') {
+        if (tx.originalCurrency && tx.originalCurrency !== 'EUR' && tx.originalAmount) {
             setExchangeRate(tx.amountVal ? (tx.originalAmount / tx.amountVal) : 1);
         } else {
             setExchangeRate(1);
@@ -570,8 +574,8 @@ export default function App() {
             originalAmount: parseFloat(amount),
             originalCurrency: currency,
             type, category, subCategory, date, note, tags,
-            periodicity: 'puntual',
-            is_joint: view === 'joint'
+            periodicity: editingId ? (editingMeta?.periodicity || 'puntual') : 'puntual',
+            is_joint: editingId ? !!editingMeta?.is_joint : view === 'joint'
         };
 
         if (editingId) {
