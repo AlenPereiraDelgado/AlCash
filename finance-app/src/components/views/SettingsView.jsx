@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { ACCENT_COLORS } from '../../constants/theme';
-import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download } from 'lucide-react';
+import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download, Pencil } from 'lucide-react';
 import { exportMonthlyPDF, generateYearlyPDF } from '../../services/pdfService';
 import AppSelect from '../common/AppSelect';
 import PromptModal from '../common/PromptModal';
@@ -17,6 +17,7 @@ const SettingsView = () => {
     const {
         categories, addCustomCategory,
         deleteCustomCategory, moveCategory, addSubCategory,
+        renameCategory, renameSubCategory,
         updateCategories, quickButtons, updateQuickButtons,
         transactions, jointTransactions, resetAllData
     } = useFinance();
@@ -25,6 +26,8 @@ const SettingsView = () => {
     const [reportMode, setReportMode] = useState('month');
     const [catPrompt, setCatPrompt] = useState(null);
     const [subPrompt, setSubPrompt] = useState(null);
+    const [renameCatPrompt, setRenameCatPrompt] = useState(null);
+    const [renameSubPrompt, setRenameSubPrompt] = useState(null);
     const now = new Date();
     const [reportMonth, setReportMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
     const [reportYear, setReportYear]   = useState(String(now.getFullYear()));
@@ -200,6 +203,7 @@ const SettingsView = () => {
                                         <div className="flex items-center gap-2">
                                             <span>{c}</span>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => setRenameCatPrompt({ type: tk, oldName: c })} title="Renombrar" className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded text-blue-500"><Pencil size={12} /></button>
                                                 <button onClick={() => moveCategory(tk, c, 'up')} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded"><ChevronLeft size={14} className="rotate-90" /></button>
                                                 <button onClick={() => moveCategory(tk, c, 'down')} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded"><ChevronLeft size={14} className="-rotate-90" /></button>
                                             </div>
@@ -218,6 +222,13 @@ const SettingsView = () => {
                                         {s.map(sub => (
                                             <span key={sub} className="text-[10px] px-2 py-1 rounded bg-white/10 flex items-center gap-1 group/sub">
                                                 {sub}
+                                                <button
+                                                    onClick={() => setRenameSubPrompt({ type: tk, category: c, oldSub: sub })}
+                                                    title="Renombrar"
+                                                    className="opacity-0 group-hover/sub:opacity-100 text-blue-400 hover:text-blue-600"
+                                                >
+                                                    <Pencil size={10} />
+                                                </button>
                                                 <button
                                                     onClick={() => {
                                                         const newSection = { ...categories[tk], [c]: categories[tk][c].filter(x => x !== sub) };
@@ -319,6 +330,28 @@ const SettingsView = () => {
                 placeholder="Ej: Alquiler, Luz…"
                 onConfirm={(sub) => addSubCategory(subPrompt.type, subPrompt.category, sub)}
                 onClose={() => setSubPrompt(null)}
+            />
+
+            <PromptModal
+                isOpen={!!renameCatPrompt}
+                title={`Renombrar categoría · ${renameCatPrompt?.oldName || ''}`}
+                label="Nuevo nombre"
+                placeholder={renameCatPrompt?.oldName || ''}
+                initialValue={renameCatPrompt?.oldName || ''}
+                confirmText="Renombrar"
+                onConfirm={(name) => renameCategory(renameCatPrompt.type, renameCatPrompt.oldName, name)}
+                onClose={() => setRenameCatPrompt(null)}
+            />
+
+            <PromptModal
+                isOpen={!!renameSubPrompt}
+                title={`Renombrar subcategoría · ${renameSubPrompt?.oldSub || ''}`}
+                label="Nuevo nombre"
+                placeholder={renameSubPrompt?.oldSub || ''}
+                initialValue={renameSubPrompt?.oldSub || ''}
+                confirmText="Renombrar"
+                onConfirm={(sub) => renameSubCategory(renameSubPrompt.type, renameSubPrompt.category, renameSubPrompt.oldSub, sub)}
+                onClose={() => setRenameSubPrompt(null)}
             />
         </div>
     );

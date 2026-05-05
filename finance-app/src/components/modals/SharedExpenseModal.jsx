@@ -58,8 +58,6 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
         }));
     }, [names]);
 
-    if (!isOpen) return null;
-
     const totalNum = parseFloat(total) || 0;
 
     const computedShares = useMemo(() => {
@@ -84,6 +82,8 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
 
     const totalAssigned = computedShares.reduce((a, p) => a + p.share, 0);
     const drift = totalNum - totalAssigned;
+
+    if (!isOpen) return null;
 
     const setName = (i, value) => {
         const next = [...names];

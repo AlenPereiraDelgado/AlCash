@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import {
-    Plus, TrendingUp, TrendingDown, PieChart, Activity, Trash2,
+    TrendingUp, TrendingDown, PieChart, Activity, Trash2,
     Calendar as CalendarIcon, Repeat, Tag, Layers, ChevronLeft,
     ChevronRight, Search, Filter, Download, AlertCircle, CalendarDays,
     CalendarRange, Clock, X, LayoutGrid, List, Sun, Moon, Settings,
-    Target, Wallet, ArrowRight, Save, Coins, Globe, Plane, User, LogOut,
+    Target, Wallet, ArrowRight, Save, Coins, Plane, User, LogOut,
     BarChart2, Droplet, Hexagon, Handshake, CheckCircle2, XCircle, Palette,
     Check, Minus, PiggyBank, Timer, Users,
     ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles, Key,
@@ -1037,23 +1037,11 @@ export default function App() {
                 ) : (
                     <>
 
-                        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                            <div>
-                                <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-                                    {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'joint' ? 'Cuenta Conjunta' : view === 'settings' ? 'Configuración' : 'Gestión'}
-                                </h2>
-                                <p className={`font-bold text-[10px] md:text-xs uppercase tracking-widest mt-1 ${t.textSec}`}>{getDateLabel()}</p>
-                            </div>
-                            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1">
-                                <button onClick={() => setIsImportModalOpen(true)} className={`${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'} ${t.hover} ${t.text} px-4 py-2.5 rounded-2xl font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95 border ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'} shrink-0`}>
-                                    <Globe size={18} className="text-blue-500" />
-                                    <span className="hidden lg:inline">Importar</span>
-                                </button>
-                                <button onClick={openNewModal} className={`${activeColor.bg} ${activeColor.hover} text-white px-5 py-2.5 rounded-2xl font-bold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95 shrink-0`}>
-                                    <Plus size={18} />
-                                    <span>Nuevo</span>
-                                </button>
-                            </div>
+                        <header className="flex flex-col items-center text-center mb-4 gap-1">
+                            <h2 className="text-2xl md:text-3xl font-black tracking-tight">
+                                {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'joint' ? 'Cuenta Conjunta' : view === 'settings' ? 'Configuración' : 'Gestión'}
+                            </h2>
+                            <p className={`font-bold text-[10px] md:text-xs uppercase tracking-widest ${t.textSec}`}>{getDateLabel()}</p>
                         </header>
 
                 <ErrorBoundary>
@@ -1092,6 +1080,7 @@ export default function App() {
                                 setSelectedChartYear={setSelectedChartYear}
                                 onMagicParse={handleMagicParse}
                                 isMagicLoading={isMagicLoading}
+                                onImport={() => setIsImportModalOpen(true)}
                             />
                         )}
                         {view === 'list' && (

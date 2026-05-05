@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom';
 import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
-import { 
+import {
     Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
     TrendingUp, TrendingDown, Wallet, ShieldCheck,
-    Target, Box, ArrowUpRight
+    Target, Box, ArrowUpRight, Globe
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import { getDynamicFontSize } from '../../utils/helpers';
@@ -33,7 +33,8 @@ const DashboardView = ({
     selectedChartYear,
     setSelectedChartYear,
     onMagicParse,
-    isMagicLoading
+    isMagicLoading,
+    onImport
 }) => {
     const { theme, t, activeColor, privacyMode } = useAuth();
     const { budgets } = useFinance();
@@ -43,7 +44,21 @@ const DashboardView = ({
             {/* Controles de Fecha en Dashboard */}
             <div className={`p-4 md:p-6 rounded-[32px] border flex flex-col xl:flex-row justify-between items-center gap-6 ${t.card}`}>
                 <div className="w-full xl:max-w-xl">
-                    <MagicInput onParse={onMagicParse} isLoading={isMagicLoading} />
+                    <MagicInput
+                        onParse={onMagicParse}
+                        isLoading={isMagicLoading}
+                        trailing={onImport ? (
+                            <button
+                                type="button"
+                                onClick={onImport}
+                                title="Importar"
+                                className={`p-2 sm:p-2.5 rounded-2xl transition-all active:scale-95 shrink-0 ${theme === 'dark' ? 'bg-white/10 hover:bg-white/15' : 'bg-gray-100 hover:bg-gray-200'}`}
+                            >
+                                <Globe size={16} className="text-blue-500 sm:hidden" />
+                                <Globe size={18} className="text-blue-500 hidden sm:block" />
+                            </button>
+                        ) : null}
+                    />
                 </div>
 
                 <div className={`p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'} flex items-center`}>

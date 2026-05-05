@@ -26,7 +26,8 @@ const FixedExpensesView = ({
                     </div>
                     <div className="text-right relative z-10 mt-8">
                         <span className={`font-black ${activeColor.text} ${getDynamicFontSize(prorrateoMensual.total)}`}>{prorrateoMensual.total.toFixed(2)}€</span>
-                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] mt-2 ${t.textSec}`}>Recurrencia Estimada</p>
+                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] mt-2 ${t.textSec}`} title="Suma mensualizada de tus gastos recurrentes: mensuales íntegros + 1/12 de los anuales + 1/6 de los bianuales + 4.33× los semanales. Es lo que deberías reservar cada mes.">Recurrencia Estimada</p>
+                        <p className={`text-[10px] font-medium mt-1 ${t.textSec} max-w-xs ml-auto`}>Lo que deberías reservar al mes para cubrir todos tus gastos recurrentes (mensuales + parte proporcional de anuales/bianuales/semanales).</p>
 
                         <div className="mt-8 space-y-4">
                             <div className="flex justify-between items-end">
@@ -115,12 +116,13 @@ const FixedExpensesView = ({
                                             </div>
                                         )}
                                         {hasExpense && (
-                                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-50 w-max max-w-[150px] p-2 rounded-xl bg-black/90 backdrop-blur-md border border-white/10 shadow-xl pointer-events-none animate-in fade-in zoom-in-95">
-                                                <div className="space-y-1">
+                                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-50 w-max max-w-[220px] p-2.5 rounded-xl bg-black/95 backdrop-blur-md border border-white/10 shadow-xl pointer-events-none animate-in fade-in zoom-in-95">
+                                                <div className="space-y-1.5">
                                                     {expensesOnDay.map((e, idx) => (
-                                                        <div key={idx} className="text-[10px] text-white">
-                                                            <span className="font-bold block truncate">{e.note || e.category}</span>
-                                                            <span className="text-gray-400">{Number(e.amountVal).toFixed(0)}€</span>
+                                                        <div key={idx} className="text-[10px] text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                                                            <span className="font-bold block truncate">{e.note || e.subCategory || e.category}</span>
+                                                            <span className="text-gray-400 block truncate">{e.category}{e.subCategory ? ` · ${e.subCategory}` : ''}</span>
+                                                            <span className="text-gray-300 font-mono">{Number(e.amountVal).toFixed(2)}€</span>
                                                         </div>
                                                     ))}
                                                 </div>

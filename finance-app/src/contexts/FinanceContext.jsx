@@ -381,6 +381,102 @@ export const FinanceProvider = ({ children }) => {
         await updateCategories({ ...categories, [type]: newSection });
     };
 
+    const renameCategory = async (type, oldName, newName) => {
+        const trimmed = (newName || '').trim();
+        if (!trimmed || trimmed === oldName) return;
+        if (categories[type]?.[trimmed]) {
+            console.warn('renameCategory: target name already exists');
+            return;
+        }
+        // 1. categorías (preservar orden)
+        const oldKeys = Object.keys(categories[type] || {});
+        const newSection = {};
+        oldKeys.forEach(k => {
+            newSection[k === oldName ? trimmed : k] = categories[type][k];
+        });
+        const newCats = { ...categories, [type]: newSection };
+        // 2. DB: actualizar transactions del usuario que coincidan
+        const { error: txErr } = await supabase
+            .from('transactions')
+            .update({ category: trimmed })
+            .eq('user_id', user.id)
+            .eq('type', type)
+            .eq('category', oldName);
+        if (txErr) {
+            console.error('renameCategory tx error', txErr);
+            return;
+        }
+        // 3. Estado local de transactions/jointTransactions
+        const patchTx = (arr) => arr.map(tx =>
+            (tx.type === type && tx.category === oldName) ? { ...tx, category: trimmed } : tx
+        );
+        setTransactions(prev => patchTx(prev));
+        setJointTransactions(prev => patchTx(prev));
+        // 4. recurring_rules
+        const newRules = recurringRules.map(r =>
+            (r.type === type && r.category === oldName) ? { ...r, category: trimmed } : r
+        );
+        setRecurringRules(newRules);
+        // 5. quick_buttons
+        const newQB = quickButtons.map(b =>
+            (b.type === type && b.category === oldName) ? { ...b, category: trimmed } : b
+        );
+        updateQuickButtons(newQB);
+        // 6. budgets (si están keyed por categoría — para gastos)
+        if (type === 'expense' && budgets && Object.prototype.hasOwnProperty.call(budgets, oldName)) {
+            const newBudgets = { ...budgets };
+            newBudgets[trimmed] = newBudgets[oldName];
+            delete newBudgets[oldName];
+            setBudgets(newBudgets);
+        }
+        // 7. categorías
+        await updateCategories(newCats);
+    };
+
+    const renameSubCategory = async (type, cat, oldSub, newSub) => {
+        const trimmed = (newSub || '').trim();
+        if (!trimmed || trimmed === oldSub) return;
+        const subs = categories[type]?.[cat] || [];
+        if (subs.includes(trimmed)) {
+            console.warn('renameSubCategory: target name already exists');
+            return;
+        }
+        // 1. categorías
+        const newSubs = subs.map(s => s === oldSub ? trimmed : s);
+        const newSection = { ...categories[type], [cat]: newSubs };
+        const newCats = { ...categories, [type]: newSection };
+        // 2. DB
+        const { error: txErr } = await supabase
+            .from('transactions')
+            .update({ sub_category: trimmed })
+            .eq('user_id', user.id)
+            .eq('type', type)
+            .eq('category', cat)
+            .eq('sub_category', oldSub);
+        if (txErr) {
+            console.error('renameSubCategory tx error', txErr);
+            return;
+        }
+        // 3. estado local
+        const patchTx = (arr) => arr.map(tx =>
+            (tx.type === type && tx.category === cat && tx.subCategory === oldSub) ? { ...tx, subCategory: trimmed } : tx
+        );
+        setTransactions(prev => patchTx(prev));
+        setJointTransactions(prev => patchTx(prev));
+        // 4. recurring_rules
+        const newRules = recurringRules.map(r =>
+            (r.type === type && r.category === cat && r.subCategory === oldSub) ? { ...r, subCategory: trimmed } : r
+        );
+        setRecurringRules(newRules);
+        // 5. quick_buttons
+        const newQB = quickButtons.map(b =>
+            (b.type === type && b.category === cat && b.subCategory === oldSub) ? { ...b, subCategory: trimmed } : b
+        );
+        updateQuickButtons(newQB);
+        // 6. categorías
+        await updateCategories(newCats);
+    };
+
     const resetAllData = async () => {
         await Promise.all([
             supabase.from('transactions').delete().eq('user_id', user.id),
@@ -424,6 +520,7 @@ export const FinanceProvider = ({ children }) => {
             addDebt, updateDebt, deleteDebt,
             updateCategories, updateGlobalTags,
             addCustomCategory, deleteCustomCategory, moveCategory, addSubCategory,
+            renameCategory, renameSubCategory,
             globalTags, setGlobalTags,
             quickButtons, updateQuickButtons,
             recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun,
