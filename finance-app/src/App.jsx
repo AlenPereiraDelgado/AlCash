@@ -8,7 +8,7 @@ import {
     CalendarRange, Clock, X, LayoutGrid, List, Sun, Moon, Settings,
     Target, Wallet, ArrowRight, Save, Coins, Globe, Plane, User, LogOut,
     BarChart2, Droplet, Hexagon, Handshake, CheckCircle2, XCircle, Palette,
-    Check, Minus, PiggyBank, Timer, Users, Zap, Pencil,
+    Check, Minus, PiggyBank, Timer, Users,
     ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles, Key,
 } from 'lucide-react';
 
@@ -39,6 +39,7 @@ const JointView = React.lazy(() => import('./components/views/JointView'));
 
 import TransactionModal from './components/modals/TransactionModal';
 import AutomationModal from './components/modals/AutomationModal';
+import SharedExpenseModal from './components/modals/SharedExpenseModal';
 import ImportModal from './components/modals/ImportModal';
 import BudgetModal from './components/modals/BudgetModal';
 import { parseWithGemini } from './services/aiService';
@@ -219,6 +220,12 @@ export default function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
+    const [isSharedModalOpen, setIsSharedModalOpen] = useState(false);
+    const switchAddTab = (tab) => {
+        setIsModalOpen(tab === 'tx');
+        setIsAutomationModalOpen(tab === 'auto');
+        setIsSharedModalOpen(tab === 'shared');
+    };
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importText, setImportText] = useState('');
     const [pendingImports, setPendingImports] = useState([]);
@@ -233,6 +240,7 @@ export default function App() {
     const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('Todas');
+    const [filterSubCategory, setFilterSubCategory] = useState('Todas');
     const [filterPeriodicity, setFilterPeriodicity] = useState('Todas');
     const [filterTag, setFilterTag] = useState('Todas');
     const [selectedChartYear, setSelectedChartYear] = useState(new Date().getFullYear());
@@ -356,12 +364,13 @@ export default function App() {
 
             if (view === 'list') {
                 const matchesCategory = filterCategory === 'Todas' || tx.category === filterCategory;
+                const matchesSubCategory = filterSubCategory === 'Todas' || tx.subCategory === filterSubCategory;
                 const matchesPeriodicity = filterPeriodicity === 'Todas' ||
                     (filterPeriodicity === 'Puntual' && !tx.periodicity) ||
                     tx.periodicity === filterPeriodicity.toLowerCase();
                 const matchesTag = filterTag === 'Todas' || (tx.tags && tx.tags.includes(filterTag));
 
-                return matchesDate && matchesSearch && matchesCategory && matchesPeriodicity && matchesTag;
+                return matchesDate && matchesSearch && matchesCategory && matchesSubCategory && matchesPeriodicity && matchesTag;
             }
             return matchesDate && matchesSearch;
         });
@@ -372,7 +381,7 @@ export default function App() {
         return transactions.filter(t => !jointIds.has(t.id));
     }, [transactions, jointTransactions]);
 
-    const filteredTransactions = useMemo(() => filterData(personalTransactions), [personalTransactions, currentDate, dateMode, dateRange, view, searchTerm, filterCategory, filterPeriodicity, filterTag]);
+    const filteredTransactions = useMemo(() => filterData(personalTransactions), [personalTransactions, currentDate, dateMode, dateRange, view, searchTerm, filterCategory, filterSubCategory, filterPeriodicity, filterTag]);
     const filteredJointTransactions = useMemo(() => filterData(jointTransactions), [jointTransactions, currentDate, dateMode, dateRange, view]);
 
     const calculateStats = (dataList) => {
@@ -1028,10 +1037,6 @@ export default function App() {
                                     <Globe size={18} className="text-blue-500" />
                                     <span className="hidden lg:inline">Importar</span>
                                 </button>
-                                <button onClick={() => setIsAutomationModalOpen(true)} className={`${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'} ${t.hover} ${t.text} px-4 py-2.5 rounded-2xl font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95 border ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'} shrink-0`}>
-                                    <Zap size={18} className="text-yellow-500" />
-                                    <span className="hidden lg:inline">Auto</span>
-                                </button>
                                 <button onClick={openNewModal} className={`${activeColor.bg} ${activeColor.hover} text-white px-5 py-2.5 rounded-2xl font-bold text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95 shrink-0`}>
                                     <Plus size={18} />
                                     <span>Nuevo</span>
@@ -1091,11 +1096,12 @@ export default function App() {
                                 setSearchTerm={setSearchTerm}
                                 filterCategory={filterCategory}
                                 setFilterCategory={setFilterCategory}
+                                filterSubCategory={filterSubCategory}
+                                setFilterSubCategory={setFilterSubCategory}
                                 filterPeriodicity={filterPeriodicity}
                                 setFilterPeriodicity={setFilterPeriodicity}
                                 filterTag={filterTag}
                                 setFilterTag={setFilterTag}
-                                exportToExcel={exportToExcel}
                                 openNewModal={openNewModal}
                                 filteredTransactions={filteredTransactions}
                                 handleEdit={handleEdit}
@@ -1184,6 +1190,7 @@ export default function App() {
                 <TransactionModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
+                    onSwitchTab={switchAddTab}
                     editingId={editingId}
                     view={view}
                     type={type}
@@ -1208,6 +1215,13 @@ export default function App() {
                 <AutomationModal
                     isOpen={isAutomationModalOpen}
                     onClose={() => setIsAutomationModalOpen(false)}
+                    onSwitchTab={switchAddTab}
+                />
+
+                <SharedExpenseModal
+                    isOpen={isSharedModalOpen}
+                    onClose={() => setIsSharedModalOpen(false)}
+                    onSwitchTab={switchAddTab}
                 />
 
                 <ImportModal

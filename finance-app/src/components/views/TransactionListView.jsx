@@ -4,7 +4,7 @@ import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import EmptyState from '../common/EmptyState';
 import {
-    ChevronLeft, ChevronRight, Search, Filter, Download,
+    ChevronLeft, ChevronRight, Search, Filter,
     Layers, Calendar as CalendarIcon, Activity, Box,
     Pencil, Trash2, Tag, CheckSquare, Square, Zap
 } from 'lucide-react';
@@ -22,11 +22,12 @@ const TransactionListView = ({
     setSearchTerm,
     filterCategory,
     setFilterCategory,
+    filterSubCategory,
+    setFilterSubCategory,
     filterPeriodicity,
     setFilterPeriodicity,
     filterTag,
     setFilterTag,
-    exportToExcel,
     openNewModal,
     filteredTransactions,
     handleEdit,
@@ -159,29 +160,35 @@ const TransactionListView = ({
                     </div>
                     <button onClick={() => handleNavigate(1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronRight size={20} /></button>
                 </div>
-                <div className="flex flex-col md:flex-row gap-3 w-full lg:w-auto">
-                    <div className={`flex items-center px-4 py-3 rounded-2xl border flex-1 lg:w-64 ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
-                        <Search size={18} className={t.textSec} />
-                        <input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-sm ml-3 w-full font-medium" />
+                <div className="grid grid-cols-2 gap-2 w-full lg:flex lg:w-auto lg:gap-3">
+                    <div className={`col-span-2 lg:col-span-1 flex items-center px-3 py-2.5 rounded-xl border lg:w-56 ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                        <Search size={15} className={t.textSec} />
+                        <input placeholder="Buscar…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs ml-2 w-full font-bold" />
                     </div>
-                    <div className={`flex items-center px-4 py-3 rounded-2xl border w-full md:w-auto ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
-                        <Filter size={18} className={t.textSec} />
-                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="bg-transparent border-none outline-none text-sm ml-2 font-medium appearance-none cursor-pointer w-full">
-                            <option value="Todas">Todas</option>
+                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                        <Filter size={14} className={t.textSec} />
+                        <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setFilterSubCategory('Todas'); }} className="bg-transparent border-none outline-none text-[11px] ml-1.5 font-black uppercase tracking-wider appearance-none cursor-pointer w-full">
+                            <option value="Todas">Cat</option>
                             {Object.keys(categories.expense || {}).map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     </div>
-                    <div className={`flex items-center px-4 py-3 rounded-2xl border w-full md:w-auto ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
-                        <Filter size={18} className={t.textSec} />
-                        <select value={filterPeriodicity} onChange={e => setFilterPeriodicity(e.target.value)} className="bg-transparent border-none outline-none text-sm ml-2 font-medium appearance-none cursor-pointer w-full">
-                            <option value="Todas">Periodicidad</option>
+                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                        <Filter size={14} className={t.textSec} />
+                        <select value={filterSubCategory} onChange={e => setFilterSubCategory(e.target.value)} disabled={filterCategory === 'Todas'} className="bg-transparent border-none outline-none text-[11px] ml-1.5 font-black uppercase tracking-wider appearance-none cursor-pointer w-full disabled:opacity-30">
+                            <option value="Todas">Sub</option>
+                            {(categories.expense?.[filterCategory] || []).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${t.input} ${theme === 'dark' ? 'border-white/5' : 'border-gray-200'}`}>
+                        <Filter size={14} className={t.textSec} />
+                        <select value={filterPeriodicity} onChange={e => setFilterPeriodicity(e.target.value)} className="bg-transparent border-none outline-none text-[11px] ml-1.5 font-black uppercase tracking-wider appearance-none cursor-pointer w-full">
+                            <option value="Todas">Per</option>
                             <option value="Puntual">Puntual</option>
                             <option value="Mensual">Mensual</option>
                             <option value="Anual">Anual</option>
                             <option value="Bianual">Bianual</option>
                         </select>
                     </div>
-                    <button onClick={exportToExcel} className={`p-3 rounded-2xl border ${t.card} hover:bg-green-500/10 text-green-500`}><Download size={20} /></button>
                 </div>
             </div>
 
@@ -241,7 +248,7 @@ const TransactionListView = ({
                                         </td>
                                         <td className="p-8">
                                             <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                                                {tx.tags?.filter(t => t !== '__auto__').map(tagName => {
+                                                {tx.tags?.filter(t => t !== '__auto__' && !t.startsWith('__shared:')).map(tagName => {
                                                     const tagData = globalTags.find(gt => gt.name === tagName);
                                                     return (
                                                         <span key={tagName} className="px-3 py-1 rounded-full text-[9px] font-bold text-white shadow-sm" style={{ backgroundColor: tagData?.color || '#8E8E93' }}>
@@ -249,7 +256,7 @@ const TransactionListView = ({
                                                         </span>
                                                     );
                                                 })}
-                                                {(!tx.tags || tx.tags.filter(t => t !== '__auto__').length === 0) && <span className="text-[10px] opacity-20 italic">Sin tags</span>}
+                                                {(!tx.tags || tx.tags.filter(t => t !== '__auto__' && !t.startsWith('__shared:')).length === 0) && <span className="text-[10px] opacity-20 italic">Sin tags</span>}
                                             </div>
                                         </td>
                                         <td className={`p-8 text-right font-black text-lg tracking-tighter ${tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>

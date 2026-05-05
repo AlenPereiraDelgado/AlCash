@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X, Zap, Trash2, Plus, Pencil, Check } from 'lucide-react';
 import AppSelect from '../common/AppSelect';
+import AddTabBar from '../common/AddTabBar';
 
 const UNITS = [
     { value: 'day',   label: 'Día'   },
@@ -23,7 +24,7 @@ const emptyForm = () => ({
     startDate: new Date().toISOString().split('T')[0],
 });
 
-const AutomationModal = ({ isOpen, onClose }) => {
+const AutomationModal = ({ isOpen, onClose, onSwitchTab }) => {
     const { theme, t, activeColor } = useAuth();
     const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun } = useFinance();
     const [form, setForm] = useState(emptyForm());
@@ -71,6 +72,12 @@ const AutomationModal = ({ isOpen, onClose }) => {
                     </div>
                     <button onClick={onClose} className={`p-2 rounded-xl ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><X size={20} /></button>
                 </div>
+
+                {onSwitchTab && (
+                    <div className="px-6 pt-4">
+                        <AddTabBar active="auto" onChange={onSwitchTab} />
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-h-[78vh] overflow-y-auto">
                     {/* FORMULARIO */}

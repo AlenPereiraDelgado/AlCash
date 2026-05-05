@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X } from 'lucide-react';
 import AppSelect from '../common/AppSelect';
+import AddTabBar from '../common/AddTabBar';
 
 const TransactionModal = ({
     isOpen,
@@ -25,7 +26,8 @@ const TransactionModal = ({
     setDate,
     note,
     setNote,
-    onHandleAdd
+    onHandleAdd,
+    onSwitchTab
 }) => {
     const { theme, t, activeColor } = useAuth();
     const { quickButtons, categories } = useFinance();
@@ -50,6 +52,11 @@ const TransactionModal = ({
                     <button onClick={onClose} className={`p-2 rounded-xl transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><X size={20} /></button>
                 </div>
                 <form onSubmit={onHandleAdd} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+
+                    {/* TAB SWITCHER (oculto al editar) */}
+                    {!editingId && onSwitchTab && (
+                        <AddTabBar active="tx" onChange={onSwitchTab} />
+                    )}
 
                     {/* TIPO */}
                     <div className={`flex p-1 rounded-xl ${theme === 'dark' ? 'bg-black border border-white/10' : 'bg-gray-100'}`}>
