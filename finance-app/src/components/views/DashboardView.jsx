@@ -189,7 +189,7 @@ const DashboardView = ({
                             </div>
                             
                             <p className={`text-[8px] md:text-[10px] uppercase font-black tracking-widest md:tracking-[0.2em] mb-1 opacity-40 truncate`}>{kpi.label}</p>
-                            <h3 className={`text-lg md:text-3xl font-black tracking-tighter text-gradient truncate`}>
+                            <h3 className={`text-lg md:text-3xl font-black tracking-tighter truncate ${kpi.color}`}>
                                 {privacyMode ? '••••' : `${kpi.val.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`}
                             </h3>
                         </div>
