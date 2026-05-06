@@ -173,7 +173,7 @@ const DashboardView = ({
                 {[
                     { label: 'Ingresos', val: stats.income, color: 'text-green-500', icon: TrendingUp, bg: 'bg-green-500/10', trend: stats.income > stats.expense ? 'up' : 'down' },
                     { label: 'Gastos', val: stats.expense, color: 'text-red-500', icon: TrendingDown, bg: 'bg-red-500/10', trend: stats.expense > stats.income ? 'up' : 'down' },
-                    { label: 'Balance', val: stats.balance + jointStats.balance, color: (stats.balance + jointStats.balance) >= 0 ? 'text-blue-500' : 'text-red-500', icon: Wallet, bg: (stats.balance + jointStats.balance) >= 0 ? 'bg-blue-500/10' : 'bg-red-500/10' },
+                    { label: 'Balance', val: stats.balance + jointStats.balance, color: 'text-blue-500', icon: Wallet, bg: 'bg-blue-500/10' },
                     { label: 'Patrimonio', val: netWorth, color: 'text-purple-500', icon: ShieldCheck, bg: 'bg-purple-500/10' }
                 ].map((kpi, i) => (
                     <div key={i} className={`p-4 md:p-8 rounded-[24px] md:rounded-[40px] border transition-all duration-500 hover:-translate-y-1 relative overflow-hidden group animate-in slide-in-from-bottom-8 delay-${i * 100} ${t.card}`}>
