@@ -128,6 +128,26 @@ export const FinanceProvider = ({ children }) => {
     const deleteRecurringRule = (id) => setRecurringRules(prev => prev.filter(r => r.id !== id));
     const updateRecurringRule = (id, updates) => setRecurringRules(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
 
+    const convertTxToAutoRule = async (txId, ruleData) => {
+        const tx = transactions.find(t => t.id === txId) || jointTransactions.find(t => t.id === txId);
+        if (!tx) return null;
+        const period = periodFor(ruleData.unit);
+        const existingTags = Array.isArray(tx.tags) ? tx.tags : [];
+        const newTags = existingTags.includes('__auto__') ? existingTags : [...existingTags, '__auto__'];
+        await updateTransaction(txId, { tags: newTags, periodicity: period });
+        const rule = {
+            ...ruleData,
+            id: crypto.randomUUID(),
+            amount: parseFloat(ruleData.amount),
+            every: Number(ruleData.every),
+            nextRun: calcNextRun(ruleData.startDate, ruleData.every, ruleData.unit),
+            lastRun: ruleData.startDate,
+            active: true,
+        };
+        setRecurringRules(prev => [...prev, rule]);
+        return rule;
+    };
+
     const reactivateRule = async (id, fromDate) => {
         const today = new Date().toISOString().split('T')[0];
         const rule = recurringRules.find(r => r.id === id);
@@ -523,7 +543,7 @@ export const FinanceProvider = ({ children }) => {
             renameCategory, renameSubCategory,
             globalTags, setGlobalTags,
             quickButtons, updateQuickButtons,
-            recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun,
+            recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun, convertTxToAutoRule,
             automationItems, setAutomationItems,
             travelMode, setTravelMode,
             travelConfig, setTravelConfig,

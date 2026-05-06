@@ -26,14 +26,19 @@ const emptyForm = () => ({
 
 const AutomationModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsumed }) => {
     const { theme, t, activeColor } = useAuth();
-    const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun } = useFinance();
+    const { categories, recurringRules, addRecurringRule, deleteRecurringRule, updateRecurringRule, reactivateRule, calcNextRun, convertTxToAutoRule } = useFinance();
     const [form, setForm] = useState(emptyForm());
     const [editingStartDate, setEditingStartDate] = useState(null);
     const [reactivating, setReactivating] = useState(null);
+    const [convertingTxId, setConvertingTxId] = useState(null);
     const today = new Date().toISOString().split('T')[0];
 
     useEffect(() => {
-        if (!isOpen || !prefill) return;
+        if (!isOpen) {
+            setConvertingTxId(null);
+            return;
+        }
+        if (!prefill) return;
         setForm({
             name: prefill.note || prefill.category || '',
             type: prefill.type || 'expense',
@@ -44,6 +49,7 @@ const AutomationModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsu
             unit: 'month',
             startDate: prefill.date || today,
         });
+        setConvertingTxId(prefill.convertingTxId || null);
         if (onPrefillConsumed) onPrefillConsumed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, prefill]);
@@ -59,8 +65,15 @@ const AutomationModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsu
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!form.amount || !form.category) return;
+        if (convertingTxId) {
+            await convertTxToAutoRule(convertingTxId, form);
+            setConvertingTxId(null);
+            setForm(emptyForm());
+            onClose();
+            return;
+        }
         addRecurringRule({
             ...form,
             amount: parseFloat(form.amount),
@@ -98,7 +111,12 @@ const AutomationModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsu
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-h-[78vh] overflow-y-auto">
                     {/* FORMULARIO */}
                     <div className={`p-6 space-y-3 border-b md:border-b-0 md:border-r ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Nueva Regla</p>
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>{convertingTxId ? 'Convertir Gasto en Regla' : 'Nueva Regla'}</p>
+                        {convertingTxId && (
+                            <div className={`px-3 py-2 rounded-xl text-[10px] font-bold border ${theme === 'dark' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-yellow-50 border-yellow-300 text-yellow-700'}`}>
+                                Este gasto pasará a ser automático. No se duplicará.
+                            </div>
+                        )}
 
                         <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nombre (ej: Netflix, Alquiler…)" className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`} />
 
@@ -140,7 +158,7 @@ const AutomationModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsu
                         </div>
 
                         <button onClick={handleSave} disabled={!form.amount || !form.category} className={`w-full py-3 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-40 ${activeColor.bg} shadow-lg`}>
-                            <Plus size={16} /> Guardar Regla
+                            <Plus size={16} /> {convertingTxId ? 'Convertir' : 'Guardar Regla'}
                         </button>
                     </div>
 

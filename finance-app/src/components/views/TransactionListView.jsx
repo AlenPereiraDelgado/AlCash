@@ -6,7 +6,7 @@ import EmptyState from '../common/EmptyState';
 import {
     ChevronLeft, ChevronRight, Search, Filter,
     Layers, Calendar as CalendarIcon, Activity, Box,
-    Pencil, Trash2, Tag, CheckSquare, Square, Zap
+    Pencil, Trash2, Tag, CheckSquare, Square, Zap, Bell
 } from 'lucide-react';
 
 const TransactionListView = ({
@@ -39,6 +39,13 @@ const TransactionListView = ({
 
     const toggleSelect = (id) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const toggleReminder = (tx) => {
+        const tags = Array.isArray(tx.tags) ? tx.tags : [];
+        const has = tags.includes('__reminder__');
+        const newTags = has ? tags.filter(t => t !== '__reminder__') : [...tags, '__reminder__'];
+        updateTransaction(tx.id, { tags: newTags });
     };
 
     const toggleSelectAll = () => {
@@ -222,9 +229,14 @@ const TransactionListView = ({
                                 {filteredTransactions.map((tx, idx) => (
                                     <tr key={tx.id} className={`group transition-all duration-300 animate-in fade-in slide-in-from-left-4 delay-${Math.min(idx * 50, 500)} ${selectedIds.includes(tx.id) ? 'bg-blue-600/5' : tx.tags?.includes('__auto__') ? 'bg-yellow-500/[0.04] hover:bg-yellow-500/[0.08]' : 'hover:bg-white/[0.02]'}`}>
                                         <td className="p-8 w-10">
-                                            <button onClick={() => toggleSelect(tx.id)} className="p-2 rounded-xl hover:bg-white/5 transition-all">
-                                                {selectedIds.includes(tx.id) ? <CheckSquare size={18} className="text-blue-500" /> : <Square size={18} className="opacity-20 group-hover:opacity-100" />}
-                                            </button>
+                                            <div className="flex flex-col gap-1">
+                                                <button onClick={() => toggleSelect(tx.id)} className="p-2 rounded-xl hover:bg-white/5 transition-all">
+                                                    {selectedIds.includes(tx.id) ? <CheckSquare size={18} className="text-blue-500" /> : <Square size={18} className="opacity-20 group-hover:opacity-100" />}
+                                                </button>
+                                                <button onClick={() => toggleReminder(tx)} title="Marcar como aviso anual" className="p-2 rounded-xl hover:bg-white/5 transition-all">
+                                                    <Bell size={16} className={tx.tags?.includes('__reminder__') ? 'text-cyan-400 fill-cyan-400/30' : 'opacity-20 group-hover:opacity-100'} />
+                                                </button>
+                                            </div>
                                         </td>
                                         <td className="p-8">
                                             <div className="flex items-center gap-4">
@@ -241,6 +253,7 @@ const TransactionListView = ({
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs font-bold opacity-60">{tx.category}</span>
                                                 {tx.tags?.includes('__auto__') && <span className="flex items-center gap-1 text-[9px] w-fit px-2 py-0.5 rounded-lg bg-yellow-500/15 text-yellow-400 font-black"><Zap size={9} />Auto</span>}
+                                                {tx.tags?.includes('__reminder__') && <span className="flex items-center gap-1 text-[9px] w-fit px-2 py-0.5 rounded-lg bg-cyan-500/15 text-cyan-400 font-black"><Bell size={9} />Aviso anual</span>}
                                                 {tx.originalCurrency !== 'EUR' && <span className="text-[9px] w-fit px-2 py-0.5 rounded-lg bg-yellow-500/10 text-yellow-500 font-black">{tx.originalCurrency}</span>}
                                             </div>
                                         </td>
@@ -276,9 +289,14 @@ const TransactionListView = ({
                     <div className="md:hidden space-y-3">
                         {filteredTransactions.map(tx => (
                             <div key={tx.id} className={`p-4 rounded-[24px] border transition-all active:scale-[0.98] flex items-center gap-4 ${selectedIds.includes(tx.id) ? 'border-blue-500 bg-blue-500/5' : tx.tags?.includes('__auto__') ? 'border-yellow-500/40 bg-yellow-500/[0.04] shadow-[0_0_24px_-8px_rgba(234,179,8,0.4)]' : t.card}`}>
-                                <button onClick={() => toggleSelect(tx.id)} className="shrink-0">
-                                    {selectedIds.includes(tx.id) ? <CheckSquare size={20} className={activeColor.text} /> : <Square size={20} className="opacity-20" />}
-                                </button>
+                                <div className="flex flex-col gap-1.5 shrink-0">
+                                    <button onClick={() => toggleSelect(tx.id)}>
+                                        {selectedIds.includes(tx.id) ? <CheckSquare size={20} className={activeColor.text} /> : <Square size={20} className="opacity-20" />}
+                                    </button>
+                                    <button onClick={() => toggleReminder(tx)} title="Marcar como aviso anual">
+                                        <Bell size={16} className={tx.tags?.includes('__reminder__') ? 'text-cyan-400 fill-cyan-400/30' : 'opacity-20'} />
+                                    </button>
+                                </div>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-white/5`} style={{ color: CATEGORY_COLORS[tx.category] || '#8E8E93' }}>
                                     {React.createElement(CATEGORY_ICONS[tx.category] || Box, { size: 24 })}
                                 </div>
@@ -293,6 +311,7 @@ const TransactionListView = ({
                                         <span className={`flex items-center gap-1.5 ${t.textSec}`}>
                                             {tx.category}
                                             {tx.tags?.includes('__auto__') && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-yellow-500/15 text-yellow-400 normal-case tracking-normal"><Zap size={8} />Auto</span>}
+                                            {tx.tags?.includes('__reminder__') && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-cyan-500/15 text-cyan-400 normal-case tracking-normal"><Bell size={8} />Aviso</span>}
                                         </span>
                                         <span className="opacity-40">{tx.date}</span>
                                     </div>

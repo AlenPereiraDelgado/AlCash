@@ -1,9 +1,9 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { getDynamicFontSize, parseLocalDate } from '../../utils/helpers';
-import { 
-    Calendar as CalendarIcon, LayoutGrid, List, Check, 
-    Repeat, Trash2 
+import {
+    Calendar as CalendarIcon, LayoutGrid, List, Check,
+    Repeat, Trash2, Bell
 } from 'lucide-react';
 
 const FixedExpensesView = ({
@@ -15,7 +15,8 @@ const FixedExpensesView = ({
     monthlyFixedBreakdown
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { deleteRecurringRule } = useFinance();
+    const { deleteRecurringRule, transactions, jointTransactions } = useFinance();
+    const reminderTxs = [...transactions, ...jointTransactions].filter(tx => Array.isArray(tx.tags) && tx.tags.includes('__reminder__'));
     return (
         <div className="space-y-8 animate-in slide-in-from-right">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -81,7 +82,14 @@ const FixedExpensesView = ({
                                     return false;
                                 });
 
+                                const remindersOnDay = reminderTxs.filter(tx => {
+                                    if (!tx.date) return false;
+                                    const d = parseLocalDate(tx.date);
+                                    return d.getMonth() === currentMonth && d.getDate() === day;
+                                });
+
                                 const hasExpense = expensesOnDay.length > 0;
+                                const hasReminder = remindersOnDay.length > 0;
 
                                 // Determine dominant color based on expense types
                                 let colorClasses = `border-transparent ${t.textSec} ${theme === 'dark' ? 'bg-black/20' : 'bg-gray-100'}`;
@@ -99,6 +107,8 @@ const FixedExpensesView = ({
                                     } else if (hasBianual) {
                                         colorClasses = 'bg-purple-500/10 border-purple-500 text-purple-500';
                                     }
+                                } else if (hasReminder) {
+                                    colorClasses = 'bg-cyan-500/10 border-cyan-500 text-cyan-400';
                                 }
 
                                 const now = new Date();
@@ -115,14 +125,27 @@ const FixedExpensesView = ({
                                                 <Check size={8} strokeWidth={4} />
                                             </div>
                                         )}
-                                        {hasExpense && (
+                                        {hasReminder && !hasExpense && (
+                                            <div className="absolute -top-1 -right-1 bg-cyan-500 text-white rounded-full p-0.5 shadow-lg border border-white/20">
+                                                <Bell size={8} strokeWidth={3} />
+                                            </div>
+                                        )}
+                                        {(hasExpense || hasReminder) && (
                                             <div className="absolute bottom-full mb-2 hidden group-hover:block z-50 w-max max-w-[220px] p-2.5 rounded-xl bg-black/95 backdrop-blur-md border border-white/10 shadow-xl pointer-events-none animate-in fade-in zoom-in-95">
                                                 <div className="space-y-1.5">
                                                     {expensesOnDay.map((e, idx) => (
-                                                        <div key={idx} className="text-[10px] text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                                                        <div key={`e-${idx}`} className="text-[10px] text-white border-b border-white/10 pb-1 last:border-0 last:pb-0">
                                                             <span className="font-bold block truncate">{e.note || e.subCategory || e.category}</span>
                                                             <span className="text-gray-400 block truncate">{e.category}{e.subCategory ? ` · ${e.subCategory}` : ''}</span>
                                                             <span className="text-gray-300 font-mono">{Number(e.amountVal).toFixed(2)}€</span>
+                                                        </div>
+                                                    ))}
+                                                    {remindersOnDay.map((r, idx) => (
+                                                        <div key={`r-${idx}`} className="text-[10px] border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                                                            <span className="flex items-center gap-1 font-bold text-cyan-400"><Bell size={9} />Aviso anual</span>
+                                                            <span className="font-bold text-white block truncate">{r.note || r.subCategory || r.category}</span>
+                                                            <span className="text-gray-400 block truncate">{r.category}{r.subCategory ? ` · ${r.subCategory}` : ''}</span>
+                                                            <span className="text-gray-300 font-mono">~{Number(r.amountVal).toFixed(2)}€</span>
                                                         </div>
                                                     ))}
                                                 </div>

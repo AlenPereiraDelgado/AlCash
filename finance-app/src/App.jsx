@@ -235,8 +235,10 @@ export default function App() {
             subCategory,
             amount: parseFloat(amount) || 0,
             date,
+            convertingTxId: editingId,
         });
         switchAddTab('auto');
+        resetForm();
     };
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importText, setImportText] = useState('');
