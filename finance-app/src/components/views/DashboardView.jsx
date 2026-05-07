@@ -206,32 +206,31 @@ const DashboardView = ({
                 </div>
 
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-4 gap-2 md:gap-4">
                 {[
-                    { label: 'Ingresos', val: stats.income, color: 'text-green-500', icon: TrendingUp, bg: 'bg-green-500/10', trend: stats.income > stats.expense ? 'up' : 'down' },
-                    { label: 'Gastos', val: stats.expense, color: 'text-red-500', icon: TrendingDown, bg: 'bg-red-500/10', trend: stats.expense > stats.income ? 'up' : 'down' },
+                    { label: 'Ingresos', val: stats.income, color: 'text-green-500', icon: TrendingUp, bg: 'bg-green-500/10' },
+                    { label: 'Gastos', val: stats.expense, color: 'text-red-500', icon: TrendingDown, bg: 'bg-red-500/10' },
                     { label: 'Balance', val: stats.balance + jointStats.balance, color: 'text-blue-500', icon: Wallet, bg: 'bg-blue-500/10' },
                     { label: 'Patrimonio', val: netWorth, color: 'text-purple-500', icon: ShieldCheck, bg: 'bg-purple-500/10' }
-                ].map((kpi, i) => (
-                    <div key={i} className={`p-4 md:p-8 rounded-[24px] md:rounded-[40px] border transition-all duration-500 hover:-translate-y-1 relative overflow-hidden group animate-in slide-in-from-bottom-8 delay-${i * 100} ${t.card}`}>
-                        <div className="absolute top-0 right-0 p-8 md:p-12 opacity-[0.03] rotate-12 -mr-8 -mt-8 md:-mr-16 md:-mt-16 transition-transform group-hover:scale-110 duration-700">
-                            <kpi.icon size={120} className="md:size-[180px]" />
-                        </div>
-                        
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-4 md:mb-6">
-                                <div className={`p-2 md:p-4 rounded-xl md:rounded-2xl ${kpi.bg}`}>
-                                    <kpi.icon size={18} className={`${kpi.color} md:size-[24px]`} strokeWidth={2.5} />
-                                </div>
+                ].map((kpi, i) => {
+                    const display = privacyMode ? '••••' : `${(kpi.val || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`;
+                    const len = display.length;
+                    const sizeCls = len > 10 ? 'text-[13px] md:text-2xl' : len > 7 ? 'text-sm md:text-3xl' : 'text-base md:text-3xl';
+                    return (
+                        <div key={i} className={`p-2.5 md:p-5 rounded-2xl md:rounded-[28px] border transition-all duration-500 hover:-translate-y-1 relative overflow-hidden group animate-in slide-in-from-bottom-8 delay-${i * 100} ${t.card}`}>
+                            <div className="absolute top-0 right-0 p-6 md:p-12 opacity-[0.03] rotate-12 -mr-6 -mt-6 md:-mr-16 md:-mt-16 transition-transform group-hover:scale-110 duration-700">
+                                <kpi.icon size={80} className="md:size-[160px]" />
                             </div>
-                            
-                            <p className={`text-[8px] md:text-[10px] uppercase font-black tracking-widest md:tracking-[0.2em] mb-1 opacity-40 truncate`}>{kpi.label}</p>
-                            <h3 className={`text-lg md:text-3xl font-black tracking-tighter truncate ${kpi.color}`}>
-                                {privacyMode ? '••••' : `${kpi.val.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`}
-                            </h3>
+                            <div className="relative z-10 flex flex-col items-center text-center">
+                                <div className={`p-1.5 md:p-3 rounded-lg md:rounded-2xl mb-1.5 md:mb-3 ${kpi.bg}`}>
+                                    <kpi.icon size={14} className={`${kpi.color} md:size-[22px]`} strokeWidth={2.6} />
+                                </div>
+                                <p className={`text-[8px] md:text-[10px] uppercase font-black tracking-wider md:tracking-[0.18em] opacity-50 mb-0.5 whitespace-nowrap`}>{kpi.label}</p>
+                                <h3 className={`font-black tracking-tighter tabular-nums whitespace-nowrap ${kpi.color} ${sizeCls}`}>{display}</h3>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <ComparativaCard
@@ -1008,14 +1007,14 @@ const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
             </div>
             <div className={`flex items-stretch rounded-2xl border ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}>
                 {items.map((it, idx) => (
-                    <div key={it.key} className={`flex-1 px-2 md:px-3 py-2.5 min-w-0 ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}>
+                    <div key={it.key} className={`flex-1 px-2 md:px-3 py-2.5 min-w-0 flex flex-col items-center text-center ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}>
                         <div className="flex items-center gap-1 mb-1">
                             <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0" style={{ background: it.color + '22', color: it.color }}>
                                 <it.Icon size={9} strokeWidth={2.6} />
                             </div>
                             <p className={`text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${it.textCls}`}>{it.label}</p>
                         </div>
-                        <div className="flex items-baseline gap-0.5">
+                        <div className="flex items-baseline justify-center gap-0.5">
                             <span className={`text-lg md:text-xl font-black tracking-tighter tabular-nums ${it.textCls}`}>{fmt(it.daily)}</span>
                             <span className={`text-[9px] font-black uppercase tracking-wide opacity-40`}>/d</span>
                         </div>
@@ -1161,8 +1160,14 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
                                                     </p>
                                                 </div>
                                                 <div className="text-right shrink-0 leading-tight">
-                                                    <p className="text-[11px] font-black tabular-nums">{fmt(r.amount)}</p>
-                                                    {openCard === 'total' && <p className="text-[9px] font-bold opacity-50 tabular-nums">{fmt(r.yearTotal)}/{data.year}</p>}
+                                                    {openCard === 'total' ? (
+                                                        <>
+                                                            <p className="text-[11px] font-black tabular-nums">{fmt(r.yearTotal)}</p>
+                                                            <p className="text-[9px] font-bold opacity-50 tabular-nums">{fmt(r.amount)}/{unitLabel(r.unit)}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-[11px] font-black tabular-nums">{fmt(r.amount)}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
