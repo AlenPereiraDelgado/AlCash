@@ -215,18 +215,18 @@ const DashboardView = ({
                 ].map((kpi, i) => {
                     const display = privacyMode ? '••••' : `${(kpi.val || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`;
                     const len = display.length;
-                    const sizeCls = len > 10 ? 'text-[13px] md:text-2xl' : len > 7 ? 'text-sm md:text-3xl' : 'text-base md:text-3xl';
+                    const sizeCls = len > 10 ? 'text-[10px] md:text-base' : len > 8 ? 'text-[11px] md:text-lg' : len > 6 ? 'text-xs md:text-xl' : 'text-sm md:text-xl';
                     return (
-                        <div key={i} className={`p-2.5 md:p-5 rounded-2xl md:rounded-[28px] border transition-all duration-500 hover:-translate-y-1 relative overflow-hidden group animate-in slide-in-from-bottom-8 delay-${i * 100} ${t.card}`}>
-                            <div className="absolute top-0 right-0 p-6 md:p-12 opacity-[0.03] rotate-12 -mr-6 -mt-6 md:-mr-16 md:-mt-16 transition-transform group-hover:scale-110 duration-700">
-                                <kpi.icon size={80} className="md:size-[160px]" />
+                        <div key={i} className={`p-2 md:p-3 rounded-2xl md:rounded-[20px] border transition-all duration-500 hover:-translate-y-1 relative overflow-hidden group animate-in slide-in-from-bottom-8 delay-${i * 100} ${t.card}`}>
+                            <div className="absolute top-0 right-0 p-4 md:p-8 opacity-[0.03] rotate-12 -mr-4 -mt-4 md:-mr-10 md:-mt-10 transition-transform group-hover:scale-110 duration-700">
+                                <kpi.icon size={50} className="md:size-[100px]" />
                             </div>
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <div className={`p-1.5 md:p-3 rounded-lg md:rounded-2xl mb-1.5 md:mb-3 ${kpi.bg}`}>
-                                    <kpi.icon size={14} className={`${kpi.color} md:size-[22px]`} strokeWidth={2.6} />
+                            <div className="relative z-10 flex flex-col items-center text-center gap-0.5">
+                                <div className={`p-1 md:p-1.5 rounded-md ${kpi.bg}`}>
+                                    <kpi.icon size={11} className={`${kpi.color} md:size-[14px]`} strokeWidth={2.6} />
                                 </div>
-                                <p className={`text-[8px] md:text-[10px] uppercase font-black tracking-wider md:tracking-[0.18em] opacity-50 mb-0.5 whitespace-nowrap`}>{kpi.label}</p>
-                                <h3 className={`font-black tracking-tighter tabular-nums whitespace-nowrap ${kpi.color} ${sizeCls}`}>{display}</h3>
+                                <p className={`text-[8px] md:text-[10px] uppercase font-black tracking-wider opacity-50 whitespace-nowrap`}>{kpi.label}</p>
+                                <h3 className={`font-black tracking-tighter tabular-nums whitespace-nowrap leading-none ${kpi.color} ${sizeCls}`}>{display}</h3>
                             </div>
                         </div>
                     );
