@@ -993,11 +993,10 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
 const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
     const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(0)}€`;
     const net = avg.netDaily || 0;
-    const netPositive = net >= 0;
     const items = [
         { key: 'income',  label: 'Ingreso', daily: avg.dailyIncome,  monthly: avg.monthlyIncome, color: '#30D158', textCls: 'text-green-500', Icon: TrendingUp },
         { key: 'expense', label: 'Gasto',   daily: avg.dailyExpense, monthly: avg.monthlyExpense, color: '#FF453A', textCls: 'text-red-500',   Icon: TrendingDown },
-        { key: 'net',     label: 'Balance', daily: net,              monthly: (avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), color: netPositive ? '#30D158' : '#FF453A', textCls: netPositive ? 'text-green-500' : 'text-red-500', Icon: Wallet },
+        { key: 'net',     label: 'Balance', daily: net,              monthly: (avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), color: '#0A84FF', textCls: 'text-blue-500', Icon: Wallet },
     ];
     return (
         <div className={`p-4 md:p-5 rounded-[32px] border ${t.card}`}>
