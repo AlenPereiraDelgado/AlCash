@@ -312,14 +312,14 @@ const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
     });
 };
 
-const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 6 }) => {
+const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 8 }) => {
     const cx = size / 2;
     const cy = size / 2;
-    const labelR = (radius + radius * 0.55) / 2;
-    const iconPx = size > 140 ? 10 : 8;
-    const fontPx = size > 140 ? 8 : 7;
-    const boxW = size > 140 ? 26 : 22;
-    const boxH = size > 140 ? 24 : 20;
+    const labelR = radius * 0.78;
+    const iconPx = size > 140 ? 11 : 9;
+    const fontPx = size > 140 ? 10 : 8;
+    const boxW = size > 140 ? (showIcons ? 46 : 30) : (showIcons ? 34 : 24);
+    const boxH = size > 140 ? 20 : 16;
     return (
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block mx-auto">
             <g>
@@ -361,12 +361,20 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                         pointerEvents="none"
                         style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease' }}
                     >
+                        <rect
+                            x={-boxW / 2}
+                            y={-boxH / 2}
+                            width={boxW}
+                            height={boxH}
+                            rx={boxH / 2}
+                            ry={boxH / 2}
+                            fill="rgba(0,0,0,0.55)"
+                        />
                         <foreignObject
                             x={-boxW / 2}
                             y={-boxH / 2}
                             width={boxW}
                             height={boxH}
-                            style={{ overflow: 'visible' }}
                         >
                             <div
                                 xmlns="http://www.w3.org/1999/xhtml"
@@ -374,16 +382,16 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                                     width: '100%',
                                     height: '100%',
                                     display: 'flex',
-                                    flexDirection: 'column',
+                                    flexDirection: 'row',
                                     alignItems: 'center',
                                     justifyContent: 'center',
+                                    gap: Ic ? 3 : 0,
                                     lineHeight: 1,
-                                    color: '#fff',
-                                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.55))'
+                                    color: '#fff'
                                 }}
                             >
-                                {Ic && <Ic size={iconPx} strokeWidth={2.6} />}
-                                <span style={{ fontSize: fontPx, fontWeight: 900, marginTop: Ic ? 1 : 0 }}>
+                                {Ic && <Ic size={iconPx} strokeWidth={2.6} style={{ flexShrink: 0 }} />}
+                                <span style={{ fontSize: fontPx, fontWeight: 900, letterSpacing: '-0.02em' }}>
                                     {s.percent.toFixed(0)}%
                                 </span>
                             </div>
