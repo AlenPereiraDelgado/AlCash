@@ -808,6 +808,7 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
 
     const animateTo = (delta) => {
         if (transitioning) return;
+        setSelectedBar(null);
         setTransitionDir(delta);
         setTransitioning(true);
         setTimeout(() => {
@@ -991,7 +992,6 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
 // ===================== HISTORICAL AVG CARD =====================
 const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
     const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(0)}€`;
-    const fmtFine = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(2)}€`;
     const net = avg.netDaily || 0;
     const netPositive = net >= 0;
     const items = [
@@ -1000,42 +1000,26 @@ const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
         { key: 'net',     label: 'Balance neto',   daily: net,              monthly: (avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), color: netPositive ? '#30D158' : '#FF453A', textCls: netPositive ? 'text-green-500' : 'text-red-500', Icon: Wallet },
     ];
     return (
-        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
-            <div className="flex items-center gap-2 mb-6">
-                <BarChart3 size={18} className={activeColor.text} />
-                <h3 className="text-base font-black tracking-tight">Promedios Históricos</h3>
-                <span className={`ml-auto text-[10px] font-black uppercase tracking-widest opacity-40`}>{avg.days || 0} días registrados</span>
+        <div className={`p-4 md:p-5 rounded-[32px] border ${t.card}`}>
+            <div className="flex items-center gap-2 mb-3">
+                <BarChart3 size={14} className={activeColor.text} />
+                <h3 className="text-xs font-black tracking-tight uppercase">Promedios Históricos</h3>
+                <span className={`ml-auto text-[9px] font-black uppercase tracking-widest opacity-40`}>{avg.days || 0} días</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {items.map(it => (
-                    <div
-                        key={it.key}
-                        className={`relative p-5 md:p-6 rounded-2xl border overflow-hidden ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}
-                    >
-                        <div className="absolute -top-6 -right-6 opacity-[0.05]">
-                            <it.Icon size={120} />
+            <div className={`flex items-stretch rounded-2xl border ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}>
+                {items.map((it, idx) => (
+                    <div key={it.key} className={`flex-1 px-3 md:px-4 py-3 min-w-0 ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: it.color + '22', color: it.color }}>
+                                <it.Icon size={11} strokeWidth={2.6} />
+                            </div>
+                            <p className={`text-[9px] font-black uppercase tracking-widest truncate ${it.textCls}`}>{it.label}</p>
                         </div>
-                        <div className="relative">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: it.color + '22', color: it.color }}>
-                                    <it.Icon size={14} strokeWidth={2.6} />
-                                </div>
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${it.textCls}`}>{it.label}</p>
-                            </div>
-                            <div className="flex items-baseline gap-1 mb-1">
-                                <span className={`text-3xl md:text-4xl font-black tracking-tighter tabular-nums ${it.textCls}`}>
-                                    {fmt(it.daily)}
-                                </span>
-                                <span className={`text-[10px] font-black uppercase tracking-widest opacity-40`}>/ día</span>
-                            </div>
-                            <div className={`text-[11px] font-bold flex items-center gap-1.5 ${t.textSec}`}>
-                                <span className="opacity-60">≈</span>
-                                <span className="tabular-nums">{fmt(it.monthly)}</span>
-                                <span className="opacity-60">/ mes</span>
-                                <span className="opacity-30">·</span>
-                                <span className="tabular-nums opacity-60">{fmtFine(it.daily)}/d</span>
-                            </div>
+                        <div className="flex items-baseline gap-1">
+                            <span className={`text-lg md:text-xl font-black tracking-tighter tabular-nums ${it.textCls}`}>{fmt(it.daily)}</span>
+                            <span className={`text-[9px] font-black uppercase tracking-widest opacity-40`}>/d</span>
                         </div>
+                        <p className={`text-[10px] font-bold tabular-nums opacity-50 truncate`}>≈ {fmt(it.monthly)}/mes</p>
                     </div>
                 ))}
             </div>
@@ -1060,12 +1044,35 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
             if (r.unit === 'day')   return (amt * 365) / every;
             return 0;
         };
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const yearStart = new Date(today.getFullYear(), 0, 1);
+        const ytdOf = (r) => {
+            const startStr = r.startDate || r.lastRun;
+            if (!startStr) return 0;
+            const start = parseLocalDate(startStr);
+            if (isNaN(start)) return 0;
+            const eff = start > yearStart ? start : yearStart;
+            if (eff > today) return 0;
+            const amt = Number(r.amount || 0);
+            const every = Number(r.every || 1);
+            let elapsed = 0;
+            if (r.unit === 'month') elapsed = (today.getFullYear() - eff.getFullYear()) * 12 + (today.getMonth() - eff.getMonth());
+            else if (r.unit === 'year') elapsed = today.getFullYear() - eff.getFullYear();
+            else if (r.unit === 'week') elapsed = Math.floor((today - eff) / (7 * 86400000));
+            else if (r.unit === 'day')  elapsed = Math.floor((today - eff) / 86400000);
+            const cycles = Math.floor(elapsed / every) + 1;
+            return amt * Math.max(0, cycles);
+        };
         const monthlySum = monthly.reduce((a, r) => a + Number(r.amount || 0), 0);
         const annualExtraSum = annualExtras.reduce((a, r) => a + annualOf(r), 0);
+        const ytdList = active.map(r => ({ ...r, ytd: ytdOf(r), annual: annualOf(r) })).sort((a, b) => b.ytd - a.ytd);
+        const ytdSum = ytdList.reduce((a, r) => a + r.ytd, 0);
         return {
             monthly,
             annualExtras,
-            allAnnualized: active.map(r => ({ ...r, annual: annualOf(r) })).sort((a, b) => b.annual - a.annual),
+            ytdList,
+            ytdSum,
+            year: today.getFullYear(),
             monthlyCount: monthly.length,
             monthlySum,
             annualExtraCount: annualExtras.length,
@@ -1079,16 +1086,16 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
     const unitLabel = (u) => u === 'month' ? 'mes' : u === 'year' ? 'año' : u === 'week' ? 'sem' : 'día';
 
     const cards = [
-        { key: 'monthly', label: 'Mensual',     val: data.monthlySum,        sub: `${data.monthlyCount} reglas`,   color: 'rgba(99,102,241,.5)',  cls: theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50',           textCls: '' },
-        { key: 'annual',  label: 'Extras anuales', val: data.annualExtraSum,  sub: `${data.annualExtraCount} reglas`, color: 'rgba(255,159,10,.5)', cls: theme === 'dark' ? 'border-orange-500/20 bg-orange-500/5' : 'border-orange-300/30 bg-orange-50', textCls: 'text-orange-500' },
-        { key: 'total',   label: 'Total/Año',   val: data.grandAnnual,       sub: 'fijos + extras',                  color: 'rgba(10,132,255,.5)',  cls: theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50',     textCls: 'text-blue-500' },
-        { key: 'avg',     label: 'Promedio/Mes', val: data.grandAnnual / 12, sub: 'prorrateo',                       color: 'rgba(59,130,246,.4)', cls: 'border-blue-400/30',                                                                       textCls: 'text-blue-400', aura: true },
+        { key: 'monthly', label: 'Mensual',        val: data.monthlySum,        sub: `${data.monthlyCount} reglas`,    color: 'rgba(99,102,241,.5)',  cls: theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50',           textCls: '' },
+        { key: 'annual',  label: 'Extras anuales', val: data.annualExtraSum,    sub: `${data.annualExtraCount} reglas`, color: 'rgba(255,159,10,.5)', cls: theme === 'dark' ? 'border-orange-500/20 bg-orange-500/5' : 'border-orange-300/30 bg-orange-50', textCls: 'text-orange-500' },
+        { key: 'total',   label: `Total ${data.year}`, val: data.ytdSum,        sub: `acumulado año`,                   color: 'rgba(10,132,255,.5)', cls: theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50',     textCls: 'text-blue-500' },
+        { key: 'avg',     label: 'Promedio/Mes',   val: data.grandAnnual / 12,  sub: 'prorrateo',                       color: 'rgba(59,130,246,.4)', cls: 'border-blue-400/30',                                                                       textCls: 'text-blue-400', aura: true },
     ];
 
     const renderList = () => {
-        if (openCard === 'monthly') return data.monthly;
-        if (openCard === 'annual')  return data.annualExtras;
-        if (openCard === 'total')   return data.allAnnualized;
+        if (openCard === 'monthly') return data.ytdList.filter(r => r.unit === 'month');
+        if (openCard === 'annual')  return data.ytdList.filter(r => r.unit !== 'month');
+        if (openCard === 'total')   return data.ytdList;
         return [];
     };
     const list = renderList();
@@ -1123,40 +1130,38 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
                 })}
             </div>
 
-            <div className={`grid transition-all duration-400 ease-out ${openCard ? 'grid-rows-[1fr] opacity-100 mt-5' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
+            <div className={`grid transition-all duration-400 ease-out ${openCard ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
                 <div className="overflow-hidden">
                     {openCard && (
-                        <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'border-white/5 bg-black/30' : 'border-gray-200 bg-gray-50'} animate-in fade-in slide-in-from-top-2 duration-300`}>
-                            <div className="flex justify-between items-center mb-3">
-                                <p className="text-[11px] font-black uppercase tracking-widest opacity-70">
+                        <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'border-white/5 bg-black/30' : 'border-gray-200 bg-gray-50'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
                                     {openCard === 'monthly' && 'Reglas mensuales'}
                                     {openCard === 'annual' && 'Extras anuales'}
-                                    {openCard === 'total' && 'Todas anualizadas'}
+                                    {openCard === 'total' && `Acumulado ${data.year}`}
                                 </p>
-                                <span className={`text-xs font-black tabular-nums ${t.textSec}`}>{list.length} {list.length === 1 ? 'regla' : 'reglas'}</span>
+                                <span className={`text-[10px] font-black tabular-nums ${t.textSec}`}>{list.length} {list.length === 1 ? 'regla' : 'reglas'}</span>
                             </div>
                             {list.length === 0 ? (
-                                <p className={`text-center py-3 text-xs font-bold opacity-40 ${t.textSec}`}>Sin reglas en esta categoría.</p>
+                                <p className={`text-center py-2 text-[11px] font-bold opacity-40 ${t.textSec}`}>Sin reglas.</p>
                             ) : (
-                                <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                                <div className="space-y-1 max-h-[240px] overflow-y-auto">
                                     {list.map(r => {
                                         const Ic = CATEGORY_ICONS[r.category] || Box;
-                                        const annual = r.annual ?? (
-                                            r.unit === 'month' ? Number(r.amount || 0) * 12 / Number(r.every || 1)
-                                            : r.unit === 'year' ? Number(r.amount || 0) / Number(r.every || 1)
-                                            : r.unit === 'week' ? Number(r.amount || 0) * 52 / Number(r.every || 1)
-                                            : r.unit === 'day' ? Number(r.amount || 0) * 365 / Number(r.every || 1) : 0
-                                        );
+                                        const subline = [r.category, r.subCategory].filter(Boolean).join(' · ');
+                                        const note = r.name && r.name !== r.category ? r.name : '';
                                         return (
-                                            <div key={r.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-white'}`}>
-                                                <Ic size={14} className="opacity-60 shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-xs truncate">{r.name || r.category}</p>
-                                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-40`}>cada {r.every || 1} {unitLabel(r.unit)}</p>
+                                            <div key={r.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-white'}`}>
+                                                <Ic size={12} className="opacity-60 shrink-0" />
+                                                <div className="flex-1 min-w-0 leading-tight">
+                                                    <p className="font-bold text-[11px] truncate">{note || subline || r.category}</p>
+                                                    <p className={`text-[9px] font-black uppercase tracking-wider opacity-40 truncate`}>
+                                                        {note ? subline : `cada ${r.every || 1} ${unitLabel(r.unit)}`}{note && ` · cada ${r.every || 1} ${unitLabel(r.unit)}`}
+                                                    </p>
                                                 </div>
-                                                <div className="text-right shrink-0">
-                                                    <p className="text-xs font-black tabular-nums">{fmt(r.amount)}</p>
-                                                    {openCard === 'total' && <p className="text-[10px] font-bold opacity-50 tabular-nums">{fmt(annual)}/año</p>}
+                                                <div className="text-right shrink-0 leading-tight">
+                                                    <p className="text-[11px] font-black tabular-nums">{fmt(r.amount)}</p>
+                                                    {openCard === 'total' && <p className="text-[9px] font-bold opacity-50 tabular-nums">{fmt(r.ytd)} ytd</p>}
                                                 </div>
                                             </div>
                                         );
@@ -1233,19 +1238,19 @@ const NextExpenseWidget = ({ recurringRules, transactions, t, theme, activeColor
                         const color = getCatColor(it.category);
                         const Ic = CATEGORY_ICONS[it.category] || Box;
                         const dayLabel = days === 0 ? 'hoy' : days === 1 ? 'mañana' : `${days}d`;
+                        const subline = [it.category, it.subCategory].filter(Boolean).join(' · ');
+                        const dateStr = it.date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
                         return (
-                            <div key={it.key} className={`flex items-center gap-3 p-2.5 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: color }}>
-                                    <Ic size={14} className="text-white" strokeWidth={2.5} />
+                            <div key={it.key} className={`flex items-center gap-2.5 p-2 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: color }}>
+                                    <Ic size={12} className="text-white" strokeWidth={2.5} />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-xs truncate">{it.name}</p>
-                                    <p className={`text-[9px] font-black uppercase tracking-widest opacity-50 truncate`}>
-                                        {it.source === 'auto' ? 'Automático' : 'Anual'} · {it.date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                                    </p>
+                                <div className="flex-1 min-w-0 leading-tight">
+                                    <p className="font-bold text-[11px] truncate">{it.name}</p>
+                                    <p className={`text-[9px] font-black uppercase tracking-wider opacity-50 truncate`}>{subline} · {dateStr}</p>
                                 </div>
-                                <div className="text-right shrink-0">
-                                    <p className="font-black text-sm tabular-nums">{fmt(it.amount)}</p>
+                                <div className="text-right shrink-0 leading-tight">
+                                    <p className="font-black text-[12px] tabular-nums">{fmt(it.amount)}</p>
                                     <p className="text-[9px] font-black uppercase tracking-widest" style={{ color }}>{dayLabel}</p>
                                 </div>
                             </div>
@@ -1285,6 +1290,7 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
     const [durationUnit, setDurationUnit] = useState('months'); // days|months|years
     const [expandedId, setExpandedId] = useState(null);
     const [adjustState, setAdjustState] = useState({});
+    const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
 
     const active = items.filter(i => !i.completed_at);
     const completed = items.filter(i => i.completed_at);
@@ -1494,7 +1500,7 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                                             <input type="number" step="0.01" value={adj} onChange={e => setAdjustState(s => ({ ...s, [it.id]: e.target.value }))} placeholder="Cantidad" className={`flex-1 p-2 rounded-lg text-xs font-bold ${t.input}`} />
                                             <button onClick={() => { const v = parseFloat(adj); if (v > 0) { onAdjust(it.id, v); setAdjustState(s => ({ ...s, [it.id]: '' })); } }} className="p-2 rounded-lg bg-green-500 text-white" title="Sumar"><Plus size={14} /></button>
                                             <button onClick={() => { const v = parseFloat(adj); if (v > 0) { onAdjust(it.id, -v); setAdjustState(s => ({ ...s, [it.id]: '' })); } }} className="p-2 rounded-lg bg-red-500 text-white" title="Restar"><Minus size={14} /></button>
-                                            <button onClick={() => { if (confirm(`¿Borrar objetivo "${it.name}"?`)) onDelete(it.id); }} className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 border border-red-500/30" title="Eliminar"><Trash2 size={14} /></button>
+                                            <button onClick={() => setConfirmDelete({ id: it.id, name: it.name })} className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 border border-red-500/30" title="Eliminar"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -1525,10 +1531,29 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                                             <p className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{fmt(it.target)} · {days} {days === 1 ? 'día' : 'días'}</p>
                                         </div>
                                         <button onClick={() => onReopen(it.id)} title="Reabrir" className={`p-2 rounded-lg text-blue-500 ${t.hover}`}><Plus size={14} /></button>
-                                        <button onClick={() => onDelete(it.id)} title="Borrar" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
+                                        <button onClick={() => setConfirmDelete({ id: it.id, name: it.name })} title="Borrar" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {confirmDelete && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setConfirmDelete(null)}>
+                    <div className={`w-full max-w-sm rounded-[28px] border shadow-2xl ${t.card} ${t.bg} p-6 animate-in zoom-in-95 duration-200`} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-11 h-11 rounded-2xl bg-red-500/15 text-red-500 flex items-center justify-center shrink-0"><Trash2 size={18} /></div>
+                            <div className="min-w-0">
+                                <p className="font-black text-base tracking-tight">Borrar objetivo</p>
+                                <p className={`text-xs font-bold opacity-60 truncate ${t.textSec}`}>"{confirmDelete.name}"</p>
+                            </div>
+                        </div>
+                        <p className={`text-xs font-bold mb-5 opacity-70 ${t.textSec}`}>Esta acción no se puede deshacer.</p>
+                        <div className="flex gap-2">
+                            <button onClick={() => setConfirmDelete(null)} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest ${t.hover}`}>Cancelar</button>
+                            <button onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }} className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 transition-colors">Borrar</button>
                         </div>
                     </div>
                 </div>
