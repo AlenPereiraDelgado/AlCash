@@ -226,6 +226,7 @@ export default function App() {
         setIsModalOpen(tab === 'tx');
         setIsAutomationModalOpen(tab === 'auto');
         setIsSharedModalOpen(tab === 'shared');
+        setIsBudgetModalOpen(tab === 'budget');
     };
     const handleConvertToAuto = () => {
         setAutoPrefill({
@@ -1256,6 +1257,7 @@ export default function App() {
                 <BudgetModal
                     isOpen={isBudgetModalOpen}
                     onClose={() => setIsBudgetModalOpen(false)}
+                    onSwitchTab={switchAddTab}
                 />
 
                 {/* MODAL DE CONFIRMACIÓN (REUSABLE) */}

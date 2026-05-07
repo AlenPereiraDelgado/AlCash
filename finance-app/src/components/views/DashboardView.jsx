@@ -1,4 +1,4 @@
-import React, { createElement, useRef } from 'react';
+import React, { createElement, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,10 +6,10 @@ import { useFinance } from '../../contexts/FinanceContext';
 import {
     Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
     TrendingUp, TrendingDown, Wallet, ShieldCheck,
-    Target, Box, ArrowUpRight, Globe
+    Box, Globe, PieChart as PieIcon
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
-import { getDynamicFontSize } from '../../utils/helpers';
+import { getDynamicFontSize, parseLocalDate } from '../../utils/helpers';
 
 const DashboardView = ({
     dateMode,
@@ -29,7 +29,6 @@ const DashboardView = ({
     savingsRate,
     emergencyFundMonths,
     filteredTransactions,
-    setIsBudgetModalOpen,
     selectedChartYear,
     setSelectedChartYear,
     onMagicParse,
@@ -37,8 +36,34 @@ const DashboardView = ({
     onImport
 }) => {
     const { theme, t, activeColor, privacyMode } = useAuth();
-    const { budgets } = useFinance();
+    const { transactions } = useFinance();
     const swipeStartY = useRef(null);
+    const [pieMonth, setPieMonth] = useState(() => new Date());
+    const [pieYear, setPieYear] = useState(() => new Date().getFullYear());
+
+    const pieMonthData = useMemo(() => {
+        const m = pieMonth.getMonth();
+        const y = pieMonth.getFullYear();
+        const byCat = {};
+        transactions.filter(t => t.type === 'expense').forEach(t => {
+            const d = parseLocalDate(t.date);
+            if (d.getMonth() === m && d.getFullYear() === y) {
+                byCat[t.category] = (byCat[t.category] || 0) + (t.amountVal || 0);
+            }
+        });
+        return Object.entries(byCat).map(([cat, val]) => ({ cat, val })).sort((a, b) => b.val - a.val);
+    }, [transactions, pieMonth]);
+
+    const pieYearData = useMemo(() => {
+        const byCat = {};
+        transactions.filter(t => t.type === 'expense').forEach(t => {
+            const d = parseLocalDate(t.date);
+            if (d.getFullYear() === pieYear) {
+                byCat[t.category] = (byCat[t.category] || 0) + (t.amountVal || 0);
+            }
+        });
+        return Object.entries(byCat).map(([cat, val]) => ({ cat, val })).sort((a, b) => b.val - a.val);
+    }, [transactions, pieYear]);
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Controles de Fecha en Dashboard */}
@@ -129,46 +154,6 @@ const DashboardView = ({
                 </div>
 
             </div>
-            {/* ALERTAS CRÍTICAS DE PRESUPUESTO */}
-            {(() => {
-                const byCat = {};
-                filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
-                    byCat[t.category] = (byCat[t.category] || 0) + t.amountVal;
-                });
-                const alerts = Object.entries(budgets)
-                    .filter(([cat, limit]) => limit > 0 && byCat[cat] > (limit * 0.85))
-                    .map(([cat, limit]) => ({
-                        cat,
-                        limit,
-                        val: byCat[cat] || 0,
-                        percent: ((byCat[cat] || 0) / limit) * 100
-                    }));
-                
-                if (alerts.length === 0) return null;
-
-                return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-top-4 duration-500">
-                        {alerts.map(alert => (
-                            <div key={alert.cat} className={`p-4 rounded-3xl border ${alert.percent >= 100 ? 'bg-red-500/10 border-red-500/20' : 'bg-orange-500/10 border-orange-500/20'} flex items-center gap-4`}>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${alert.percent >= 100 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'}`}>
-                                    {createElement(CATEGORY_ICONS[alert.cat] || Box, { size: 24 })}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-black text-sm truncate">{alert.cat}</h4>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${alert.percent >= 100 ? 'text-red-500' : 'text-orange-500'}`}>
-                                        {alert.percent >= 100 ? '¡Límite superado!' : 'Cerca del límite'}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-sm font-black">{alert.val.toFixed(0)}€</span>
-                                    <p className="text-[10px] font-bold opacity-40">{alert.percent.toFixed(0)}%</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            })()}
-
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {[
                     { label: 'Ingresos', val: stats.income, color: 'text-green-500', icon: TrendingUp, bg: 'bg-green-500/10', trend: stats.income > stats.expense ? 'up' : 'down' },
@@ -273,113 +258,97 @@ const DashboardView = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* PRESUPUESTOS POR CATEGORÍA */}
-                <div className={`p-8 rounded-[40px] border shadow-sm relative overflow-hidden ${t.card}`}>
-                    <div className="flex justify-between items-center mb-10">
-                        <div>
-                            <h3 className="text-xl font-black flex items-center gap-2 tracking-tight"><Target size={22} className={activeColor.text} /> Presupuestos</h3>
-                            <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mt-1`}>Control de gasto mensual</p>
-                        </div>
-                        <button 
-                            onClick={() => setIsBudgetModalOpen(true)} 
-                            className={`group flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-2xl border border-white/10 ${t.hover} transition-all active:scale-95`}
-                        >
-                            Configurar <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                        </button>
-                    </div>
+                <PieCard
+                    title="Gastos del mes"
+                    subtitle={pieMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}
+                    data={pieMonthData}
+                    onPrev={() => setPieMonth(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; })}
+                    onNext={() => setPieMonth(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; })}
+                    theme={theme}
+                    t={t}
+                    activeColor={activeColor}
+                />
+                <PieCard
+                    title="Gastos del año"
+                    subtitle={String(pieYear)}
+                    data={pieYearData}
+                    onPrev={() => setPieYear(y => y - 1)}
+                    onNext={() => setPieYear(y => y + 1)}
+                    theme={theme}
+                    t={t}
+                    activeColor={activeColor}
+                />
+            </div>
+        </div>
+    );
+};
 
-                    <div className="space-y-7">
-                        {(() => {
-                            const byCat = {};
-                            filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
-                                byCat[t.category] = (byCat[t.category] || 0) + t.amountVal;
-                            });
-
-                            const totalBudget = Object.values(budgets).reduce((a, b) => a + (b || 0), 0);
-                            const totalSpentInBudgeted = Object.entries(budgets)
-                                .filter(([, limit]) => limit > 0)
-                                .reduce((acc, [cat,]) => acc + (byCat[cat] || 0), 0);
-                            
-                            const globalPercent = totalBudget > 0 ? (totalSpentInBudgeted / totalBudget) * 100 : 0;
-
+const PieCard = ({ title, subtitle, data, onPrev, onNext, theme, t, activeColor }) => {
+    const total = data.reduce((a, b) => a + b.val, 0);
+    const radius = 70;
+    const cx = 90;
+    const cy = 90;
+    let cumulative = 0;
+    const slices = data.map(d => {
+        const start = cumulative / (total || 1);
+        cumulative += d.val;
+        const end = cumulative / (total || 1);
+        const a0 = start * Math.PI * 2 - Math.PI / 2;
+        const a1 = end * Math.PI * 2 - Math.PI / 2;
+        const x0 = cx + radius * Math.cos(a0);
+        const y0 = cy + radius * Math.sin(a0);
+        const x1 = cx + radius * Math.cos(a1);
+        const y1 = cy + radius * Math.sin(a1);
+        const large = end - start > 0.5 ? 1 : 0;
+        const path = total === 0
+            ? ''
+            : data.length === 1
+                ? `M ${cx - radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx + radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx - radius} ${cy} Z`
+                : `M ${cx} ${cy} L ${x0} ${y0} A ${radius} ${radius} 0 ${large} 1 ${x1} ${y1} Z`;
+        return { ...d, path, color: CATEGORY_COLORS[d.cat] || '#8E8E93', percent: total > 0 ? (d.val / total) * 100 : 0 };
+    });
+    return (
+        <div className={`p-6 rounded-[32px] border ${t.card}`}>
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="text-base font-black tracking-tight">{title}</h3>
+                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mt-0.5`}>{subtitle}</p>
+                </div>
+                <div className={`flex items-center p-1 rounded-xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+                    <button onClick={onPrev} className={`p-2 rounded-lg ${t.hover}`}><ChevronLeft size={16} /></button>
+                    <button onClick={onNext} className={`p-2 rounded-lg ${t.hover}`}><ChevronRight size={16} /></button>
+                </div>
+            </div>
+            {total === 0 ? (
+                <div className={`py-10 text-center text-xs font-bold opacity-30 ${t.textSec}`}>Sin gastos en este periodo.</div>
+            ) : (
+                <div className="flex flex-col sm:flex-row gap-6 items-center">
+                    <svg width="180" height="180" viewBox="0 0 180 180" className="shrink-0">
+                        {slices.map((s, i) => (
+                            <path key={i} d={s.path} fill={s.color} stroke={theme === 'dark' ? '#000' : '#fff'} strokeWidth="2">
+                                <title>{s.cat}: {s.val.toFixed(2)}€ ({s.percent.toFixed(1)}%)</title>
+                            </path>
+                        ))}
+                        <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} />
+                        <text x={cx} y={cy - 4} textAnchor="middle" className="font-black" fill="currentColor" fontSize="14">{total.toFixed(0)}€</text>
+                        <text x={cx} y={cy + 12} textAnchor="middle" fill="currentColor" fontSize="9" opacity="0.5" className="font-bold uppercase tracking-wider">Total</text>
+                    </svg>
+                    <div className="flex-1 w-full space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                        {slices.map(s => {
+                            const Icon = CATEGORY_ICONS[s.cat] || Box;
                             return (
-                                <>
-                                    {/* BARRA GLOBAL */}
-                                    {totalBudget > 0 && (
-                                        <div className={`p-6 rounded-3xl mb-8 border border-white/5 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
-                                            <div className="flex justify-between items-center mb-3">
-                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-blue-500">Gasto Total Presupuestado</span>
-                                                <span className="text-sm font-black">{totalSpentInBudgeted.toFixed(0)}€ <span className="opacity-30">/ {totalBudget.toFixed(0)}€</span></span>
-                                            </div>
-                                            <div className={`w-full h-3 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'} relative`}>
-                                                <div 
-                                                    className={`h-full transition-all duration-1000 ease-out flex items-center justify-end px-2 ${globalPercent > 100 ? 'bg-red-500' : globalPercent > 85 ? 'bg-orange-500' : 'bg-gradient-to-r from-blue-600 to-blue-400'}`} 
-                                                    style={{ width: `${Math.min(100, globalPercent)}%` }}
-                                                >
-                                                    {globalPercent > 15 && <div className="w-1 h-1 rounded-full bg-white animate-pulse" />}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {Object.entries(budgets)
-                                        .filter(([, limit]) => limit > 0)
-                                        .sort(([catA, limitA], [catB, limitB]) => {
-                                            const spentA = byCat[catA] || 0;
-                                            const spentB = byCat[catB] || 0;
-                                            return (spentB / limitB) - (spentA / limitA);
-                                        })
-                                        .slice(0, 4)
-                                        .map(([cat, budget]) => {
-                                            const val = byCat[cat] || 0;
-                                            const percent = budget > 0 ? (val / budget) * 100 : 0;
-                                            const Icon = CATEGORY_ICONS[cat] || Box;
-                                            const color = CATEGORY_COLORS[cat] || '#8E8E93';
-                                            
-                                            return (
-                                                <div key={cat} className="space-y-3 group/item">
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/5 transition-transform group-hover/item:scale-110" style={{ color: color }}>
-                                                                <Icon size={20} />
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-sm font-bold tracking-tight">{cat}</span>
-                                                                <p className="text-[9px] font-black uppercase opacity-30 mt-0.5 tracking-tighter">
-                                                                    {percent > 100 ? 'Límite excedido' : `${(budget - val).toFixed(0)}€ disponibles`}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="flex items-baseline justify-end gap-1">
-                                                                <span className={`text-sm font-black ${percent > 100 ? 'text-red-500' : ''}`}>{val.toFixed(0)}€</span>
-                                                                <span className={`text-[10px] font-bold opacity-30`}>/ {budget}€</span>
-                                                            </div>
-                                                            <div className={`text-[10px] font-black ${percent > 100 ? 'text-red-500' : percent > 85 ? 'text-orange-500' : 'text-blue-500'}`}>
-                                                                {percent.toFixed(0)}%
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`w-full h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
-                                                        <div 
-                                                            className={`h-full transition-all duration-1000 ease-in-out ${percent > 100 ? 'bg-red-500' : percent > 85 ? 'bg-orange-500' : 'bg-blue-500'}`} 
-                                                            style={{ width: `${Math.min(100, percent)}%` }} 
-                                                        />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    
-                                    {Object.entries(budgets).filter(([, limit]) => limit > 0).length === 0 && (
-                                        <div className="text-center py-10 opacity-30 italic text-sm">Configura tus primeros presupuestos para empezar el control.</div>
-                                    )}
-                                </>
+                                <div key={s.cat} className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+                                    <Icon size={14} style={{ color: s.color }} className="shrink-0" />
+                                    <span className="text-[11px] font-bold truncate flex-1">{s.cat}</span>
+                                    <span className={`text-[10px] font-black ${activeColor.text}`}>{s.percent.toFixed(0)}%</span>
+                                    <span className="text-[10px] font-bold opacity-50 w-14 text-right">{s.val.toFixed(0)}€</span>
+                                </div>
                             );
-                        })()}
+                        })}
                     </div>
                 </div>
-
-            </div>
+            )}
         </div>
     );
 };

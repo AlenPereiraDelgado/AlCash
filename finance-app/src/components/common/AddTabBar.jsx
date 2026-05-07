@@ -1,10 +1,11 @@
-import { Plus, Zap, Users } from 'lucide-react';
+import { Plus, Zap, Users, Target } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const TABS = [
-    { id: 'tx',     label: 'Movimiento', Icon: Plus  },
-    { id: 'auto',   label: 'Auto',       Icon: Zap   },
-    { id: 'shared', label: 'Compartido', Icon: Users },
+    { id: 'tx',     label: 'Movimiento',   Icon: Plus   },
+    { id: 'auto',   label: 'Auto',         Icon: Zap    },
+    { id: 'shared', label: 'Compartido',   Icon: Users  },
+    { id: 'budget', label: 'Presupuestos', Icon: Target },
 ];
 
 const AddTabBar = ({ active, onChange }) => {

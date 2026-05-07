@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X, Trash2, Plus } from 'lucide-react';
+import AddTabBar from '../common/AddTabBar';
 
-const BudgetModal = ({ isOpen, onClose }) => {
+const BudgetModal = ({ isOpen, onClose, onSwitchTab }) => {
     const { theme, t, activeColor } = useAuth();
     const { categories, budgets, setBudgets, transactions } = useFinance();
     const [newLabel, setNewLabel] = useState('');
@@ -57,6 +58,12 @@ const BudgetModal = ({ isOpen, onClose }) => {
                     </div>
                     <button onClick={onClose} className={`p-2 rounded-xl ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><X size={20} /></button>
                 </div>
+
+                {onSwitchTab && (
+                    <div className="px-6 pt-4">
+                        <AddTabBar active="budget" onChange={onSwitchTab} />
+                    </div>
+                )}
 
                 {/* AÑADIR NUEVO */}
                 <div className={`px-6 pt-4 pb-2 border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
