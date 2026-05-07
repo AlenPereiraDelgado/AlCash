@@ -1,6 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS } from '../../constants/theme';
+import { resolveCategoryColor } from '../../utils/helpers';
 import { 
     TrendingUp, TrendingDown, Wallet, List, ChevronLeft, 
     ChevronRight, Calendar as CalendarIcon, Layers, Pencil, 
@@ -24,7 +25,7 @@ const JointView = ({
     getDynamicFontSize
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { deleteTransaction } = useFinance();
+    const { deleteTransaction, categoryColors } = useFinance();
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Resumen Conjunto */}
@@ -120,7 +121,7 @@ const JointView = ({
                                 return Object.entries(byCat)
                                     .sort(([, a], [, b]) => b - a)
                                     .map(([cat, val]) => {
-                                        const color = CATEGORY_COLORS[cat] || '#8E8E93';
+                                        const color = resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS);
                                         const isExpanded = expandedAnalysisCategory === cat;
                                         const catTransactions = filteredJointTransactions.filter(t => t.type === 'expense' && t.category === cat);
 

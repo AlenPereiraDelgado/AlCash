@@ -25,11 +25,20 @@ const SettingsView = () => {
     } = useFinance();
     const [colorPickerCat, setColorPickerCat] = useState(null);
 
+    // 3 filas × 6 colores muy distintos entre sí (rojos→amarillos→verdes→azules→morados→neutros)
     const COLOR_PALETTE = [
-        '#FF453A', '#FF9F0A', '#FFD60A', '#30D158', '#64D2FF', '#0A84FF',
-        '#5E5CE6', '#BF5AF2', '#FF375F', '#A2845E', '#8E8E93', '#FF6B6B',
-        '#4ECDC4', '#FFE66D', '#95E1D3', '#C9B1FF', '#F38181', '#3D5A80'
+        '#FF3B30', '#FF6B00', '#FFB300', '#FFEB3B', '#C0CA33', '#7CB342',
+        '#2ED573', '#00BFA5', '#00BCD4', '#1E88E5', '#3D5AFE', '#7C4DFF',
+        '#9C27B0', '#E91E63', '#FF2D87', '#795548', '#607D8B', '#9E9E9E',
     ];
+
+    const usedColorsByCat = {};
+    Object.entries(categories || {}).forEach(([tk, sec]) => {
+        Object.keys(sec || {}).forEach(c => {
+            const col = (resolveCategoryColor(c, categoryColors, CATEGORY_COLORS) || '').toLowerCase();
+            if (col) (usedColorsByCat[col] ||= []).push({ cat: c, type: tk });
+        });
+    });
 
     const [editingQuick, setEditingQuick] = useState(null);
     const [reportMode, setReportMode] = useState('month');
@@ -269,35 +278,43 @@ const SettingsView = () => {
                                     {colorPickerCat === c && (
                                         <div className={`mb-3 p-3 rounded-xl border animate-in slide-in-from-top-2 ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}>
                                             <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${t.textSec}`}>Color de categoría</p>
-                                            <div className="flex flex-wrap gap-1.5 mb-2">
-                                                {COLOR_PALETTE.map(col => (
-                                                    <button
-                                                        key={col}
-                                                        type="button"
-                                                        onClick={() => { setCategoryColors({ ...(categoryColors || {}), [c]: col }); setColorPickerCat(null); }}
-                                                        className={`w-7 h-7 rounded-md border transition-all hover:scale-110 ${catColor === col ? 'ring-2 ring-offset-1 ring-offset-transparent ring-white scale-110' : 'border-white/10'}`}
-                                                        style={{ background: col }}
-                                                    />
-                                                ))}
+                                            <div className="grid grid-cols-6 gap-2 mb-3">
+                                                {COLOR_PALETTE.map(col => {
+                                                    const used = (usedColorsByCat[col.toLowerCase()] || []).filter(u => u.cat !== c);
+                                                    const usedBy = used[0]?.cat;
+                                                    const isCurrent = catColor.toLowerCase() === col.toLowerCase();
+                                                    return (
+                                                        <button
+                                                            key={col}
+                                                            type="button"
+                                                            title={usedBy ? `En uso · ${usedBy}` : col}
+                                                            onClick={() => { setCategoryColors({ ...(categoryColors || {}), [c]: col }); setColorPickerCat(null); }}
+                                                            className={`relative aspect-square rounded-lg shadow-sm transition-all hover:scale-110 ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-transparent ring-white scale-105' : ''}`}
+                                                            style={{ background: col }}
+                                                        >
+                                                            {used.length > 0 && !isCurrent && (
+                                                                <span className="absolute inset-0 flex items-center justify-center text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+                                                                    <Check size={14} strokeWidth={3.5} />
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <input
                                                     type="color"
                                                     value={catColor}
                                                     onChange={e => setCategoryColors({ ...(categoryColors || {}), [c]: e.target.value })}
-                                                    className="w-8 h-8 rounded cursor-pointer bg-transparent"
+                                                    className="w-9 h-9 rounded cursor-pointer bg-transparent"
+                                                    title="Color personalizado"
                                                 />
-                                                <input
-                                                    type="text"
-                                                    value={catColor}
-                                                    onChange={e => { const v = e.target.value; if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setCategoryColors({ ...(categoryColors || {}), [c]: v }); }}
-                                                    className={`flex-1 p-1.5 text-xs font-bold rounded ${t.input}`}
-                                                />
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Personalizado</span>
                                                 {categoryColors?.[c] && (
                                                     <button
                                                         type="button"
                                                         onClick={() => { const next = { ...(categoryColors || {}) }; delete next[c]; setCategoryColors(next); setColorPickerCat(null); }}
-                                                        className="text-[10px] font-black uppercase tracking-widest text-red-500"
+                                                        className="ml-auto text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400"
                                                     >
                                                         Reset
                                                     </button>

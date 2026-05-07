@@ -141,3 +141,35 @@ select option {
 select:focus {
   outline: none;
 }
+
+/* Swipe in/out card animations */
+@keyframes pieSlideIn {
+  from {
+    transform: translateX(var(--enter-x, 0)) rotate(var(--enter-rot, 0)) scale(.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) rotate(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes barShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes barFlow {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes auraGlow {
+  0%, 100% { box-shadow: 0 0 22px rgba(59, 130, 246, 0.18), 0 0 0 1px rgba(59, 130, 246, 0.20); }
+  50%      { box-shadow: 0 0 38px rgba(59, 130, 246, 0.45), 0 0 0 1px rgba(59, 130, 246, 0.35); }
+}

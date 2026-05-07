@@ -2,6 +2,7 @@ import React, { useState, createElement } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
+import { resolveCategoryColor } from '../../utils/helpers';
 import EmptyState from '../common/EmptyState';
 import {
     ChevronLeft, ChevronRight, Search, Filter,
@@ -34,7 +35,8 @@ const TransactionListView = ({
     setConfirmModal
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { categories, transactions, globalTags, updateTransaction, deleteTransaction } = useFinance();
+    const { categories, transactions, globalTags, updateTransaction, deleteTransaction, categoryColors } = useFinance();
+    const getCatColor = (cat) => resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS);
     const [selectedIds, setSelectedIds] = useState([]);
 
     const toggleSelect = (id) => {
@@ -240,7 +242,7 @@ const TransactionListView = ({
                                         </td>
                                         <td className="p-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-white/[0.03] border border-white/[0.05]" style={{ color: CATEGORY_COLORS[tx.category] || '#8E8E93' }}>
+                                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-white/[0.03] border border-white/[0.05]" style={{ color: getCatColor(tx.category) }}>
                                                     {createElement(CATEGORY_ICONS[tx.category] || Box, { size: 20, strokeWidth: 2.5 })}
                                                 </div>
                                                 <div>
@@ -297,7 +299,7 @@ const TransactionListView = ({
                                         <Bell size={16} className={tx.tags?.includes('__reminder__') ? 'text-cyan-400 fill-cyan-400/30' : 'opacity-20'} />
                                     </button>
                                 </div>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-white/5`} style={{ color: CATEGORY_COLORS[tx.category] || '#8E8E93' }}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-white/5`} style={{ color: getCatColor(tx.category) }}>
                                     {React.createElement(CATEGORY_ICONS[tx.category] || Box, { size: 24 })}
                                 </div>
                                 <div className="flex-1 min-w-0">

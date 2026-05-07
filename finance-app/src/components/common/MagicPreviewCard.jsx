@@ -1,15 +1,17 @@
 import React from 'react';
 import { Check, X, Pencil, Calendar, Tag, Wallet, Box } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
-import { parseLocalDate } from '../../utils/helpers';
+import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
 
 const MagicPreviewCard = ({ transaction, onAccept, onCancel, onEdit }) => {
     const { theme, t, activeColor } = useAuth();
+    const { categoryColors } = useFinance();
     if (!transaction) return null;
 
     const Icon = CATEGORY_ICONS[transaction.category] || Box;
-    const color = CATEGORY_COLORS[transaction.category] || '#8E8E93';
+    const color = resolveCategoryColor(transaction.category, categoryColors, CATEGORY_COLORS);
 
     return (
         <div className="fixed inset-x-4 bottom-24 md:bottom-10 md:left-auto md:right-10 md:w-96 z-[100] animate-in slide-in-from-bottom-10 duration-500 ease-out">

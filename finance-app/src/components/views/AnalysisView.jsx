@@ -9,7 +9,7 @@ import {
 import {
     GaugeChart, DailyEvolutionChart, CategoryDonutChart, RadarChart
 } from '../charts/FinanceCharts';
-import { parseLocalDate } from '../../utils/helpers';
+import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
 
 const AnalysisView = ({
     analysisType,
@@ -19,7 +19,7 @@ const AnalysisView = ({
     personalTransactions
 }) => {
     const { theme, t, activeColor } = useAuth();
-    const { transactions, categories } = useFinance();
+    const { transactions, categories, categoryColors } = useFinance();
 
     // 1. FILTRADO DE TRANSACCIONES PARA EL PERIODO
     const periodTransactions = React.useMemo(() => {
@@ -60,9 +60,9 @@ const AnalysisView = ({
             value: periodTransactions
                 .filter(tx => tx.type === 'expense' && tx.category === cat)
                 .reduce((a, b) => a + b.amountVal, 0),
-            color: CATEGORY_COLORS[cat] || '#8e8e93'
+            color: resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS)
         })).filter(d => d.value > 0);
-    }, [periodTransactions, categories]);
+    }, [periodTransactions, categories, categoryColors]);
 
     // 4. DATOS DE RADAR
     const radarData = React.useMemo(() => {

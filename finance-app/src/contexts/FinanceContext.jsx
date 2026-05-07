@@ -110,13 +110,14 @@ export const FinanceProvider = ({ children }) => {
     };
 
     // Savings widget helpers
-    const addSavingsWidget = ({ name, target, linkedRuleId = null }) => {
+    const addSavingsWidget = ({ name, target, linkedRuleId = null, targetDate = null }) => {
         const item = {
             id: crypto.randomUUID(),
             name: name?.trim() || 'Objetivo',
             target: Number(target) || 0,
             current: 0,
             linked_rule_id: linkedRuleId,
+            target_date: targetDate || null,
             completed_at: null,
             created_at: new Date().toISOString(),
         };
