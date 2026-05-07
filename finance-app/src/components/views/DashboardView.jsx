@@ -312,7 +312,7 @@ const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
     });
 };
 
-const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 8 }) => {
+const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 8, showCenter = true }) => {
     const cx = size / 2;
     const cy = size / 2;
     const labelR = radius * 0.78;
@@ -399,9 +399,13 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                     </g>
                 );
             })}
-            <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
-            <text x={cx} y={cy - 2} textAnchor="middle" className="font-black" fill="currentColor" fontSize={size > 140 ? 13 : 11} pointerEvents="none">{total.toFixed(0)}€</text>
-            <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize={size > 140 ? 8 : 7} opacity="0.5" className="font-bold uppercase tracking-wider" pointerEvents="none">{label}</text>
+            {showCenter && (
+                <>
+                    <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
+                    <text x={cx} y={cy - 2} textAnchor="middle" className="font-black" fill="currentColor" fontSize={size > 140 ? 13 : 11} pointerEvents="none">{total.toFixed(0)}€</text>
+                    <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize={size > 140 ? 8 : 7} opacity="0.5" className="font-bold uppercase tracking-wider" pointerEvents="none">{label}</text>
+                </>
+            )}
         </svg>
     );
 };
@@ -623,7 +627,7 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
                                                 radius={56}
                                                 theme={theme}
                                                 showIcons={false}
-                                                label="Subcat"
+                                                showCenter={false}
                                                 topLabels={3}
                                                 minLabelPercent={6}
                                             />
