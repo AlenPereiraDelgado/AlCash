@@ -11,7 +11,31 @@
       "Bash(curl -sI https://alenpereiradelgado.github.io/AlCash/)",
       "Bash(curl -s https://alenpereiradelgado.github.io/AlCash/)",
       "Bash(env)",
-      "Read(//Users/alen/**)"
+      "Read(//Users/alen/**)",
+      "Bash(npx vite *)",
+      "Bash(node -e ' *)",
+      "Bash(find . -name \"*.sql\" -not -path \"*/node_modules/*\")",
+      "Bash(ls finance-app/supabase)",
+      "Bash(sed -n '/create table.*goals/,/^\\);/p' finance-app/supabase/migrations/20260412000000_initial_schema.sql)",
+      "Bash(sed -n '/create table.*debts/,/^\\);/p' finance-app/supabase/migrations/20260412000000_initial_schema.sql)",
+      "Bash(node /tmp/test-insert.mjs)",
+      "Bash(node /tmp/cleanup.mjs)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS add finance-app/src/contexts/FinanceContext.jsx)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS commit -m ' *)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS push origin main)",
+      "Bash(node /tmp/audit.mjs)",
+      "Bash(git restore *)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS add finance-app/src)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS status --short)",
+      "Bash(npx eslint *)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS add finance-app/src/components/views/DashboardView.jsx)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS add finance-app/src/App.jsx finance-app/src/components/common/AddTabBar.jsx finance-app/src/components/modals/BudgetModal.jsx finance-app/src/components/views/DashboardView.jsx)",
+      "Bash(awk 'NR>=420 && NR<=471 {printf \"%d|%s\\\\n\", NR, $0}' /Users/alen/Desktop/FINANZAS/finance-app/src/components/views/DashboardView.jsx)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS status -s)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS log --oneline -8)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS diff --stat finance-app/src/components/views/DashboardView.jsx)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS log --oneline)",
+      "Bash(git -C /Users/alen/Desktop/FINANZAS add -A)"
     ]
   }
 }

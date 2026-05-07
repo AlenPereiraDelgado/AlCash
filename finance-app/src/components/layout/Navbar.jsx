@@ -5,7 +5,7 @@ import {
     Eye, EyeOff, BarChart2, Repeat, ShieldCheck, X, Plus, MoreHorizontal
 } from 'lucide-react';
 
-const Navbar = ({ view, setView, isScrolled, onAdd }) => {
+const Navbar = ({ view, setView, isScrolled, onAdd, onBudget }) => {
     const { activeColor, theme, t, privacyMode, setPrivacyMode } = useAuth();
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -46,10 +46,17 @@ const Navbar = ({ view, setView, isScrolled, onAdd }) => {
                 <>
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsMenuOpen(false)}></div>
                     <div className={`fixed bottom-24 left-4 right-4 z-50 p-6 rounded-[32px] border shadow-2xl animate-in slide-in-from-bottom-5 ${t.card} ${theme === 'dark' ? 'bg-black/90' : 'bg-white'}`}>
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-black">Más Opciones</h3>
                             <button onClick={() => setIsMenuOpen(false)} className={`p-2 rounded-xl ${t.hover}`}><X size={20} /></button>
                         </div>
+                        <button
+                            onClick={() => { setPrivacyMode(!privacyMode); setIsMenuOpen(false); }}
+                            className={`w-full mb-4 flex items-center justify-center gap-3 p-3 rounded-2xl transition-all border ${privacyMode ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'border-white/5 ' + t.hover}`}
+                        >
+                            {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
+                            <span className="font-black text-xs uppercase tracking-widest">Privacidad {privacyMode ? 'ON' : 'OFF'}</span>
+                        </button>
                         <div className="grid grid-cols-2 gap-4">
                             {secondaryNav.map(nav => (
                                 <button
@@ -62,11 +69,11 @@ const Navbar = ({ view, setView, isScrolled, onAdd }) => {
                                 </button>
                             ))}
                             <button
-                                onClick={() => { setPrivacyMode(!privacyMode); setIsMenuOpen(false); }}
-                                className={`flex items-center gap-4 p-4 rounded-2xl transition-all border ${privacyMode ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'border-white/5 ' + t.hover}`}
+                                onClick={() => { onBudget?.(); setIsMenuOpen(false); }}
+                                className={`flex items-center gap-4 p-4 rounded-2xl transition-all border border-white/5 ${t.hover}`}
                             >
-                                {privacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
-                                <span className="font-bold text-sm">Privacidad</span>
+                                <Target size={20} />
+                                <span className="font-bold text-sm">Presupuestos</span>
                             </button>
                         </div>
                     </div>

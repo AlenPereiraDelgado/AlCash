@@ -305,6 +305,11 @@ const tintColor = (base, idx, n) => {
 const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
     let cumulative = 0;
     const n = data.length;
+    const innerR = radius * 0.55;
+    const r3 = radius * radius * radius;
+    const ir3 = innerR * innerR * innerR;
+    const r2 = radius * radius;
+    const ir2 = innerR * innerR;
     return data.map((d, i) => {
         const start = cumulative / (total || 1);
         cumulative += d.val;
@@ -321,11 +326,15 @@ const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
         const path = data.length === 1
             ? `M ${cx - radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx + radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx - radius} ${cy} Z`
             : `M ${cx} ${cy} L ${x0} ${y0} A ${radius} ${radius} 0 ${large} 1 ${x1} ${y1} Z`;
+        const halfAng = (end - start) * Math.PI;
+        const sincVal = halfAng < 1e-6 ? 1 : Math.sin(halfAng) / halfAng;
+        const centroidR = (2 / 3) * (r3 - ir3) / (r2 - ir2) * sincVal;
         return {
             ...d,
             path,
             mx: Math.cos(aMid),
             my: Math.sin(aMid),
+            centroidR,
             color: colorOverride ? colorOverride(d, i, n) : (CATEGORY_COLORS[d.cat] || '#8E8E93'),
             percent: total > 0 ? (d.val / total) * 100 : 0
         };
@@ -335,7 +344,6 @@ const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
 const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 8, showCenter = true }) => {
     const cx = size / 2;
     const cy = size / 2;
-    const labelR = radius * 0.78;
     const iconPx = size > 140 ? 9 : 0;
     const fontPx = size > 140 ? 9 : 8;
     return (
@@ -368,8 +376,8 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                 const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
                 const offX = isActive ? s.mx * 8 : 0;
                 const offY = isActive ? s.my * 8 : 0;
-                const lx = cx + labelR * s.mx;
-                const ly = cy + labelR * s.my;
+                const lx = cx + s.centroidR * s.mx;
+                const ly = cy + s.centroidR * s.my;
                 const Ic = showIcons && iconPx > 0 ? (CATEGORY_ICONS[s.cat] || Box) : null;
                 const stackH = Ic ? iconPx + 1 + fontPx : fontPx;
                 const iconY = Ic ? -stackH / 2 : 0;

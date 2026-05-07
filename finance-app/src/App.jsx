@@ -1007,6 +1007,7 @@ export default function App() {
                     setTravelMode={setTravelMode}
                     travelConfig={travelConfig}
                     setTravelConfig={setTravelConfig}
+                    onBudget={() => setIsBudgetModalOpen(true)}
                 />
             </div>
 
@@ -1019,6 +1020,7 @@ export default function App() {
                 t={t}
                 isScrolled={isScrolled}
                 onAdd={openNewModal}
+                onBudget={() => setIsBudgetModalOpen(true)}
             />
 
             <main className="md:ml-20 lg:ml-72 transition-all duration-500 min-h-screen">
