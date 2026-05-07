@@ -316,10 +316,10 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
     const cx = size / 2;
     const cy = size / 2;
     const labelR = (radius + radius * 0.55) / 2;
-    const iconPx = size > 140 ? 13 : 10;
-    const fontPx = size > 140 ? 10 : 8;
-    const boxW = size > 140 ? 32 : 26;
-    const boxH = size > 140 ? 30 : 24;
+    const iconPx = size > 140 ? 10 : 8;
+    const fontPx = size > 140 ? 8 : 7;
+    const boxW = size > 140 ? 26 : 22;
+    const boxH = size > 140 ? 24 : 20;
     return (
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block mx-auto">
             <g>
@@ -350,40 +350,45 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                 const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
                 const offX = isActive ? s.mx * 8 : 0;
                 const offY = isActive ? s.my * 8 : 0;
-                const lx = cx + labelR * s.mx + offX;
-                const ly = cy + labelR * s.my + offY;
+                const lx = cx + labelR * s.mx;
+                const ly = cy + labelR * s.my;
                 const Ic = showIcons ? (CATEGORY_ICONS[s.cat] || Box) : null;
                 return (
-                    <foreignObject
+                    <g
                         key={`lbl-${s.cat}`}
-                        x={lx - boxW / 2}
-                        y={ly - boxH / 2}
-                        width={boxW}
-                        height={boxH}
+                        transform={`translate(${lx + offX} ${ly + offY})`}
                         opacity={dim}
                         pointerEvents="none"
-                        style={{ transition: 'opacity .25s ease, x .35s, y .35s', overflow: 'visible' }}
+                        style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease' }}
                     >
-                        <div
-                            xmlns="http://www.w3.org/1999/xhtml"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                lineHeight: 1,
-                                color: '#fff',
-                                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.55))'
-                            }}
+                        <foreignObject
+                            x={-boxW / 2}
+                            y={-boxH / 2}
+                            width={boxW}
+                            height={boxH}
+                            style={{ overflow: 'visible' }}
                         >
-                            {Ic && <Ic size={iconPx} strokeWidth={2.6} />}
-                            <span style={{ fontSize: fontPx, fontWeight: 900, marginTop: Ic ? 1 : 0 }}>
-                                {s.percent.toFixed(0)}%
-                            </span>
-                        </div>
-                    </foreignObject>
+                            <div
+                                xmlns="http://www.w3.org/1999/xhtml"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    lineHeight: 1,
+                                    color: '#fff',
+                                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.55))'
+                                }}
+                            >
+                                {Ic && <Ic size={iconPx} strokeWidth={2.6} />}
+                                <span style={{ fontSize: fontPx, fontWeight: 900, marginTop: Ic ? 1 : 0 }}>
+                                    {s.percent.toFixed(0)}%
+                                </span>
+                            </div>
+                        </foreignObject>
+                    </g>
                 );
             })}
             <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
