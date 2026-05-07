@@ -246,32 +246,34 @@ const DashboardView = ({
                 />
 
                 {/* SALUD FINANCIERA */}
-                <div className={`p-8 rounded-[32px] border ${t.card} flex flex-col justify-between`}>
-                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2"> Salud Financiera</h3>
-                    <div className="grid grid-cols-2 gap-6 flex-1 items-center">
-                        <div className="text-center space-y-4">
+                <div className={`p-5 md:p-6 rounded-[32px] border ${t.card}`}>
+                    <h3 className="text-sm font-black tracking-tight mb-4 uppercase">Salud Financiera</h3>
+                    <div className="grid grid-cols-3 gap-3 md:gap-4">
+                        {/* TASA AHORRO */}
+                        <div className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
                             <div className="relative inline-flex items-center justify-center">
-                                <svg className="w-32 h-32 transform -rotate-90">
-                                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-500/10" />
-                                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={364} strokeDashoffset={364 - (364 * Math.max(0, Math.min(100, savingsRate))) / 100} className={`transition-all duration-1000 ${savingsRate > 20 ? 'text-green-500' : 'text-yellow-500'}`} />
+                                <svg className="w-14 h-14 transform -rotate-90">
+                                    <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="5" fill="transparent" className="text-gray-500/10" />
+                                    <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="5" fill="transparent" strokeDasharray={150.8} strokeDashoffset={150.8 - (150.8 * Math.max(0, Math.min(100, savingsRate))) / 100} className={`transition-all duration-1000 ${savingsRate > 20 ? 'text-green-500' : 'text-yellow-500'}`} strokeLinecap="round" />
                                 </svg>
-                                <span className="absolute text-xl font-black">{(savingsRate || 0).toFixed(0)}%</span>
+                                <span className="absolute text-xs font-black tabular-nums">{(savingsRate || 0).toFixed(0)}%</span>
                             </div>
-                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Tasa de Ahorro</p>
+                            <p className={`text-[9px] font-black uppercase tracking-wider opacity-60`}>Tasa Ahorro</p>
                         </div>
-                        <div className="space-y-6">
-                            <div className="p-4 rounded-[24px] bg-blue-600/10 border border-blue-600/20">
-                                <p className={`text-[10px] font-black uppercase tracking-widest text-blue-500`}>Colchón de Seguridad</p>
-                                <div className={`flex items-end gap-2 mt-1 ${privacyMode ? 'privacy-blur' : ''}`}>
-                                    <span className="text-3xl font-black">{emergencyFundMonths.toFixed(1)}</span>
-                                    <span className="text-sm font-bold opacity-60 mb-1">meses</span>
-                                </div>
-                                <p className={`text-[10px] font-medium mt-2 leading-tight ${t.textSec}`}>Tiempo que podrías vivir con tus ahorros manteniendo tu nivel de vida.</p>
+                        {/* COLCHÓN */}
+                        <div className="p-3 rounded-2xl bg-blue-600/10 border border-blue-600/20 flex flex-col items-center text-center gap-1">
+                            <p className={`text-[9px] font-black uppercase tracking-wider text-blue-500 leading-tight`}>Colchón</p>
+                            <div className={`flex items-baseline gap-1 ${privacyMode ? 'privacy-blur' : ''}`}>
+                                <span className="text-xl md:text-2xl font-black tabular-nums">{emergencyFundMonths.toFixed(1)}</span>
+                                <span className="text-[10px] font-bold opacity-60">meses</span>
                             </div>
-                            <div className={`p-4 rounded-[24px] border border-white/5 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Eficiencia Gasto</p>
-                                <p className={`text-lg font-bold mt-1 ${privacyMode ? 'privacy-blur' : ''}`}>{(100 - (savingsRate || 0)).toFixed(0)}% <span className="text-[10px] opacity-40">de ingresos consumidos</span></p>
-                            </div>
+                            <p className={`text-[9px] font-medium leading-tight opacity-50`}>vida cubierta</p>
+                        </div>
+                        {/* EFICIENCIA */}
+                        <div className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+                            <p className={`text-[9px] font-black uppercase tracking-wider opacity-60 leading-tight`}>Eficiencia</p>
+                            <p className={`text-xl md:text-2xl font-black tabular-nums ${privacyMode ? 'privacy-blur' : ''}`}>{(100 - (savingsRate || 0)).toFixed(0)}%</p>
+                            <p className={`text-[9px] font-medium leading-tight opacity-50`}>ingresos gastados</p>
                         </div>
                     </div>
                 </div>
