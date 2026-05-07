@@ -1087,10 +1087,10 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
     const unitLabel = (u) => u === 'month' ? 'mes' : u === 'year' ? 'año' : u === 'week' ? 'sem' : 'día';
 
     const cards = [
-        { key: 'monthly', label: 'Mensual',        val: data.monthlySum,        sub: `${data.monthlyCount} reglas`,    color: 'rgba(99,102,241,.5)',  cls: theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50',           textCls: '' },
-        { key: 'annual',  label: 'Extras anuales', val: data.annualExtraSum,    sub: `${data.annualExtraCount} reglas`, color: 'rgba(255,159,10,.5)', cls: theme === 'dark' ? 'border-orange-500/20 bg-orange-500/5' : 'border-orange-300/30 bg-orange-50', textCls: 'text-orange-500' },
-        { key: 'total',   label: `Total ${data.year}`, val: data.yearSum,       sub: `año completo`,                    color: 'rgba(10,132,255,.5)', cls: theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50',     textCls: 'text-blue-500' },
-        { key: 'avg',     label: 'Promedio/Mes',   val: data.grandAnnual / 12,  sub: 'prorrateo',                       color: 'rgba(59,130,246,.4)', cls: 'border-blue-400/30',                                                                       textCls: 'text-blue-400', aura: true },
+        { key: 'monthly', label: 'Mensual',  val: data.monthlySum,        sub: `${data.monthlyCount} reglas`,     color: 'rgba(99,102,241,.5)',  cls: theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50',           textCls: '' },
+        { key: 'annual',  label: 'Extras',   val: data.annualExtraSum,    sub: `${data.annualExtraCount} reglas`, color: 'rgba(255,159,10,.5)',  cls: theme === 'dark' ? 'border-orange-500/20 bg-orange-500/5' : 'border-orange-300/30 bg-orange-50', textCls: 'text-orange-500' },
+        { key: 'total',   label: `${data.year}`, val: data.yearSum,       sub: `año completo`,                    color: 'rgba(10,132,255,.5)',  cls: theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50',     textCls: 'text-blue-500' },
+        { key: 'avg',     label: 'Promedio', val: data.grandAnnual / 12,  sub: 'prorrateo',                       color: 'rgba(59,130,246,.4)',  cls: 'border-blue-400/30',                                                                       textCls: 'text-blue-400', aura: true },
     ];
 
     const renderList = () => {
