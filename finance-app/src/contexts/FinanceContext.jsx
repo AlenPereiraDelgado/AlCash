@@ -577,6 +577,9 @@ export const FinanceProvider = ({ children }) => {
                 recurring_rules: [],
                 budgets: {},
                 quick_buttons: DEFAULT_QUICK_BUTTONS,
+                category_colors: {},
+                savings_widgets: [],
+                dashboard_widgets: { savings: false, fixedInfo: true, nextExpense: true },
             }).eq('id', user.id),
         ]);
         try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
@@ -589,6 +592,9 @@ export const FinanceProvider = ({ children }) => {
         _setBudgets({});
         _setRecurringRules([]);
         _setQuickButtons(DEFAULT_QUICK_BUTTONS);
+        _setCategoryColors({});
+        _setSavingsWidgets([]);
+        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true });
     };
 
     const updateGlobalTags = async (newTags) => {
