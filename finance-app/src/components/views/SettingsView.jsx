@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
-import { ACCENT_COLORS } from '../../constants/theme';
-import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download, Pencil } from 'lucide-react';
+import { ACCENT_COLORS, CATEGORY_COLORS } from '../../constants/theme';
+import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download, Pencil, Target, LayoutGrid } from 'lucide-react';
 import { exportMonthlyPDF, generateYearlyPDF } from '../../services/pdfService';
 import AppSelect from '../common/AppSelect';
 import PromptModal from '../common/PromptModal';
-import { parseLocalDate } from '../../utils/helpers';
+import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
 
 const SettingsView = () => {
     const {
@@ -19,8 +19,17 @@ const SettingsView = () => {
         deleteCustomCategory, moveCategory, addSubCategory,
         renameCategory, renameSubCategory,
         updateCategories, quickButtons, updateQuickButtons,
-        transactions, jointTransactions, resetAllData
+        transactions, jointTransactions, resetAllData,
+        categoryColors, setCategoryColors,
+        dashboardWidgets, setDashboardWidgets,
     } = useFinance();
+    const [colorPickerCat, setColorPickerCat] = useState(null);
+
+    const COLOR_PALETTE = [
+        '#FF453A', '#FF9F0A', '#FFD60A', '#30D158', '#64D2FF', '#0A84FF',
+        '#5E5CE6', '#BF5AF2', '#FF375F', '#A2845E', '#8E8E93', '#FF6B6B',
+        '#4ECDC4', '#FFE66D', '#95E1D3', '#C9B1FF', '#F38181', '#3D5A80'
+    ];
 
     const [editingQuick, setEditingQuick] = useState(null);
     const [reportMode, setReportMode] = useState('month');
@@ -182,6 +191,36 @@ const SettingsView = () => {
                 })()}
             </div>
 
+            {/* WIDGETS DEL PANEL */}
+            <div className={`p-8 rounded-[32px] border ${t.card}`}>
+                <h3 className="text-xl font-bold mb-2 flex items-center gap-2"><LayoutGrid className={activeColor.text} /> Widgets del Panel</h3>
+                <p className={`text-xs mb-6 ${t.textSec}`}>Activa o desactiva las tarjetas que aparecen en el panel.</p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                    {[
+                        { key: 'savings',     label: 'Objetivos de ahorro', desc: 'Barras de progreso para metas de ahorro.', Icon: Target },
+                        { key: 'fixedInfo',   label: 'Resumen gastos fijos', desc: 'Mensual + extras anuales prorrateados.', Icon: Zap },
+                        { key: 'nextExpense', label: 'Próximos gastos',     desc: 'Predicción de los siguientes gastos recurrentes.', Icon: Sparkles },
+                    ].map(({ key, label, desc, Icon }) => {
+                        const on = !!dashboardWidgets?.[key];
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => setDashboardWidgets({ ...(dashboardWidgets || {}), [key]: !on })}
+                                className={`p-4 rounded-2xl border text-left transition-all ${on ? `${activeColor.border} bg-white/5` : 'border-white/5 ' + (theme === 'dark' ? 'bg-black/20' : 'bg-gray-100')}`}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <Icon size={18} className={on ? activeColor.text : t.textSec} />
+                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${on ? activeColor.bg + ' text-white' : 'bg-white/10 ' + t.textSec}`}>{on ? 'ON' : 'OFF'}</span>
+                                </div>
+                                <p className="font-bold text-sm">{label}</p>
+                                <p className={`text-[11px] mt-1 ${t.textSec}`}>{desc}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
             {/* GESTIÓN CATEGORÍAS */}
             <div className={`p-8 rounded-[32px] border ${t.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Settings className={activeColor.text} /> Categorías</h3>
@@ -197,10 +236,19 @@ const SettingsView = () => {
                                     + Añadir
                                 </button>
                             </div>
-                            {Object.entries(categories[tk]).map(([c, s]) => (
+                            {Object.entries(categories[tk]).map(([c, s]) => {
+                                const catColor = resolveCategoryColor(c, categoryColors, CATEGORY_COLORS);
+                                return (
                                 <div key={c} className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-gray-100 border-gray-200'} group`}>
                                     <div className="flex justify-between font-bold mb-2">
                                         <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setColorPickerCat(prev => prev === c ? null : c)}
+                                                title="Cambiar color"
+                                                className="w-5 h-5 rounded-md border border-white/10 shadow-sm hover:scale-110 transition-transform"
+                                                style={{ background: catColor }}
+                                            />
                                             <span>{c}</span>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setRenameCatPrompt({ type: tk, oldName: c })} title="Renombrar" className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded text-blue-500"><Pencil size={12} /></button>
@@ -218,6 +266,45 @@ const SettingsView = () => {
                                             <button onClick={() => { if (confirm(`¿Borrar ${c}?`)) deleteCustomCategory(tk, c); }} className="text-red-500"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
+                                    {colorPickerCat === c && (
+                                        <div className={`mb-3 p-3 rounded-xl border animate-in slide-in-from-top-2 ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${t.textSec}`}>Color de categoría</p>
+                                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                                {COLOR_PALETTE.map(col => (
+                                                    <button
+                                                        key={col}
+                                                        type="button"
+                                                        onClick={() => { setCategoryColors({ ...(categoryColors || {}), [c]: col }); setColorPickerCat(null); }}
+                                                        className={`w-7 h-7 rounded-md border transition-all hover:scale-110 ${catColor === col ? 'ring-2 ring-offset-1 ring-offset-transparent ring-white scale-110' : 'border-white/10'}`}
+                                                        style={{ background: col }}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={catColor}
+                                                    onChange={e => setCategoryColors({ ...(categoryColors || {}), [c]: e.target.value })}
+                                                    className="w-8 h-8 rounded cursor-pointer bg-transparent"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={catColor}
+                                                    onChange={e => { const v = e.target.value; if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setCategoryColors({ ...(categoryColors || {}), [c]: v }); }}
+                                                    className={`flex-1 p-1.5 text-xs font-bold rounded ${t.input}`}
+                                                />
+                                                {categoryColors?.[c] && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { const next = { ...(categoryColors || {}) }; delete next[c]; setCategoryColors(next); setColorPickerCat(null); }}
+                                                        className="text-[10px] font-black uppercase tracking-widest text-red-500"
+                                                    >
+                                                        Reset
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="flex flex-wrap gap-2">
                                         {s.map(sub => (
                                             <span key={sub} className="text-[10px] px-2 py-1 rounded bg-white/10 flex items-center gap-1 group/sub">
@@ -242,7 +329,8 @@ const SettingsView = () => {
                                         ))}
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ))}
                 </div>

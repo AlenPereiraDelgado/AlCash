@@ -60,6 +60,9 @@ export const FinanceProvider = ({ children }) => {
     const [budgets, _setBudgets] = useState({});
     const [recurringRules, _setRecurringRules] = useState([]);
     const [quickButtons, _setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
+    const [categoryColors, _setCategoryColors] = useState({});
+    const [savingsWidgets, _setSavingsWidgets] = useState([]);
+    const [dashboardWidgets, _setDashboardWidgets] = useState({ savings: false, fixedInfo: true, nextExpense: true });
 
     const setBudgets = (val) => {
         _setBudgets(prev => {
@@ -80,6 +83,64 @@ export const FinanceProvider = ({ children }) => {
     const updateQuickButtons = (newQB) => {
         _setQuickButtons(newQB);
         persistProfileField(user?.id, 'quick_buttons', newQB);
+    };
+
+    const setCategoryColors = (val) => {
+        _setCategoryColors(prev => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            persistProfileField(user?.id, 'category_colors', next);
+            return next;
+        });
+    };
+
+    const setSavingsWidgets = (val) => {
+        _setSavingsWidgets(prev => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            persistProfileField(user?.id, 'savings_widgets', next);
+            return next;
+        });
+    };
+
+    const setDashboardWidgets = (val) => {
+        _setDashboardWidgets(prev => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            persistProfileField(user?.id, 'dashboard_widgets', next);
+            return next;
+        });
+    };
+
+    // Savings widget helpers
+    const addSavingsWidget = ({ name, target, linkedRuleId = null }) => {
+        const item = {
+            id: crypto.randomUUID(),
+            name: name?.trim() || 'Objetivo',
+            target: Number(target) || 0,
+            current: 0,
+            linked_rule_id: linkedRuleId,
+            completed_at: null,
+            created_at: new Date().toISOString(),
+        };
+        setSavingsWidgets(prev => [...prev, item]);
+    };
+    const updateSavingsWidget = (id, updates) => {
+        setSavingsWidgets(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
+    };
+    const deleteSavingsWidget = (id) => {
+        setSavingsWidgets(prev => prev.filter(w => w.id !== id));
+    };
+    const adjustSavingsWidget = (id, delta) => {
+        setSavingsWidgets(prev => prev.map(w => {
+            if (w.id !== id) return w;
+            const next = Math.max(0, Number(w.current || 0) + Number(delta));
+            const completed = !w.completed_at && next >= Number(w.target || 0) && Number(w.target || 0) > 0;
+            return { ...w, current: next, completed_at: completed ? new Date().toISOString() : w.completed_at };
+        }));
+    };
+    const completeSavingsWidget = (id) => {
+        setSavingsWidgets(prev => prev.map(w => w.id === id ? { ...w, completed_at: w.completed_at || new Date().toISOString() } : w));
+    };
+    const reopenSavingsWidget = (id) => {
+        setSavingsWidgets(prev => prev.map(w => w.id === id ? { ...w, completed_at: null } : w));
     };
 
     const calcNextRun = (fromDate, every, unit) => {
@@ -200,7 +261,7 @@ export const FinanceProvider = ({ children }) => {
                 supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
                 supabase.from('goals').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
                 supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('profiles').select('categories, global_tags, recurring_rules, budgets, quick_buttons').eq('id', user.id).maybeSingle()
+                supabase.from('profiles').select('categories, global_tags, recurring_rules, budgets, quick_buttons, category_colors, savings_widgets, dashboard_widgets').eq('id', user.id).maybeSingle()
             ]);
 
             if (transRes.data) {
@@ -228,6 +289,13 @@ export const FinanceProvider = ({ children }) => {
             _setRecurringRules(finalRules);
             _setBudgets(finalBudgets);
             _setQuickButtons(finalQB);
+
+            const remoteColors = profile.category_colors && typeof profile.category_colors === 'object' ? profile.category_colors : {};
+            const remoteSavings = Array.isArray(profile.savings_widgets) ? profile.savings_widgets : [];
+            const remoteWidgets = profile.dashboard_widgets && typeof profile.dashboard_widgets === 'object' ? profile.dashboard_widgets : null;
+            _setCategoryColors(remoteColors);
+            _setSavingsWidgets(remoteSavings);
+            if (remoteWidgets) _setDashboardWidgets(prev => ({ ...prev, ...remoteWidgets }));
 
             // Si Supabase estaba vacío y migramos desde localStorage → persistir y limpiar LS
             const migrations = [];
@@ -272,6 +340,9 @@ export const FinanceProvider = ({ children }) => {
         _setBudgets({});
         _setRecurringRules([]);
         _setQuickButtons(DEFAULT_QUICK_BUTTONS);
+        _setCategoryColors({});
+        _setSavingsWidgets([]);
+        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true });
         setIsDataLoaded(false);
     };
 
@@ -547,6 +618,9 @@ export const FinanceProvider = ({ children }) => {
             automationItems, setAutomationItems,
             travelMode, setTravelMode,
             travelConfig, setTravelConfig,
+            categoryColors, setCategoryColors,
+            savingsWidgets, addSavingsWidget, updateSavingsWidget, deleteSavingsWidget, adjustSavingsWidget, completeSavingsWidget, reopenSavingsWidget,
+            dashboardWidgets, setDashboardWidgets,
             resetAllData
         }}>
             {children}

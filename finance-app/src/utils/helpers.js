@@ -55,8 +55,14 @@ export const getBucketIndex = (hex) => {
 };
 
 /**
- * Adapta el tamaño del texto según la longitud del número.
+ * Resuelve el color de una categoría: override de usuario > default tema > fallback gris.
  */
+export const resolveCategoryColor = (category, overrides, defaults) => {
+    if (overrides && overrides[category]) return overrides[category];
+    if (defaults && defaults[category]) return defaults[category];
+    return '#8E8E93';
+};
+
 export const getDynamicFontSize = (value) => {
     const str = Math.abs(Math.round(value || 0)).toString();
     if (str.length > 9) return 'text-xl';

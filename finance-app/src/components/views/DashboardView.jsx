@@ -1,4 +1,4 @@
-import React, { createElement, useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,10 +6,11 @@ import { useFinance } from '../../contexts/FinanceContext';
 import {
     Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
     TrendingUp, TrendingDown, Wallet, ShieldCheck,
-    Box, Globe, PieChart as PieIcon
+    Box, Globe, PieChart as PieIcon, Repeat, Sparkles, Plus, Minus, Trash2,
+    Award, Link2, BarChart3, Target
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
-import { getDynamicFontSize, parseLocalDate } from '../../utils/helpers';
+import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
 
 const DashboardView = ({
     dateMode,
@@ -36,7 +37,13 @@ const DashboardView = ({
     onImport
 }) => {
     const { theme, t, activeColor, privacyMode } = useAuth();
-    const { transactions } = useFinance();
+    const {
+        transactions, categoryColors, recurringRules,
+        savingsWidgets, addSavingsWidget, deleteSavingsWidget,
+        adjustSavingsWidget, reopenSavingsWidget,
+        dashboardWidgets,
+    } = useFinance();
+    const getCatColor = (cat) => resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS);
     const swipeStartY = useRef(null);
     const [pieMonth, setPieMonth] = useState(() => new Date());
     const [pieYear, setPieYear] = useState(() => new Date().getFullYear());
@@ -64,6 +71,51 @@ const DashboardView = ({
         });
         return Object.entries(byCat).map(([cat, val]) => ({ cat, val })).sort((a, b) => b.val - a.val);
     }, [transactions, pieYear]);
+
+    // --- Histórico para tarjeta de medias ---
+    const historicalAverages = useMemo(() => {
+        if (!transactions.length) return { days: 0, dailyExpense: 0, dailyIncome: 0, monthlyExpense: 0, monthlyIncome: 0 };
+        const dates = transactions.map(t => parseLocalDate(t.date)).filter(d => !isNaN(d));
+        if (!dates.length) return { days: 0, dailyExpense: 0, dailyIncome: 0, monthlyExpense: 0, monthlyIncome: 0 };
+        const min = new Date(Math.min(...dates));
+        const max = new Date(Math.max(...dates));
+        const days = Math.max(1, Math.round((max - min) / 86400000) + 1);
+        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const totalIncome = transactions.filter(t => t.type === 'income').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const monthsSet = new Set(transactions.map(t => (t.date || '').slice(0, 7)).filter(Boolean));
+        const months = Math.max(1, monthsSet.size);
+        return {
+            days,
+            dailyExpense: totalExpense / days,
+            dailyIncome: totalIncome / days,
+            monthlyExpense: totalExpense / months,
+            monthlyIncome: totalIncome / months,
+            netDaily: (totalIncome - totalExpense) / days,
+        };
+    }, [transactions]);
+
+    // --- Datos para vista "stacked-by-category" del comparativo ---
+    const chartCategoryData = useMemo(() => {
+        const result = [];
+        for (let m = 0; m < 12; m++) {
+            const incCat = {};
+            const expCat = {};
+            transactions.forEach(tx => {
+                const d = parseLocalDate(tx.date);
+                if (d.getFullYear() !== selectedChartYear || d.getMonth() !== m) return;
+                const k = tx.category || 'Otros';
+                if (tx.type === 'income') incCat[k] = (incCat[k] || 0) + (tx.amountVal || 0);
+                else if (tx.type === 'expense') expCat[k] = (expCat[k] || 0) + (tx.amountVal || 0);
+            });
+            const incomeTotal = Object.values(incCat).reduce((a, b) => a + b, 0);
+            const expenseTotal = Object.values(expCat).reduce((a, b) => a + b, 0);
+            const incomeBreak = Object.entries(incCat).map(([cat, val]) => ({ cat, val })).sort((a, b) => b.val - a.val);
+            const expenseBreak = Object.entries(expCat).map(([cat, val]) => ({ cat, val })).sort((a, b) => b.val - a.val);
+            result.push({ income: incomeTotal, expense: expenseTotal, incomeBreak, expenseBreak });
+        }
+        return result;
+    }, [transactions, selectedChartYear]);
+
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Controles de Fecha en Dashboard */}
@@ -182,48 +234,17 @@ const DashboardView = ({
                 ))}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className={`p-8 rounded-[32px] border ${t.card}`}>
-                    <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-lg font-bold">Comparativa {selectedChartYear}</h3>
-                        <div className="flex gap-2">
-                            <button onClick={() => setSelectedChartYear(y => y - 1)}><ChevronLeft /></button>
-                            <span>{selectedChartYear}</span>
-                            <button onClick={() => setSelectedChartYear(y => y + 1)}><ChevronRight /></button>
-                        </div>
-                    </div>
-                    <div className="h-[200px] flex justify-around gap-2 items-end relative">
-                        {chartData.map((d, i) => {
-                            const max = Math.max(...chartData.map(x => Math.max(x.income, x.expense)), 1);
-                            return (
-                                <div
-                                    key={i}
-                                    className="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer relative"
-                                    onMouseEnter={() => setHoveredMonth(i)}
-                                    onMouseLeave={() => setHoveredMonth(null)}
-                                >
-                                    {hoveredMonth === i && (
-                                        <div className={`absolute -top-16 left-1/2 -translate-x-1/2 z-50 p-2 rounded-lg border shadow-xl ${t.card} min-w-[100px] text-center pointer-events-none animate-in fade-in zoom-in-95 duration-200`}>
-                                            <p className="text-[10px] font-black uppercase mb-1">{d.label}</p>
-                                            <div className="flex justify-between gap-2 items-center mb-0.5">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                                <span className="text-[10px] font-bold text-green-500">+{(d.income || 0).toFixed(0)}€</span>
-                                            </div>
-                                            <div className="flex justify-between gap-2 items-center">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                                                <span className="text-[10px] font-bold text-red-500">-{(d.expense || 0).toFixed(0)}€</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="w-full flex justify-center items-end gap-0.5 h-full relative">
-                                        <div className={`w-1/2 rounded-t-sm transition-all duration-700 min-h-[2px] ${theme === 'dark' ? 'bg-[#30D158]' : 'bg-green-500'} ${hoveredMonth === i ? 'brightness-125 scale-x-110' : ''}`} style={{ height: `${(d.income / max) * 100}%` }} />
-                                        <div className={`w-1/2 rounded-t-sm transition-all duration-700 min-h-[2px] ${theme === 'dark' ? 'bg-[#FF453A]' : 'bg-red-500'} ${hoveredMonth === i ? 'brightness-125 scale-x-110' : ''}`} style={{ height: `${(d.expense / max) * 100}%` }} />
-                                    </div>
-                                    <span className={`text-[9px] font-bold ${t.textSec} ${hoveredMonth === i ? 'text-white' : ''}`}>{d.label.charAt(0)}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                <ComparativaCard
+                    chartData={chartData}
+                    chartCategoryData={chartCategoryData}
+                    hoveredMonth={hoveredMonth}
+                    setHoveredMonth={setHoveredMonth}
+                    selectedChartYear={selectedChartYear}
+                    setSelectedChartYear={setSelectedChartYear}
+                    theme={theme}
+                    t={t}
+                    getCatColor={getCatColor}
+                />
 
                 {/* SALUD FINANCIERA */}
                 <div className={`p-8 rounded-[32px] border ${t.card} flex flex-col justify-between`}>
@@ -257,6 +278,8 @@ const DashboardView = ({
                 </div>
             </div>
 
+            <HistoricalAverageCard avg={historicalAverages} t={t} theme={theme} privacyMode={privacyMode} activeColor={activeColor} />
+
             <PiePanel
                 pieMonth={pieMonth}
                 setPieMonth={setPieMonth}
@@ -268,7 +291,32 @@ const DashboardView = ({
                 theme={theme}
                 t={t}
                 activeColor={activeColor}
+                getCatColor={getCatColor}
             />
+
+            {dashboardWidgets?.fixedInfo && (
+                <FixedInfoWidget recurringRules={recurringRules} t={t} theme={theme} activeColor={activeColor} privacyMode={privacyMode} />
+            )}
+
+            {dashboardWidgets?.nextExpense && (
+                <NextExpenseWidget transactions={transactions} t={t} theme={theme} activeColor={activeColor} privacyMode={privacyMode} getCatColor={getCatColor} />
+            )}
+
+            {dashboardWidgets?.savings && (
+                <SavingsWidget
+                    items={savingsWidgets || []}
+                    rules={recurringRules || []}
+                    transactions={transactions}
+                    onAdd={addSavingsWidget}
+                    onDelete={deleteSavingsWidget}
+                    onAdjust={adjustSavingsWidget}
+                    onReopen={reopenSavingsWidget}
+                    t={t}
+                    theme={theme}
+                    activeColor={activeColor}
+                    privacyMode={privacyMode}
+                />
+            )}
         </div>
     );
 };
@@ -431,20 +479,16 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
     );
 };
 
-const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSliceClick, theme, t }) => {
+const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSliceClick, theme, t, colorOverride }) => {
     const total = data.reduce((a, b) => a + b.val, 0);
-    const slices = buildSlices(data, total, 62, 80, 80);
+    const slices = buildSlices(data, total, 62, 80, 80, colorOverride);
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center gap-2">
-                <div className="min-w-0">
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">{heading}</p>
-                    <p className="text-sm font-black tracking-tight truncate">{subtitle}</p>
-                </div>
-                <div className={`flex items-center p-1 rounded-xl border shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
-                    <button onClick={onPrev} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronLeft size={14} /></button>
-                    <button onClick={onNext} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronRight size={14} /></button>
-                </div>
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-40 text-center">{heading}</p>
+            <div className={`flex items-center justify-between gap-2 p-1 rounded-xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+                <button onClick={onPrev} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronLeft size={14} /></button>
+                <p className="text-sm font-black tracking-tight truncate text-center flex-1">{subtitle}</p>
+                <button onClick={onNext} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronRight size={14} /></button>
             </div>
             {total === 0 ? (
                 <div className={`h-[160px] flex items-center justify-center text-xs font-bold opacity-30 ${t.textSec}`}>Sin gastos.</div>
@@ -455,7 +499,8 @@ const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSlic
     );
 };
 
-const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pieYearData, transactions, theme, t, activeColor }) => {
+const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pieYearData, transactions, theme, t, activeColor, getCatColor }) => {
+    const colorOverride = (d) => getCatColor ? getCatColor(d.cat) : (CATEGORY_COLORS[d.cat] || '#8E8E93');
     const [active, setActive] = useState(null);
     const [subActive, setSubActive] = useState(null);
     const [dragX, setDragX] = useState(0);
@@ -510,7 +555,7 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
         return { list, total, percent, avg, top, count: list.length };
     }, [active, transactions, pieMonth, pieYear, sourceData]);
 
-    const color = active ? (CATEGORY_COLORS[active.cat] || '#8E8E93') : '#8E8E93';
+    const color = active ? colorOverride({ cat: active.cat }) : '#8E8E93';
     const Icon = active ? (CATEGORY_ICONS[active.cat] || Box) : Box;
 
     const subData = useMemo(() => {
@@ -571,6 +616,7 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
                         onSliceClick={handleSliceClick}
                         theme={theme}
                         t={t}
+                        colorOverride={colorOverride}
                     />
                 </div>
                 <div className="pl-2 md:pl-4">
@@ -585,6 +631,7 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
                         onSliceClick={handleSliceClick}
                         theme={theme}
                         t={t}
+                        colorOverride={colorOverride}
                     />
                 </div>
             </div>
@@ -723,6 +770,462 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
                     )}
                 </div>
             </div>
+        </div>
+    );
+};
+
+// ===================== COMPARATIVA CARD CON SWIPE =====================
+const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHoveredMonth, selectedChartYear, setSelectedChartYear, theme, t, getCatColor }) => {
+    const [mode, setMode] = useState(0); // 0 = simple, 1 = por categoría
+    const [dragX, setDragX] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const startX = useRef(null);
+
+    const onTouchStart = (e) => { startX.current = e.touches[0].clientX; setIsDragging(true); };
+    const onTouchMove = (e) => { if (startX.current == null) return; setDragX(e.touches[0].clientX - startX.current); };
+    const onTouchEnd = () => {
+        const dx = dragX;
+        startX.current = null;
+        setIsDragging(false);
+        setDragX(0);
+        if (Math.abs(dx) > 60) setMode(m => (m + (dx < 0 ? 1 : -1) + 2) % 2);
+    };
+
+    const max = Math.max(...chartData.map(x => Math.max(x.income, x.expense)), 1);
+
+    return (
+        <div className={`p-8 rounded-[32px] border ${t.card} relative overflow-hidden`}>
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="text-lg font-bold">Comparativa {selectedChartYear}</h3>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mt-0.5 ${t.textSec}`}>{mode === 0 ? 'Ingresos / Gastos' : 'Por categoría'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setSelectedChartYear(y => y - 1)} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronLeft size={16} /></button>
+                    <span className="text-sm font-black">{selectedChartYear}</span>
+                    <button onClick={() => setSelectedChartYear(y => y + 1)} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronRight size={16} /></button>
+                </div>
+            </div>
+
+            <div
+                className="h-[200px] flex justify-around gap-2 items-end relative"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                style={{ transform: `translateX(${dragX * 0.2}px)`, transition: isDragging ? 'none' : 'transform .25s ease', touchAction: 'pan-y' }}
+            >
+                {chartData.map((d, i) => {
+                    const cat = chartCategoryData[i] || { incomeBreak: [], expenseBreak: [] };
+                    const incH = (d.income / max) * 100;
+                    const expH = (d.expense / max) * 100;
+                    return (
+                        <div
+                            key={i}
+                            className="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer relative"
+                            onMouseEnter={() => setHoveredMonth(i)}
+                            onMouseLeave={() => setHoveredMonth(null)}
+                            onClick={() => setHoveredMonth(prev => prev === i ? null : i)}
+                        >
+                            {hoveredMonth === i && (
+                                <div className={`absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-50 p-3 rounded-xl border shadow-2xl ${t.card} min-w-[160px] pointer-events-none animate-in fade-in zoom-in-95 duration-200`}>
+                                    <p className="text-[10px] font-black uppercase mb-2 text-center">{d.label}</p>
+                                    {mode === 0 ? (
+                                        <>
+                                            <div className="flex justify-between gap-3 items-center mb-1">
+                                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div><span className="text-[10px] font-black uppercase opacity-60">Ingresos</span></div>
+                                                <span className="text-[10px] font-bold text-green-500">+{(d.income || 0).toFixed(0)}€</span>
+                                            </div>
+                                            <div className="flex justify-between gap-3 items-center">
+                                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-[10px] font-black uppercase opacity-60">Gastos</span></div>
+                                                <span className="text-[10px] font-bold text-red-500">-{(d.expense || 0).toFixed(0)}€</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                            {cat.expenseBreak.length > 0 && (
+                                                <div>
+                                                    <p className="text-[9px] font-black uppercase opacity-50 mb-1">Gastos · {(d.expense || 0).toFixed(0)}€</p>
+                                                    {cat.expenseBreak.slice(0, 6).map(b => {
+                                                        const pct = d.expense ? (b.val / d.expense) * 100 : 0;
+                                                        return (
+                                                            <div key={b.cat} className="flex justify-between gap-2 items-center text-[10px] py-0.5">
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <span className="w-2 h-2 rounded shrink-0" style={{ background: getCatColor(b.cat) }} />
+                                                                    <span className="font-bold truncate">{b.cat}</span>
+                                                                </div>
+                                                                <span className="font-black opacity-70 shrink-0">{pct.toFixed(0)}%</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {cat.incomeBreak.length > 0 && (
+                                                <div className="pt-2 border-t border-white/5">
+                                                    <p className="text-[9px] font-black uppercase opacity-50 mb-1">Ingresos · {(d.income || 0).toFixed(0)}€</p>
+                                                    {cat.incomeBreak.slice(0, 4).map(b => {
+                                                        const pct = d.income ? (b.val / d.income) * 100 : 0;
+                                                        return (
+                                                            <div key={b.cat} className="flex justify-between gap-2 items-center text-[10px] py-0.5">
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <span className="w-2 h-2 rounded shrink-0" style={{ background: getCatColor(b.cat) }} />
+                                                                    <span className="font-bold truncate">{b.cat}</span>
+                                                                </div>
+                                                                <span className="font-black opacity-70 shrink-0">{pct.toFixed(0)}%</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <div className="w-full flex justify-center items-end gap-0.5 h-full relative">
+                                {/* INCOME BAR */}
+                                <div className={`w-1/2 rounded-t-sm overflow-hidden flex flex-col-reverse min-h-[2px] transition-all duration-700 ${hoveredMonth === i ? 'brightness-125 scale-x-110' : ''}`} style={{ height: `${incH}%`, background: mode === 0 ? (theme === 'dark' ? '#30D158' : '#22C55E') : 'transparent' }}>
+                                    {mode === 1 && cat.incomeBreak.map(b => {
+                                        const pct = d.income ? (b.val / d.income) * 100 : 0;
+                                        return <div key={b.cat} style={{ height: `${pct}%`, background: getCatColor(b.cat) }} />;
+                                    })}
+                                </div>
+                                {/* EXPENSE BAR */}
+                                <div className={`w-1/2 rounded-t-sm overflow-hidden flex flex-col-reverse min-h-[2px] transition-all duration-700 ${hoveredMonth === i ? 'brightness-125 scale-x-110' : ''}`} style={{ height: `${expH}%`, background: mode === 0 ? (theme === 'dark' ? '#FF453A' : '#EF4444') : 'transparent' }}>
+                                    {mode === 1 && cat.expenseBreak.map(b => {
+                                        const pct = d.expense ? (b.val / d.expense) * 100 : 0;
+                                        return <div key={b.cat} style={{ height: `${pct}%`, background: getCatColor(b.cat) }} />;
+                                    })}
+                                </div>
+                            </div>
+                            <span className={`text-[9px] font-bold ${t.textSec} ${hoveredMonth === i ? 'text-white' : ''}`}>{d.label.charAt(0)}</span>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Pager dots */}
+            <div className="flex justify-center gap-2 mt-4">
+                {[0, 1].map(idx => (
+                    <button key={idx} onClick={() => setMode(idx)} className={`h-1.5 rounded-full transition-all ${mode === idx ? `w-8 bg-current opacity-80` : 'w-1.5 bg-current opacity-20'}`} />
+                ))}
+            </div>
+            <p className={`text-center text-[9px] font-black uppercase tracking-widest mt-2 opacity-30`}>Desliza para cambiar de vista</p>
+        </div>
+    );
+};
+
+// ===================== HISTORICAL AVG CARD =====================
+const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
+    const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(2)}€`;
+    return (
+        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+            <div className="flex items-center gap-2 mb-6">
+                <BarChart3 size={18} className={activeColor.text} />
+                <h3 className="text-base font-black tracking-tight">Promedios Históricos</h3>
+                <span className={`ml-auto text-[10px] font-black uppercase tracking-widest opacity-40`}>{avg.days || 0} días</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 md:gap-4">
+                <div className={`p-4 rounded-2xl border border-green-500/20 bg-green-500/5`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest text-green-500 mb-1`}>Ingreso/Día</p>
+                    <p className="text-lg md:text-xl font-black truncate">{fmt(avg.dailyIncome)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>{fmt(avg.monthlyIncome)} / mes</p>
+                </div>
+                <div className={`p-4 rounded-2xl border border-red-500/20 bg-red-500/5`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest text-red-500 mb-1`}>Gasto/Día</p>
+                    <p className="text-lg md:text-xl font-black truncate">{fmt(avg.dailyExpense)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>{fmt(avg.monthlyExpense)} / mes</p>
+                </div>
+                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest opacity-50 mb-1`}>Neto/Día</p>
+                    <p className={`text-lg md:text-xl font-black truncate ${(avg.netDaily || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmt(avg.netDaily)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>balance medio</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ===================== FIXED INFO WIDGET =====================
+const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode }) => {
+    const data = useMemo(() => {
+        const active = (recurringRules || []).filter(r => r.active && r.type === 'expense');
+        const monthly = active.filter(r => r.unit === 'month');
+        const annualExtras = active.filter(r => r.unit !== 'month');
+        const monthlySum = monthly.reduce((a, r) => a + Number(r.amount || 0), 0);
+        const annualExtraSum = annualExtras.reduce((a, r) => {
+            const amt = Number(r.amount || 0);
+            const every = Number(r.every || 1);
+            if (r.unit === 'year') return a + (amt / every);
+            if (r.unit === 'week') return a + (amt * 52 / every);
+            if (r.unit === 'day') return a + (amt * 365 / every);
+            return a;
+        }, 0);
+        return {
+            monthlyCount: monthly.length,
+            monthlySum,
+            annualExtraCount: annualExtras.length,
+            annualExtraSum,
+            grandAnnual: monthlySum * 12 + annualExtraSum,
+            list: active,
+        };
+    }, [recurringRules]);
+
+    const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(0)}€`;
+
+    return (
+        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+            <div className="flex items-center gap-2 mb-6">
+                <Repeat size={18} className={activeColor.text} />
+                <h3 className="text-base font-black tracking-tight">Gastos Fijos</h3>
+                <span className={`ml-auto text-[10px] font-black uppercase tracking-widest opacity-40`}>{data.list.length} reglas</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest opacity-50 mb-1`}>Mensual</p>
+                    <p className="text-xl font-black">{fmt(data.monthlySum)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>{data.monthlyCount} fijos</p>
+                </div>
+                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'border-orange-500/20 bg-orange-500/5' : 'border-orange-300/30 bg-orange-50'}`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1`}>Extras anuales</p>
+                    <p className="text-xl font-black">{fmt(data.annualExtraSum)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>{data.annualExtraCount} reglas</p>
+                </div>
+                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50'}`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest text-blue-500 mb-1`}>Total/Año</p>
+                    <p className="text-xl font-black">{fmt(data.grandAnnual)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>fijos + extras</p>
+                </div>
+                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest opacity-50 mb-1`}>Promedio/Mes</p>
+                    <p className="text-xl font-black">{fmt(data.grandAnnual / 12)}</p>
+                    <p className={`text-[10px] font-bold mt-1 opacity-50`}>prorrateo</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ===================== NEXT EXPENSE WIDGET =====================
+const NextExpenseWidget = ({ transactions, t, theme, activeColor, privacyMode, getCatColor }) => {
+    const upcoming = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const annualSet = transactions.filter(tx => tx.type === 'expense' && tx.periodicity === 'anual');
+        const projections = annualSet.map(tx => {
+            const orig = parseLocalDate(tx.date);
+            const projected = new Date(orig);
+            projected.setFullYear(today.getFullYear());
+            if (projected < today) projected.setFullYear(today.getFullYear() + 1);
+            return { tx, projected };
+        });
+        projections.sort((a, b) => a.projected - b.projected);
+        return projections.slice(0, 3);
+    }, [transactions]);
+
+    const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(0)}€`;
+
+    return (
+        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+            <div className="flex items-center gap-2 mb-4">
+                <CalendarIcon size={18} className={activeColor.text} />
+                <h3 className="text-base font-black tracking-tight">Próximos gastos previstos</h3>
+            </div>
+            {upcoming.length === 0 ? (
+                <p className={`text-center py-8 text-sm font-bold opacity-30 ${t.textSec}`}>Sin gastos anuales detectados.</p>
+            ) : (
+                <div className="space-y-3">
+                    {upcoming.map(({ tx, projected }, i) => {
+                        const days = Math.ceil((projected - new Date()) / 86400000);
+                        const color = getCatColor(tx.category);
+                        return (
+                            <div key={tx.id + i} className={`p-4 rounded-2xl border flex items-center gap-4 ${theme === 'dark' ? 'border-white/5 bg-white/[0.03]' : 'border-gray-200 bg-gray-50'}`}>
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: color }}>
+                                    {(() => { const Ic = CATEGORY_ICONS[tx.category] || Box; return <Ic size={18} className="text-white" />; })()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-black text-sm truncate">{tx.note || tx.subCategory || tx.category}</p>
+                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{tx.category}{tx.subCategory ? ` · ${tx.subCategory}` : ''}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="font-black text-base">{fmt(tx.amountVal)}</p>
+                                    <p className={`text-[10px] font-black uppercase tracking-widest`} style={{ color }}>
+                                        {projected.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} · {days <= 0 ? 'hoy' : `en ${days}d`}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ===================== SAVINGS WIDGET =====================
+const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, onReopen, t, theme, activeColor, privacyMode }) => {
+    const [showForm, setShowForm] = useState(false);
+    const [showCompleted, setShowCompleted] = useState(false);
+    const [name, setName] = useState('');
+    const [target, setTarget] = useState('');
+    const [linkedRule, setLinkedRule] = useState('');
+    const [adjustState, setAdjustState] = useState({}); // { [id]: '' }
+
+    const active = items.filter(i => !i.completed_at);
+    const completed = items.filter(i => i.completed_at);
+
+    const ruleProgress = useMemo(() => {
+        const map = {};
+        items.forEach(it => {
+            if (!it.linked_rule_id) return;
+            const totalFromRule = transactions
+                .filter(tx => tx.tags?.includes('__auto__') && tx.tags?.includes(`__savings_${it.id}__`))
+                .reduce((a, b) => a + (b.amountVal || 0), 0);
+            map[it.id] = totalFromRule;
+        });
+        return map;
+    }, [items, transactions]);
+
+    const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(0)}€`;
+
+    const submit = (e) => {
+        e.preventDefault();
+        if (!name.trim() || !target) return;
+        onAdd({ name: name.trim(), target: parseFloat(target), linkedRuleId: linkedRule || null });
+        setName(''); setTarget(''); setLinkedRule(''); setShowForm(false);
+    };
+
+    return (
+        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+            <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                    <Target size={18} className={activeColor.text} />
+                    <h3 className="text-base font-black tracking-tight">Ahorros & Objetivos</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                    {completed.length > 0 && (
+                        <button onClick={() => setShowCompleted(true)} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${t.hover} opacity-70 hover:opacity-100 flex items-center gap-1.5`}>
+                            <Award size={12} /> {completed.length}
+                        </button>
+                    )}
+                    <button onClick={() => setShowForm(s => !s)} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${activeColor.bg} text-white flex items-center gap-1.5`}>
+                        <Plus size={12} /> Nuevo
+                    </button>
+                </div>
+            </div>
+
+            {showForm && (
+                <form onSubmit={submit} className={`p-4 mb-4 rounded-2xl border space-y-3 animate-in slide-in-from-top-2 ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="grid grid-cols-2 gap-3">
+                        <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre" className={`p-3 rounded-xl text-sm font-bold ${t.input}`} />
+                        <input type="number" step="0.01" value={target} onChange={e => setTarget(e.target.value)} placeholder="Importe (€)" className={`p-3 rounded-xl text-sm font-bold ${t.input}`} />
+                    </div>
+                    {rules.filter(r => r.active && r.type === 'expense').length > 0 && (
+                        <div>
+                            <p className={`text-[10px] font-black uppercase tracking-widest mb-1.5 opacity-60 flex items-center gap-1`}><Link2 size={10} /> Vincular automatización (opcional)</p>
+                            <select value={linkedRule} onChange={e => setLinkedRule(e.target.value)} className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`}>
+                                <option value="">Sin vincular</option>
+                                {rules.filter(r => r.active && r.type === 'expense').map(r => (
+                                    <option key={r.id} value={r.id}>{r.name || r.category} · {r.amount}€/{r.unit}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <div className="flex gap-2">
+                        <button type="button" onClick={() => setShowForm(false)} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest ${t.hover}`}>Cancelar</button>
+                        <button type="submit" className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest ${activeColor.bg} text-white`}>Crear</button>
+                    </div>
+                </form>
+            )}
+
+            {active.length === 0 ? (
+                <p className={`text-center py-8 text-sm font-bold opacity-30 ${t.textSec}`}>Sin objetivos activos.</p>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {active.map(it => {
+                        const ruleAmt = ruleProgress[it.id] || 0;
+                        const total = Number(it.current || 0) + ruleAmt;
+                        const pct = it.target > 0 ? Math.min(100, (total / it.target) * 100) : 0;
+                        const linkedRuleObj = rules.find(r => r.id === it.linked_rule_id);
+                        const adj = adjustState[it.id] ?? '';
+                        return (
+                            <div key={it.id} className={`p-5 rounded-2xl border space-y-3 ${theme === 'dark' ? 'border-white/5 bg-white/[0.03]' : 'border-gray-200 bg-gray-50'}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="font-black text-base tracking-tight truncate">{it.name}</p>
+                                        <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 truncate`}>
+                                            Meta {fmt(it.target)}
+                                            {linkedRuleObj && <> · <Link2 size={9} className="inline -mt-0.5" /> {linkedRuleObj.name || linkedRuleObj.category}</>}
+                                        </p>
+                                    </div>
+                                    <button onClick={() => onDelete(it.id)} className="p-1.5 rounded-lg text-red-500 opacity-50 hover:opacity-100 hover:bg-red-500/10"><Trash2 size={14} /></button>
+                                </div>
+
+                                {/* Fancy progress bar */}
+                                <div className="relative">
+                                    <div className={`h-4 w-full rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'} relative`}>
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-700 relative overflow-hidden`}
+                                            style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${activeColor.text.includes('blue') ? '#0A84FF' : activeColor.text.includes('violet') ? '#7C3AED' : activeColor.text.includes('emerald') ? '#059669' : activeColor.text.includes('orange') ? '#EA580C' : '#0A84FF'}, #30D158)` }}
+                                        >
+                                            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)] animate-pulse" />
+                                        </div>
+                                        {pct >= 100 && (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-white drop-shadow"><Sparkles size={10} className="inline -mt-0.5" /> Completado</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-between mt-1.5 text-[10px] font-black uppercase tracking-widest">
+                                        <span className="opacity-60">{fmt(total)} / {fmt(it.target)}</span>
+                                        <span className={pct >= 100 ? 'text-green-500' : 'opacity-60'}>{pct.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+
+                                {ruleAmt > 0 && (
+                                    <div className={`p-2 rounded-lg text-[10px] font-bold flex items-center gap-1.5 ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                        <Link2 size={11} /> {fmt(ruleAmt)} desde automatización
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    <input type="number" step="0.01" value={adj} onChange={e => setAdjustState(s => ({ ...s, [it.id]: e.target.value }))} placeholder="Cantidad" className={`flex-1 p-2 rounded-lg text-xs font-bold ${t.input}`} />
+                                    <button onClick={() => { const v = parseFloat(adj); if (v > 0) { onAdjust(it.id, v); setAdjustState(s => ({ ...s, [it.id]: '' })); } }} className="p-2 rounded-lg bg-green-500 text-white"><Plus size={14} /></button>
+                                    <button onClick={() => { const v = parseFloat(adj); if (v > 0) { onAdjust(it.id, -v); setAdjustState(s => ({ ...s, [it.id]: '' })); } }} className="p-2 rounded-lg bg-red-500 text-white"><Minus size={14} /></button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {showCompleted && (
+                <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowCompleted(false)}>
+                    <div className={`w-full max-w-lg rounded-t-[32px] md:rounded-[32px] border shadow-2xl ${t.card} ${t.bg}`} onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                            <h3 className="text-base font-black tracking-tight flex items-center gap-2"><Award size={16} className={activeColor.text} /> Objetivos cumplidos</h3>
+                            <button onClick={() => setShowCompleted(false)} className={`p-2 rounded-xl ${t.hover}`}>×</button>
+                        </div>
+                        <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+                            {completed.length === 0 && <p className={`text-center py-8 text-sm font-bold opacity-30 ${t.textSec}`}>Aún no hay completados.</p>}
+                            {completed.map(it => {
+                                const created = new Date(it.created_at);
+                                const closed = new Date(it.completed_at);
+                                const days = Math.max(1, Math.round((closed - created) / 86400000));
+                                return (
+                                    <div key={it.id} className={`p-4 rounded-2xl border flex items-center gap-3 ${theme === 'dark' ? 'border-white/5 bg-white/[0.03]' : 'border-gray-200 bg-gray-50'}`}>
+                                        <div className="w-10 h-10 rounded-xl bg-green-500/15 text-green-500 flex items-center justify-center"><Award size={18} /></div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-sm truncate">{it.name}</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{fmt(it.target)} · {days} {days === 1 ? 'día' : 'días'}</p>
+                                        </div>
+                                        <button onClick={() => onReopen(it.id)} title="Reabrir" className={`p-2 rounded-lg text-blue-500 ${t.hover}`}><Plus size={14} /></button>
+                                        <button onClick={() => onDelete(it.id)} title="Borrar" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
