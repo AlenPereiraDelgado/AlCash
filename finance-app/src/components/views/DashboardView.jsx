@@ -312,67 +312,84 @@ const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
     });
 };
 
-const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 5 }) => {
+const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 6 }) => {
     const cx = size / 2;
     const cy = size / 2;
-    const labelR = radius * 0.62;
+    const labelR = (radius + radius * 0.55) / 2;
+    const iconPx = size > 140 ? 13 : 10;
+    const fontPx = size > 140 ? 10 : 8;
+    const boxW = size > 140 ? 32 : 26;
+    const boxH = size > 140 ? 30 : 24;
     return (
-        <div className="relative mx-auto" style={{ width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
-                <g>
-                    {slices.map(s => {
-                        const isActive = side && active?.side === side && active?.cat === s.cat;
-                        const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
-                        const tx = isActive ? s.mx * 8 : 0;
-                        const ty = isActive ? s.my * 8 : 0;
-                        return (
-                            <path
-                                key={s.cat}
-                                d={s.path}
-                                fill={s.color}
-                                stroke={theme === 'dark' ? '#000' : '#fff'}
-                                strokeWidth="2"
-                                opacity={dim}
-                                transform={`translate(${tx} ${ty})`}
-                                style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease', cursor: onSliceClick ? 'pointer' : 'default' }}
-                                onClick={onSliceClick ? () => onSliceClick(side, s.cat) : undefined}
-                            >
-                                <title>{s.cat}: {s.val.toFixed(2)}€ ({s.percent.toFixed(1)}%)</title>
-                            </path>
-                        );
-                    })}
-                </g>
-                <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
-                <text x={cx} y={cy - 2} textAnchor="middle" className="font-black" fill="currentColor" fontSize={size > 140 ? 13 : 11} pointerEvents="none">{total.toFixed(0)}€</text>
-                <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize={size > 140 ? 8 : 7} opacity="0.5" className="font-bold uppercase tracking-wider" pointerEvents="none">{label}</text>
-            </svg>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block mx-auto">
+            <g>
+                {slices.map(s => {
+                    const isActive = side && active?.side === side && active?.cat === s.cat;
+                    const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
+                    const tx = isActive ? s.mx * 8 : 0;
+                    const ty = isActive ? s.my * 8 : 0;
+                    return (
+                        <path
+                            key={s.cat}
+                            d={s.path}
+                            fill={s.color}
+                            stroke={theme === 'dark' ? '#000' : '#fff'}
+                            strokeWidth="2"
+                            opacity={dim}
+                            transform={`translate(${tx} ${ty})`}
+                            style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease', cursor: onSliceClick ? 'pointer' : 'default' }}
+                            onClick={onSliceClick ? () => onSliceClick(side, s.cat) : undefined}
+                        >
+                            <title>{s.cat}: {s.val.toFixed(2)}€ ({s.percent.toFixed(1)}%)</title>
+                        </path>
+                    );
+                })}
+            </g>
             {slices.slice(0, topLabels).filter(s => s.percent >= minLabelPercent).map(s => {
                 const isActive = side && active?.side === side && active?.cat === s.cat;
                 const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
                 const offX = isActive ? s.mx * 8 : 0;
                 const offY = isActive ? s.my * 8 : 0;
+                const lx = cx + labelR * s.mx + offX;
+                const ly = cy + labelR * s.my + offY;
                 const Ic = showIcons ? (CATEGORY_ICONS[s.cat] || Box) : null;
                 return (
-                    <div
+                    <foreignObject
                         key={`lbl-${s.cat}`}
-                        className="absolute pointer-events-none flex flex-col items-center justify-center leading-none"
-                        style={{
-                            left: cx + labelR * s.mx + offX,
-                            top: cy + labelR * s.my + offY,
-                            transform: 'translate(-50%, -50%)',
-                            opacity: dim,
-                            transition: 'opacity .25s ease, left .35s, top .35s',
-                            textShadow: '0 1px 2px rgba(0,0,0,.55)'
-                        }}
+                        x={lx - boxW / 2}
+                        y={ly - boxH / 2}
+                        width={boxW}
+                        height={boxH}
+                        opacity={dim}
+                        pointerEvents="none"
+                        style={{ transition: 'opacity .25s ease, x .35s, y .35s', overflow: 'visible' }}
                     >
-                        {Ic && <Ic size={size > 140 ? 14 : 10} className="text-white" strokeWidth={2.6} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.5))' }} />}
-                        <span className="font-black text-white" style={{ fontSize: size > 140 ? 10 : 8, marginTop: Ic ? 2 : 0 }}>
-                            {s.percent.toFixed(0)}%
-                        </span>
-                    </div>
+                        <div
+                            xmlns="http://www.w3.org/1999/xhtml"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                lineHeight: 1,
+                                color: '#fff',
+                                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.55))'
+                            }}
+                        >
+                            {Ic && <Ic size={iconPx} strokeWidth={2.6} />}
+                            <span style={{ fontSize: fontPx, fontWeight: 900, marginTop: Ic ? 1 : 0 }}>
+                                {s.percent.toFixed(0)}%
+                            </span>
+                        </div>
+                    </foreignObject>
                 );
             })}
-        </div>
+            <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
+            <text x={cx} y={cy - 2} textAnchor="middle" className="font-black" fill="currentColor" fontSize={size > 140 ? 13 : 11} pointerEvents="none">{total.toFixed(0)}€</text>
+            <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize={size > 140 ? 8 : 7} opacity="0.5" className="font-bold uppercase tracking-wider" pointerEvents="none">{label}</text>
+        </svg>
     );
 };
 
