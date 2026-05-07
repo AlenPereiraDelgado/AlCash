@@ -1109,23 +1109,26 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
                 <h3 className="text-base font-black tracking-tight">Gastos Fijos</h3>
                 <span className={`ml-auto text-[10px] font-black uppercase tracking-widest opacity-40`}>{data.list.length} reglas</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-4 gap-2 md:gap-3">
                 {cards.map(c => {
                     const open = openCard === c.key;
                     const clickable = c.key !== 'avg';
+                    const display = fmt(c.val);
+                    const len = display.length;
+                    const valSize = len > 8 ? 'text-[11px] md:text-base' : len > 6 ? 'text-xs md:text-lg' : 'text-sm md:text-xl';
                     return (
                         <button
                             key={c.key}
                             type="button"
                             onClick={clickable ? () => setOpenCard(open ? null : c.key) : undefined}
-                            className={`relative text-left p-4 rounded-2xl border transition-all ${c.cls} ${open ? 'ring-2 ring-current scale-[1.02]' : clickable ? 'hover:-translate-y-0.5' : ''}`}
+                            className={`relative text-left p-2 md:p-3 rounded-2xl border transition-all ${c.cls} ${open ? 'ring-2 ring-current scale-[1.02]' : clickable ? 'hover:-translate-y-0.5' : ''}`}
                             style={c.aura ? { animation: 'auraGlow 2.6s ease-in-out infinite' } : undefined}
                         >
-                            <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${c.textCls || 'opacity-50'}`}>{c.label}</p>
-                            <p className="text-xl font-black tabular-nums">{fmt(c.val)}</p>
-                            <p className={`text-[10px] font-bold mt-1 opacity-50`}>{c.sub}</p>
+                            <p className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider mb-0.5 truncate ${c.textCls || 'opacity-50'}`}>{c.label}</p>
+                            <p className={`font-black tabular-nums whitespace-nowrap leading-tight ${valSize}`}>{display}</p>
+                            <p className={`text-[8px] md:text-[10px] font-bold mt-0.5 opacity-50 truncate`}>{c.sub}</p>
                             {clickable && (
-                                <span className="absolute top-3 right-3 text-[8px] font-black uppercase tracking-widest opacity-30">{open ? '−' : '+'}</span>
+                                <span className="absolute top-1.5 right-2 text-[8px] font-black uppercase tracking-widest opacity-30">{open ? '−' : '+'}</span>
                             )}
                         </button>
                     );
