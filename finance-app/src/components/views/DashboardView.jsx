@@ -344,6 +344,8 @@ const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
 const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 8, showCenter = true }) => {
     const cx = size / 2;
     const cy = size / 2;
+    const innerR = radius * 0.55;
+    const labelR = (innerR + radius) / 2;
     const iconPx = size > 140 ? 9 : 0;
     const fontPx = size > 140 ? 9 : 8;
     return (
@@ -376,8 +378,8 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                 const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
                 const offX = isActive ? s.mx * 8 : 0;
                 const offY = isActive ? s.my * 8 : 0;
-                const lx = cx + s.centroidR * s.mx;
-                const ly = cy + s.centroidR * s.my;
+                const lx = cx + labelR * s.mx;
+                const ly = cy + labelR * s.my;
                 const Ic = showIcons && iconPx > 0 ? (CATEGORY_ICONS[s.cat] || Box) : null;
                 const stackH = Ic ? iconPx + 1 + fontPx : fontPx;
                 const iconY = Ic ? -stackH / 2 : 0;
