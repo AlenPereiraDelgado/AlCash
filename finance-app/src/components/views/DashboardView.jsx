@@ -995,9 +995,9 @@ const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
     const net = avg.netDaily || 0;
     const netPositive = net >= 0;
     const items = [
-        { key: 'income',  label: 'Ingreso medio', daily: avg.dailyIncome,  monthly: avg.monthlyIncome, color: '#30D158', textCls: 'text-green-500', Icon: TrendingUp },
-        { key: 'expense', label: 'Gasto medio',    daily: avg.dailyExpense, monthly: avg.monthlyExpense, color: '#FF453A', textCls: 'text-red-500',   Icon: TrendingDown },
-        { key: 'net',     label: 'Balance neto',   daily: net,              monthly: (avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), color: netPositive ? '#30D158' : '#FF453A', textCls: netPositive ? 'text-green-500' : 'text-red-500', Icon: Wallet },
+        { key: 'income',  label: 'Ingreso', daily: avg.dailyIncome,  monthly: avg.monthlyIncome, color: '#30D158', textCls: 'text-green-500', Icon: TrendingUp },
+        { key: 'expense', label: 'Gasto',   daily: avg.dailyExpense, monthly: avg.monthlyExpense, color: '#FF453A', textCls: 'text-red-500',   Icon: TrendingDown },
+        { key: 'net',     label: 'Balance', daily: net,              monthly: (avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), color: netPositive ? '#30D158' : '#FF453A', textCls: netPositive ? 'text-green-500' : 'text-red-500', Icon: Wallet },
     ];
     return (
         <div className={`p-4 md:p-5 rounded-[32px] border ${t.card}`}>
@@ -1008,16 +1008,16 @@ const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
             </div>
             <div className={`flex items-stretch rounded-2xl border ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}>
                 {items.map((it, idx) => (
-                    <div key={it.key} className={`flex-1 px-3 md:px-4 py-3 min-w-0 ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}>
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: it.color + '22', color: it.color }}>
-                                <it.Icon size={11} strokeWidth={2.6} />
+                    <div key={it.key} className={`flex-1 px-2 md:px-3 py-2.5 min-w-0 ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}>
+                        <div className="flex items-center gap-1 mb-1">
+                            <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0" style={{ background: it.color + '22', color: it.color }}>
+                                <it.Icon size={9} strokeWidth={2.6} />
                             </div>
-                            <p className={`text-[9px] font-black uppercase tracking-widest truncate ${it.textCls}`}>{it.label}</p>
+                            <p className={`text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${it.textCls}`}>{it.label}</p>
                         </div>
-                        <div className="flex items-baseline gap-1">
+                        <div className="flex items-baseline gap-0.5">
                             <span className={`text-lg md:text-xl font-black tracking-tighter tabular-nums ${it.textCls}`}>{fmt(it.daily)}</span>
-                            <span className={`text-[9px] font-black uppercase tracking-widest opacity-40`}>/d</span>
+                            <span className={`text-[9px] font-black uppercase tracking-wide opacity-40`}>/d</span>
                         </div>
                         <p className={`text-[10px] font-bold tabular-nums opacity-50 truncate`}>≈ {fmt(it.monthly)}/mes</p>
                     </div>
@@ -1046,32 +1046,33 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
         };
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const yearStart = new Date(today.getFullYear(), 0, 1);
-        const ytdOf = (r) => {
+        const yearEnd = new Date(today.getFullYear(), 11, 31);
+        const yearTotalOf = (r) => {
             const startStr = r.startDate || r.lastRun;
             if (!startStr) return 0;
             const start = parseLocalDate(startStr);
             if (isNaN(start)) return 0;
             const eff = start > yearStart ? start : yearStart;
-            if (eff > today) return 0;
+            if (eff > yearEnd) return 0;
             const amt = Number(r.amount || 0);
             const every = Number(r.every || 1);
             let elapsed = 0;
-            if (r.unit === 'month') elapsed = (today.getFullYear() - eff.getFullYear()) * 12 + (today.getMonth() - eff.getMonth());
-            else if (r.unit === 'year') elapsed = today.getFullYear() - eff.getFullYear();
-            else if (r.unit === 'week') elapsed = Math.floor((today - eff) / (7 * 86400000));
-            else if (r.unit === 'day')  elapsed = Math.floor((today - eff) / 86400000);
+            if (r.unit === 'month') elapsed = (yearEnd.getFullYear() - eff.getFullYear()) * 12 + (yearEnd.getMonth() - eff.getMonth());
+            else if (r.unit === 'year') elapsed = yearEnd.getFullYear() - eff.getFullYear();
+            else if (r.unit === 'week') elapsed = Math.floor((yearEnd - eff) / (7 * 86400000));
+            else if (r.unit === 'day')  elapsed = Math.floor((yearEnd - eff) / 86400000);
             const cycles = Math.floor(elapsed / every) + 1;
             return amt * Math.max(0, cycles);
         };
         const monthlySum = monthly.reduce((a, r) => a + Number(r.amount || 0), 0);
         const annualExtraSum = annualExtras.reduce((a, r) => a + annualOf(r), 0);
-        const ytdList = active.map(r => ({ ...r, ytd: ytdOf(r), annual: annualOf(r) })).sort((a, b) => b.ytd - a.ytd);
-        const ytdSum = ytdList.reduce((a, r) => a + r.ytd, 0);
+        const ytdList = active.map(r => ({ ...r, yearTotal: yearTotalOf(r), annual: annualOf(r) })).sort((a, b) => b.yearTotal - a.yearTotal);
+        const yearSum = ytdList.reduce((a, r) => a + r.yearTotal, 0);
         return {
             monthly,
             annualExtras,
             ytdList,
-            ytdSum,
+            yearSum,
             year: today.getFullYear(),
             monthlyCount: monthly.length,
             monthlySum,
@@ -1088,7 +1089,7 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
     const cards = [
         { key: 'monthly', label: 'Mensual',        val: data.monthlySum,        sub: `${data.monthlyCount} reglas`,    color: 'rgba(99,102,241,.5)',  cls: theme === 'dark' ? 'border-white/5 bg-white/5' : 'border-gray-200 bg-gray-50',           textCls: '' },
         { key: 'annual',  label: 'Extras anuales', val: data.annualExtraSum,    sub: `${data.annualExtraCount} reglas`, color: 'rgba(255,159,10,.5)', cls: theme === 'dark' ? 'border-orange-500/20 bg-orange-500/5' : 'border-orange-300/30 bg-orange-50', textCls: 'text-orange-500' },
-        { key: 'total',   label: `Total ${data.year}`, val: data.ytdSum,        sub: `acumulado año`,                   color: 'rgba(10,132,255,.5)', cls: theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50',     textCls: 'text-blue-500' },
+        { key: 'total',   label: `Total ${data.year}`, val: data.yearSum,       sub: `año completo`,                    color: 'rgba(10,132,255,.5)', cls: theme === 'dark' ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-300/30 bg-blue-50',     textCls: 'text-blue-500' },
         { key: 'avg',     label: 'Promedio/Mes',   val: data.grandAnnual / 12,  sub: 'prorrateo',                       color: 'rgba(59,130,246,.4)', cls: 'border-blue-400/30',                                                                       textCls: 'text-blue-400', aura: true },
     ];
 
@@ -1138,7 +1139,7 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
                                 <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
                                     {openCard === 'monthly' && 'Reglas mensuales'}
                                     {openCard === 'annual' && 'Extras anuales'}
-                                    {openCard === 'total' && `Acumulado ${data.year}`}
+                                    {openCard === 'total' && `Total ${data.year}`}
                                 </p>
                                 <span className={`text-[10px] font-black tabular-nums ${t.textSec}`}>{list.length} {list.length === 1 ? 'regla' : 'reglas'}</span>
                             </div>
@@ -1161,7 +1162,7 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
                                                 </div>
                                                 <div className="text-right shrink-0 leading-tight">
                                                     <p className="text-[11px] font-black tabular-nums">{fmt(r.amount)}</p>
-                                                    {openCard === 'total' && <p className="text-[9px] font-bold opacity-50 tabular-nums">{fmt(r.ytd)} ytd</p>}
+                                                    {openCard === 'total' && <p className="text-[9px] font-bold opacity-50 tabular-nums">{fmt(r.yearTotal)}/{data.year}</p>}
                                                 </div>
                                             </div>
                                         );
