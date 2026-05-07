@@ -1,4 +1,4 @@
-import React, { createElement, useRef, useState, useMemo } from 'react';
+import React, { createElement, useRef, useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
@@ -273,13 +273,33 @@ const DashboardView = ({
     );
 };
 
+const hexToHsl = (hex) => {
+    const h = (hex || '#8E8E93').replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16) / 255;
+    const g = parseInt(h.slice(2, 4), 16) / 255;
+    const b = parseInt(h.slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let H = 0, S = 0;
+    const L = (max + min) / 2;
+    if (max !== min) {
+        const d = max - min;
+        S = L > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === r) H = (g - b) / d + (g < b ? 6 : 0);
+        else if (max === g) H = (b - r) / d + 2;
+        else H = (r - g) / d + 4;
+        H *= 60;
+    }
+    return [H, S * 100, L * 100];
+};
+
 const tintColor = (base, idx, n) => {
-    const hex = (base || '#8E8E93').replace('#', '');
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
-    const alpha = Math.max(0.32, 1 - idx * (0.65 / Math.max(n - 1, 1)));
-    return `rgba(${r},${g},${b},${alpha})`;
+    if (n <= 1) return base || '#8E8E93';
+    const [h, s] = hexToHsl(base);
+    const t = idx / (n - 1);
+    const newL = 32 + t * 46;
+    const newH = (h + (t - 0.5) * 32 + 360) % 360;
+    const newS = Math.max(45, s * 0.9);
+    return `hsl(${newH.toFixed(1)}, ${newS.toFixed(1)}%, ${newL.toFixed(1)}%)`;
 };
 
 const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
@@ -316,12 +336,10 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
     const cx = size / 2;
     const cy = size / 2;
     const labelR = radius * 0.78;
-    const iconPx = size > 140 ? 11 : 9;
-    const fontPx = size > 140 ? 10 : 8;
-    const boxW = size > 140 ? (showIcons ? 46 : 30) : (showIcons ? 34 : 24);
-    const boxH = size > 140 ? 20 : 16;
+    const iconPx = size > 140 ? 9 : 0;
+    const fontPx = size > 140 ? 9 : 8;
     return (
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block mx-auto">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block mx-auto" style={{ overflow: 'visible' }}>
             <g>
                 {slices.map(s => {
                     const isActive = side && active?.side === side && active?.cat === s.cat;
@@ -352,50 +370,43 @@ const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClic
                 const offY = isActive ? s.my * 8 : 0;
                 const lx = cx + labelR * s.mx;
                 const ly = cy + labelR * s.my;
-                const Ic = showIcons ? (CATEGORY_ICONS[s.cat] || Box) : null;
+                const Ic = showIcons && iconPx > 0 ? (CATEGORY_ICONS[s.cat] || Box) : null;
+                const stackH = Ic ? iconPx + 1 + fontPx : fontPx;
+                const iconY = Ic ? -stackH / 2 : 0;
+                const textY = Ic ? -stackH / 2 + iconPx + 1 + fontPx / 2 : 0;
                 return (
                     <g
                         key={`lbl-${s.cat}`}
                         transform={`translate(${lx + offX} ${ly + offY})`}
                         opacity={dim}
                         pointerEvents="none"
-                        style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease' }}
+                        style={{
+                            transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease',
+                            filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,0.75))'
+                        }}
                     >
-                        <rect
-                            x={-boxW / 2}
-                            y={-boxH / 2}
-                            width={boxW}
-                            height={boxH}
-                            rx={boxH / 2}
-                            ry={boxH / 2}
-                            fill="rgba(0,0,0,0.55)"
-                        />
-                        <foreignObject
-                            x={-boxW / 2}
-                            y={-boxH / 2}
-                            width={boxW}
-                            height={boxH}
+                        {Ic && (
+                            <Ic
+                                width={iconPx}
+                                height={iconPx}
+                                x={-iconPx / 2}
+                                y={iconY}
+                                color="#fff"
+                                strokeWidth={2.6}
+                            />
+                        )}
+                        <text
+                            x={0}
+                            y={textY}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill="#fff"
+                            fontSize={fontPx}
+                            fontWeight="900"
+                            style={{ letterSpacing: '-0.02em' }}
                         >
-                            <div
-                                xmlns="http://www.w3.org/1999/xhtml"
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    display: 'flex',
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: Ic ? 3 : 0,
-                                    lineHeight: 1,
-                                    color: '#fff'
-                                }}
-                            >
-                                {Ic && <Ic size={iconPx} strokeWidth={2.6} style={{ flexShrink: 0 }} />}
-                                <span style={{ fontSize: fontPx, fontWeight: 900, letterSpacing: '-0.02em' }}>
-                                    {s.percent.toFixed(0)}%
-                                </span>
-                            </div>
-                        </foreignObject>
+                            {s.percent.toFixed(0)}%
+                        </text>
                     </g>
                 );
             })}
@@ -436,9 +447,12 @@ const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSlic
 
 const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pieYearData, transactions, theme, t, activeColor }) => {
     const [active, setActive] = useState(null);
+    const [subActive, setSubActive] = useState(null);
     const [dragX, setDragX] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const dragStartX = useRef(null);
+
+    useEffect(() => { setSubActive(null); }, [active?.side, active?.cat]);
 
     const sourceData = active ? (active.side === 'month' ? pieMonthData : pieYearData) : [];
     const sourceCats = sourceData.map(d => d.cat);
@@ -504,6 +518,18 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
         return buildSlices(subData, tot, 56, 70, 70, (_d, i, n) => tintColor(color, i, n));
     }, [subData, color]);
     const subTotal = subData.reduce((a, b) => a + b.val, 0);
+
+    const subActiveData = subActive ? subData.find(d => d.cat === subActive) : null;
+    const subActiveIdx = subActive ? subData.findIndex(d => d.cat === subActive) : -1;
+    const subActiveCount = subActive && detail ? detail.list.filter(tx => {
+        const k = (tx.subCategory && tx.subCategory.trim()) || (tx.note && tx.note.trim()) || '(otros)';
+        return k === subActive;
+    }).length : 0;
+    const subActivePercent = subActiveData && subTotal > 0 ? (subActiveData.val / subTotal) * 100 : 0;
+    const subActiveColor = subActiveIdx >= 0 ? tintColor(color, subActiveIdx, subData.length) : color;
+    const handleSubClick = (_side, cat) => {
+        setSubActive(prev => prev === cat ? null : cat);
+    };
 
     const topTx = detail?.top?.[0];
     const topMeta = topTx ? [topTx.subCategory, topTx.note].filter(Boolean).join(' · ') : '';
@@ -630,15 +656,47 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
                                                 showCenter={false}
                                                 topLabels={3}
                                                 minLabelPercent={6}
+                                                side="sub"
+                                                active={subActive ? { side: 'sub', cat: subActive } : null}
+                                                onSliceClick={handleSubClick}
                                             />
+                                            <div className={`grid transition-all duration-300 ease-out ${subActive ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
+                                                <div className="overflow-hidden">
+                                                    {subActiveData && (
+                                                        <div
+                                                            key={subActive}
+                                                            className="flex items-center justify-between gap-3 p-3 rounded-xl border animate-in fade-in zoom-in-95 duration-200"
+                                                            style={{ borderColor: `${subActiveColor}55`, background: `${subActiveColor}1f` }}
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className="w-3 h-3 rounded-md shrink-0" style={{ background: subActiveColor }} />
+                                                                <p className="font-black text-sm truncate">{subActive}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-[11px] shrink-0">
+                                                                <span className="font-black" style={{ color: subActiveColor }}>{subActiveData.val.toFixed(0)}€</span>
+                                                                <span className="opacity-60 font-bold">{subActiveCount} mov</span>
+                                                                <span className="opacity-60 font-bold">{subActivePercent.toFixed(0)}%</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-1.5 mt-3">
-                                                {subData.slice(0, 6).map((s, i) => (
-                                                    <div key={s.cat} className="flex items-center gap-2 text-[10px]">
-                                                        <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: tintColor(color, i, subData.length) }} />
-                                                        <span className="font-bold truncate flex-1">{s.cat}</span>
-                                                        <span className="font-black opacity-70">{((s.val / subTotal) * 100).toFixed(0)}%</span>
-                                                    </div>
-                                                ))}
+                                                {subData.slice(0, 6).map((s, i) => {
+                                                    const isOn = subActive === s.cat;
+                                                    return (
+                                                        <button
+                                                            key={s.cat}
+                                                            type="button"
+                                                            onClick={() => handleSubClick('sub', s.cat)}
+                                                            className={`flex items-center gap-2 text-[10px] py-1 px-1.5 rounded-md transition-all ${isOn ? 'opacity-100 scale-[1.02]' : 'opacity-80 hover:opacity-100'}`}
+                                                        >
+                                                            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: tintColor(color, i, subData.length) }} />
+                                                            <span className="font-bold truncate flex-1 text-left">{s.cat}</span>
+                                                            <span className="font-black opacity-70">{((s.val / subTotal) * 100).toFixed(0)}%</span>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
