@@ -273,9 +273,19 @@ const DashboardView = ({
     );
 };
 
-const buildSlices = (data, total, radius, cx, cy) => {
+const tintColor = (base, idx, n) => {
+    const hex = (base || '#8E8E93').replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const alpha = Math.max(0.32, 1 - idx * (0.65 / Math.max(n - 1, 1)));
+    return `rgba(${r},${g},${b},${alpha})`;
+};
+
+const buildSlices = (data, total, radius, cx, cy, colorOverride) => {
     let cumulative = 0;
-    return data.map(d => {
+    const n = data.length;
+    return data.map((d, i) => {
         const start = cumulative / (total || 1);
         cumulative += d.val;
         const end = cumulative / (total || 1);
@@ -291,8 +301,79 @@ const buildSlices = (data, total, radius, cx, cy) => {
         const path = data.length === 1
             ? `M ${cx - radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx + radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx - radius} ${cy} Z`
             : `M ${cx} ${cy} L ${x0} ${y0} A ${radius} ${radius} 0 ${large} 1 ${x1} ${y1} Z`;
-        return { ...d, path, mx: Math.cos(aMid), my: Math.sin(aMid), color: CATEGORY_COLORS[d.cat] || '#8E8E93', percent: total > 0 ? (d.val / total) * 100 : 0 };
+        return {
+            ...d,
+            path,
+            mx: Math.cos(aMid),
+            my: Math.sin(aMid),
+            color: colorOverride ? colorOverride(d, i, n) : (CATEGORY_COLORS[d.cat] || '#8E8E93'),
+            percent: total > 0 ? (d.val / total) * 100 : 0
+        };
     });
+};
+
+const Pie = ({ slices, total, size = 160, radius = 62, side, active, onSliceClick, theme, showIcons = true, label = 'Total', topLabels = 3, minLabelPercent = 5 }) => {
+    const cx = size / 2;
+    const cy = size / 2;
+    const labelR = radius * 0.62;
+    return (
+        <div className="relative mx-auto" style={{ width: size, height: size }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+                <g>
+                    {slices.map(s => {
+                        const isActive = side && active?.side === side && active?.cat === s.cat;
+                        const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
+                        const tx = isActive ? s.mx * 8 : 0;
+                        const ty = isActive ? s.my * 8 : 0;
+                        return (
+                            <path
+                                key={s.cat}
+                                d={s.path}
+                                fill={s.color}
+                                stroke={theme === 'dark' ? '#000' : '#fff'}
+                                strokeWidth="2"
+                                opacity={dim}
+                                transform={`translate(${tx} ${ty})`}
+                                style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease', cursor: onSliceClick ? 'pointer' : 'default' }}
+                                onClick={onSliceClick ? () => onSliceClick(side, s.cat) : undefined}
+                            >
+                                <title>{s.cat}: {s.val.toFixed(2)}€ ({s.percent.toFixed(1)}%)</title>
+                            </path>
+                        );
+                    })}
+                </g>
+                <circle cx={cx} cy={cy} r={radius * 0.55} fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
+                <text x={cx} y={cy - 2} textAnchor="middle" className="font-black" fill="currentColor" fontSize={size > 140 ? 13 : 11} pointerEvents="none">{total.toFixed(0)}€</text>
+                <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize={size > 140 ? 8 : 7} opacity="0.5" className="font-bold uppercase tracking-wider" pointerEvents="none">{label}</text>
+            </svg>
+            {slices.slice(0, topLabels).filter(s => s.percent >= minLabelPercent).map(s => {
+                const isActive = side && active?.side === side && active?.cat === s.cat;
+                const dim = side && active && active.side === side && !isActive ? 0.25 : 1;
+                const offX = isActive ? s.mx * 8 : 0;
+                const offY = isActive ? s.my * 8 : 0;
+                const Ic = showIcons ? (CATEGORY_ICONS[s.cat] || Box) : null;
+                return (
+                    <div
+                        key={`lbl-${s.cat}`}
+                        className="absolute pointer-events-none flex flex-col items-center justify-center leading-none"
+                        style={{
+                            left: cx + labelR * s.mx + offX,
+                            top: cy + labelR * s.my + offY,
+                            transform: 'translate(-50%, -50%)',
+                            opacity: dim,
+                            transition: 'opacity .25s ease, left .35s, top .35s',
+                            textShadow: '0 1px 2px rgba(0,0,0,.55)'
+                        }}
+                    >
+                        {Ic && <Ic size={size > 140 ? 14 : 10} className="text-white" strokeWidth={2.6} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.5))' }} />}
+                        <span className="font-black text-white" style={{ fontSize: size > 140 ? 10 : 8, marginTop: Ic ? 2 : 0 }}>
+                            {s.percent.toFixed(0)}%
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
 };
 
 const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSliceClick, theme, t }) => {
@@ -313,34 +394,7 @@ const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSlic
             {total === 0 ? (
                 <div className={`h-[160px] flex items-center justify-center text-xs font-bold opacity-30 ${t.textSec}`}>Sin gastos.</div>
             ) : (
-                <svg width="160" height="160" viewBox="0 0 160 160" className="mx-auto">
-                    <g>
-                        {slices.map(s => {
-                            const isActive = active?.side === side && active?.cat === s.cat;
-                            const dim = active && active.side === side && !isActive ? 0.25 : 1;
-                            const tx = isActive ? s.mx * 8 : 0;
-                            const ty = isActive ? s.my * 8 : 0;
-                            return (
-                                <path
-                                    key={s.cat}
-                                    d={s.path}
-                                    fill={s.color}
-                                    stroke={theme === 'dark' ? '#000' : '#fff'}
-                                    strokeWidth="2"
-                                    opacity={dim}
-                                    transform={`translate(${tx} ${ty})`}
-                                    style={{ transition: 'transform .35s cubic-bezier(.2,.9,.3,1.3), opacity .25s ease', cursor: 'pointer' }}
-                                    onClick={() => onSliceClick(side, s.cat)}
-                                >
-                                    <title>{s.cat}: {s.val.toFixed(2)}€ ({s.percent.toFixed(1)}%)</title>
-                                </path>
-                            );
-                        })}
-                    </g>
-                    <circle cx="80" cy="80" r="34" fill={theme === 'dark' ? '#000' : '#fff'} pointerEvents="none" />
-                    <text x="80" y="76" textAnchor="middle" className="font-black" fill="currentColor" fontSize="13" pointerEvents="none">{total.toFixed(0)}€</text>
-                    <text x="80" y="90" textAnchor="middle" fill="currentColor" fontSize="8" opacity="0.5" className="font-bold uppercase tracking-wider" pointerEvents="none">Total</text>
-                </svg>
+                <Pie slices={slices} total={total} size={160} radius={62} side={side} active={active} onSliceClick={onSliceClick} theme={theme} showIcons />
             )}
         </div>
     );
@@ -348,8 +402,38 @@ const PieHalf = ({ heading, subtitle, data, onPrev, onNext, side, active, onSlic
 
 const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pieYearData, transactions, theme, t, activeColor }) => {
     const [active, setActive] = useState(null);
+    const [dragX, setDragX] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartX = useRef(null);
+
+    const sourceData = active ? (active.side === 'month' ? pieMonthData : pieYearData) : [];
+    const sourceCats = sourceData.map(d => d.cat);
+    const activeIndex = active ? sourceCats.indexOf(active.cat) : -1;
+
+    const goRel = (delta) => {
+        if (!active || sourceCats.length < 2) return;
+        const newIdx = (activeIndex + delta + sourceCats.length) % sourceCats.length;
+        setActive({ side: active.side, cat: sourceCats[newIdx] });
+    };
+
     const handleSliceClick = (side, cat) => {
         setActive(prev => prev?.side === side && prev?.cat === cat ? null : { side, cat });
+    };
+
+    const onTouchStart = (e) => {
+        dragStartX.current = e.touches[0].clientX;
+        setIsDragging(true);
+    };
+    const onTouchMove = (e) => {
+        if (dragStartX.current == null) return;
+        setDragX(e.touches[0].clientX - dragStartX.current);
+    };
+    const onTouchEnd = () => {
+        const dx = dragX;
+        dragStartX.current = null;
+        setIsDragging(false);
+        setDragX(0);
+        if (Math.abs(dx) > 60) goRel(dx < 0 ? 1 : -1);
     };
 
     const detail = useMemo(() => {
@@ -361,16 +445,34 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
             return d.getFullYear() === pieYear;
         });
         const total = list.reduce((a, b) => a + (b.amountVal || 0), 0);
-        const sourceData = active.side === 'month' ? pieMonthData : pieYearData;
-        const sourceTotal = sourceData.reduce((a, b) => a + b.val, 0);
-        const percent = sourceTotal > 0 ? (total / sourceTotal) * 100 : 0;
+        const srcTotal = sourceData.reduce((a, b) => a + b.val, 0);
+        const percent = srcTotal > 0 ? (total / srcTotal) * 100 : 0;
         const avg = list.length > 0 ? total / list.length : 0;
-        const top = [...list].sort((a, b) => (b.amountVal || 0) - (a.amountVal || 0)).slice(0, 5);
+        const top = [...list].sort((a, b) => (b.amountVal || 0) - (a.amountVal || 0));
         return { list, total, percent, avg, top, count: list.length };
-    }, [active, transactions, pieMonth, pieYear, pieMonthData, pieYearData]);
+    }, [active, transactions, pieMonth, pieYear, sourceData]);
 
-    const Icon = active ? (CATEGORY_ICONS[active.cat] || Box) : Box;
     const color = active ? (CATEGORY_COLORS[active.cat] || '#8E8E93') : '#8E8E93';
+    const Icon = active ? (CATEGORY_ICONS[active.cat] || Box) : Box;
+
+    const subData = useMemo(() => {
+        if (!detail) return [];
+        const map = {};
+        detail.list.forEach(tx => {
+            const k = (tx.subCategory && tx.subCategory.trim()) || (tx.note && tx.note.trim()) || '(otros)';
+            map[k] = (map[k] || 0) + (tx.amountVal || 0);
+        });
+        return Object.entries(map).map(([cat, val]) => ({ cat, val })).sort((a, b) => b.val - a.val);
+    }, [detail]);
+
+    const subSlices = useMemo(() => {
+        const tot = subData.reduce((a, b) => a + b.val, 0);
+        return buildSlices(subData, tot, 56, 70, 70, (_d, i, n) => tintColor(color, i, n));
+    }, [subData, color]);
+    const subTotal = subData.reduce((a, b) => a + b.val, 0);
+
+    const topTx = detail?.top?.[0];
+    const topMeta = topTx ? [topTx.subCategory, topTx.note].filter(Boolean).join(' · ') : '';
 
     return (
         <div className={`p-6 rounded-[32px] border ${t.card}`}>
@@ -420,45 +522,98 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
             <div className={`grid transition-all duration-500 ease-out ${active ? 'grid-rows-[1fr] opacity-100 mt-6' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
                 <div className="overflow-hidden">
                     {active && detail && (
-                        <div className="rounded-2xl border p-5 animate-in fade-in slide-in-from-bottom-4 duration-300" style={{ borderColor: `${color}40`, background: `${color}10` }}>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: color, color: '#fff' }}>
-                                    <Icon size={22} strokeWidth={2.5} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-black text-base tracking-tight truncate">{active.cat}</p>
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60`}>
-                                        {active.side === 'month' ? pieMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }) : pieYear}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-2xl font-black" style={{ color }}>{detail.total.toFixed(0)}€</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">{detail.percent.toFixed(1)}% del total</p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 mb-4">
-                                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-black/30' : 'bg-white/60'}`}>
-                                    <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Movimientos</p>
-                                    <p className="text-lg font-black">{detail.count}</p>
-                                </div>
-                                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-black/30' : 'bg-white/60'}`}>
-                                    <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Media</p>
-                                    <p className="text-lg font-black">{detail.avg.toFixed(0)}€</p>
-                                </div>
-                                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-black/30' : 'bg-white/60'}`}>
-                                    <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Mayor</p>
-                                    <p className="text-lg font-black">{(detail.top[0]?.amountVal || 0).toFixed(0)}€</p>
-                                </div>
-                            </div>
-                            {detail.top.length > 0 && (
-                                <div className="space-y-1.5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Mayores gastos</p>
-                                    {detail.top.map((tx, i) => (
-                                        <div key={tx.id || i} className={`flex justify-between items-center text-[11px] py-1.5 px-2 rounded-lg ${theme === 'dark' ? 'bg-black/20' : 'bg-white/50'}`}>
-                                            <span className="font-bold truncate flex-1">{tx.note || tx.subCategory || tx.category}</span>
-                                            <span className="opacity-50 mx-2 text-[9px] font-black uppercase">{tx.date}</span>
-                                            <span className="font-black" style={{ color }}>{(tx.amountVal || 0).toFixed(0)}€</span>
+                        <div className="relative">
+                            <button
+                                onClick={() => goRel(-1)}
+                                className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-9 h-9 items-center justify-center rounded-full border shadow-lg ${t.card} ${t.hover} opacity-70 hover:opacity-100 transition-opacity`}
+                                aria-label="Anterior"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <button
+                                onClick={() => goRel(1)}
+                                className={`hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-9 h-9 items-center justify-center rounded-full border shadow-lg ${t.card} ${t.hover} opacity-70 hover:opacity-100 transition-opacity`}
+                                aria-label="Siguiente"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                            <div
+                                onTouchStart={onTouchStart}
+                                onTouchMove={onTouchMove}
+                                onTouchEnd={onTouchEnd}
+                                style={{
+                                    transform: `translateX(${dragX}px)`,
+                                    transition: isDragging ? 'none' : 'transform .3s ease',
+                                    touchAction: 'pan-y'
+                                }}
+                            >
+                                <div
+                                    key={`${active.side}-${active.cat}`}
+                                    className="rounded-2xl border p-5 animate-in fade-in slide-in-from-right-2 duration-200"
+                                    style={{ borderColor: `${color}40`, background: `${color}10` }}
+                                >
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: color, color: '#fff' }}>
+                                            <Icon size={22} strokeWidth={2.5} />
                                         </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-base tracking-tight truncate">{active.cat}</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest opacity-60`}>
+                                                {active.side === 'month' ? pieMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }) : pieYear}
+                                                {sourceCats.length > 1 && <span className="ml-2 opacity-50">{activeIndex + 1}/{sourceCats.length}</span>}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-2xl font-black" style={{ color }}>{detail.total.toFixed(0)}€</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">{detail.percent.toFixed(1)}% del total</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 mb-4">
+                                        <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-black/30' : 'bg-white/60'}`}>
+                                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Movimientos</p>
+                                            <p className="text-lg font-black">{detail.count}</p>
+                                        </div>
+                                        <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-black/30' : 'bg-white/60'}`}>
+                                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Media</p>
+                                            <p className="text-lg font-black">{detail.avg.toFixed(0)}€</p>
+                                        </div>
+                                        <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-black/30' : 'bg-white/60'}`}>
+                                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Mayor</p>
+                                            <p className="text-lg font-black">{(topTx?.amountVal || 0).toFixed(0)}€</p>
+                                            {topMeta && <p className="text-[9px] font-bold opacity-60 truncate mt-0.5">{topMeta}</p>}
+                                        </div>
+                                    </div>
+                                    {subTotal > 0 && (
+                                        <div className={`rounded-xl p-3 ${theme === 'dark' ? 'bg-black/20' : 'bg-white/50'}`}>
+                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2 text-center">Por subcategoría</p>
+                                            <Pie
+                                                slices={subSlices}
+                                                total={subTotal}
+                                                size={140}
+                                                radius={56}
+                                                theme={theme}
+                                                showIcons={false}
+                                                label="Subcat"
+                                                topLabels={3}
+                                                minLabelPercent={6}
+                                            />
+                                            <div className="grid grid-cols-2 gap-1.5 mt-3">
+                                                {subData.slice(0, 6).map((s, i) => (
+                                                    <div key={s.cat} className="flex items-center gap-2 text-[10px]">
+                                                        <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: tintColor(color, i, subData.length) }} />
+                                                        <span className="font-bold truncate flex-1">{s.cat}</span>
+                                                        <span className="font-black opacity-70">{((s.val / subTotal) * 100).toFixed(0)}%</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            {sourceCats.length > 1 && (
+                                <div className="flex justify-center gap-1 mt-3 md:hidden">
+                                    {sourceCats.map((c, i) => (
+                                        <span key={c} className="w-1.5 h-1.5 rounded-full transition-all" style={{ background: i === activeIndex ? color : 'currentColor', opacity: i === activeIndex ? 1 : 0.2 }} />
                                     ))}
                                 </div>
                             )}
