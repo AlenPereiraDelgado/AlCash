@@ -985,7 +985,6 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
                     <button key={idx} onClick={() => idx !== mode && animateTo(idx > mode ? 1 : -1)} className={`h-1.5 rounded-full transition-all ${mode === idx ? `w-8 bg-current opacity-80` : 'w-1.5 bg-current opacity-20'}`} />
                 ))}
             </div>
-            <p className={`text-center text-[9px] font-black uppercase tracking-widest mt-2 opacity-30`}>Desliza · Toca una barra para detalle</p>
         </div>
     );
 };
