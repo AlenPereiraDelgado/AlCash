@@ -636,8 +636,21 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
     const [exitDir, setExitDir] = useState(0); // -1 left exit, 1 right exit, 0 idle
     const [enterDir, setEnterDir] = useState(0); // direction the new card enters from
     const dragStartX = useRef(null);
+    const panelRef = useRef(null);
 
     useEffect(() => { setSubActive(null); }, [active?.side, active?.cat]);
+
+    useEffect(() => {
+        if (!active) return;
+        const handler = (e) => {
+            if (panelRef.current && !panelRef.current.contains(e.target)) {
+                setActive(null);
+                setSubActive(null);
+            }
+        };
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [active]);
 
     const sourceData = active ? (active.side === 'month' ? pieMonthData : pieYearData) : [];
     const sourceCats = sourceData.map(d => d.cat);
@@ -727,7 +740,7 @@ const PiePanel = ({ pieMonth, setPieMonth, pieYear, setPieYear, pieMonthData, pi
     const topMeta = topTx ? [topTx.subCategory, topTx.note].filter(Boolean).join(' · ') : '';
 
     return (
-        <div className={`p-6 rounded-[32px] border ${t.card}`}>
+        <div ref={panelRef} className={`p-6 rounded-[32px] border ${t.card}`}>
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
                     <PieIcon size={18} className={activeColor.text} />
@@ -933,6 +946,16 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
     const startY = useRef(null);
     const lockedAxis = useRef(null);
     const [selectedBar, setSelectedBar] = useState(null); // { i, kind: 'income' | 'expense' | 'both' }
+    const cardRef = useRef(null);
+
+    useEffect(() => {
+        if (!selectedBar) return;
+        const handler = (e) => {
+            if (cardRef.current && !cardRef.current.contains(e.target)) setSelectedBar(null);
+        };
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [selectedBar]);
 
     const animateTo = (delta) => {
         if (transitioning) return;
@@ -976,7 +999,7 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
     const enterOpacity = (transitioning && transitionDir !== 0) ? 0 : 1;
 
     return (
-        <div className={`p-8 rounded-[32px] border ${t.card} relative overflow-hidden`}>
+        <div ref={cardRef} className={`p-8 rounded-[32px] border ${t.card} relative overflow-hidden`}>
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h3 className="text-lg font-bold">Comparativa {selectedChartYear}</h3>
