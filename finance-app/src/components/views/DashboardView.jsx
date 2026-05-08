@@ -1300,6 +1300,7 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
     const [expandedId, setExpandedId] = useState(null);
     const [adjustState, setAdjustState] = useState({});
     const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
+    const [controlsOpen, setControlsOpen] = useState(false);
 
     const active = items.filter(i => !i.completed_at);
     const completed = items.filter(i => i.completed_at);
@@ -1352,19 +1353,22 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
         : '#0A84FF';
 
     return (
-        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+        <div
+            onClick={() => setControlsOpen(o => !o)}
+            className={`p-6 md:p-8 rounded-[32px] border cursor-pointer ${t.card}`}
+        >
             <div className="flex items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                     <Target size={18} className={activeColor.text} />
                     <h3 className="text-base font-black tracking-tight">Ahorros & Objetivos</h3>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 transition-all duration-300 ${controlsOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}`}>
                     {completed.length > 0 && (
-                        <button onClick={() => setShowCompleted(true)} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${t.hover} opacity-70 hover:opacity-100 flex items-center gap-1.5`}>
+                        <button onClick={(e) => { e.stopPropagation(); setShowCompleted(true); }} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${t.hover} opacity-70 hover:opacity-100 flex items-center gap-1.5`}>
                             <Award size={12} /> {completed.length}
                         </button>
                     )}
-                    <button onClick={() => setShowForm(s => !s)} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${activeColor.bg} text-white flex items-center gap-1.5`}>
+                    <button onClick={(e) => { e.stopPropagation(); setShowForm(s => !s); }} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${activeColor.bg} text-white flex items-center gap-1.5`}>
                         <Plus size={12} /> Nuevo
                     </button>
                 </div>
@@ -1437,7 +1441,7 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                         return (
                             <div
                                 key={it.id}
-                                onClick={() => setExpandedId(prev => prev === it.id ? null : it.id)}
+                                onClick={(e) => { e.stopPropagation(); setExpandedId(prev => prev === it.id ? null : it.id); }}
                                 className={`p-5 rounded-2xl border cursor-pointer transition-all duration-300 ${isOpen ? `${activeColor.border} shadow-lg scale-[1.01]` : theme === 'dark' ? 'border-white/5 bg-white/[0.03] hover:border-white/10' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
                             >
                                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -1457,42 +1461,31 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
 
                                 {/* Animated progress bar */}
                                 <div className="relative">
-                                    <div className={`h-4 w-full rounded-full overflow-hidden relative ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`}>
+                                    <div className={`h-3 w-full rounded-full overflow-hidden relative ${theme === 'dark' ? 'bg-white/[0.06]' : 'bg-gray-200'}`}>
                                         <div
                                             className="h-full rounded-full transition-all duration-700 relative overflow-hidden"
                                             style={{
                                                 width: `${pct}%`,
                                                 background: `linear-gradient(90deg, ${accentHex}, #30D158)`,
-                                                boxShadow: pct > 0 ? `0 0 18px ${accentHex}55` : 'none',
+                                                boxShadow: pct > 0 ? `0 0 14px ${accentHex}55, inset 0 1px 0 rgba(255,255,255,.22)` : 'none',
                                             }}
                                         >
-                                            {/* Flowing diagonal stripes */}
-                                            <div
-                                                className="absolute inset-0 opacity-50"
-                                                style={{
-                                                    backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,.18) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.18) 50%, rgba(255,255,255,.18) 75%, transparent 75%, transparent)',
-                                                    backgroundSize: '14px 14px',
-                                                    animation: 'barFlow 1.4s linear infinite',
-                                                }}
-                                            />
-                                            {/* Shine sweep */}
-                                            <div
-                                                className="absolute inset-y-0 w-1/3"
-                                                style={{
-                                                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent)',
-                                                    animation: 'barFlow 2.4s ease-in-out infinite',
-                                                }}
-                                            />
+                                            {pct > 0 && pct < 100 && (
+                                                <div
+                                                    className="absolute inset-y-0 w-2/5 mix-blend-overlay"
+                                                    style={{
+                                                        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,.5) 50%, transparent 100%)',
+                                                        animation: 'barFlow 3.2s ease-in-out infinite',
+                                                    }}
+                                                />
+                                            )}
                                         </div>
-                                        {pct >= 100 && (
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-white drop-shadow"><Sparkles size={10} className="inline -mt-0.5" /> Completado</span>
-                                            </div>
-                                        )}
                                     </div>
                                     <div className="flex justify-between mt-1.5 text-[10px] font-black uppercase tracking-widest">
                                         <span className="opacity-60 tabular-nums">{fmt(total)} / {fmt(it.target)}</span>
-                                        <span className={pct >= 100 ? 'text-green-500' : 'opacity-60'}>{pct.toFixed(0)}%</span>
+                                        <span className={pct >= 100 ? 'text-green-500 flex items-center gap-1' : 'opacity-60'}>
+                                            {pct >= 100 && <Sparkles size={10} />}{pct.toFixed(0)}%
+                                        </span>
                                     </div>
                                 </div>
 
