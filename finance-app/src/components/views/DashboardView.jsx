@@ -1314,21 +1314,6 @@ const ProyeccionWidget = ({ filteredTransactions, dateMode, dateRange, t, theme,
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5">
-                    <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200'}`}>
-                        <div className="flex items-center gap-1.5 mb-1"><TrendingUp size={11} className="text-green-500" /><p className="text-[9px] uppercase font-black tracking-wider text-green-500">Ingreso</p></div>
-                        <p className={`text-base md:text-lg font-black tabular-nums ${blur}`}>{stats.income.toFixed(0)}€</p>
-                    </div>
-                    <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
-                        <div className="flex items-center gap-1.5 mb-1"><TrendingDown size={11} className="text-red-500" /><p className="text-[9px] uppercase font-black tracking-wider text-red-500">Gasto</p></div>
-                        <p className={`text-base md:text-lg font-black tabular-nums ${blur}`}>{stats.expense.toFixed(0)}€</p>
-                    </div>
-                    <div className={`p-3 rounded-2xl border ${stats.net >= 0 ? (theme === 'dark' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200') : (theme === 'dark' ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200')}`}>
-                        <div className="flex items-center gap-1.5 mb-1"><Wallet size={11} className={stats.net >= 0 ? 'text-blue-500' : 'text-orange-500'} /><p className={`text-[9px] uppercase font-black tracking-wider ${stats.net >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>Neto</p></div>
-                        <p className={`text-base md:text-lg font-black tabular-nums ${blur} ${stats.net >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>{stats.net >= 0 ? '+' : ''}{stats.net.toFixed(0)}€</p>
-                    </div>
-                </div>
-
                 <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-baseline justify-between mb-3">
                         <div>
