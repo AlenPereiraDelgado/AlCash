@@ -187,19 +187,27 @@ const DashboardView = ({
                                         fixed z-[200]
                                         bottom-0 left-0 right-0 rounded-t-[32px]
                                         md:bottom-auto md:left-auto md:right-auto
-                                        md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
+                                        md:top-1/2 md:left-1/2
                                         md:rounded-[24px] md:w-72
-                                        p-6 shadow-2xl border animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200
+                                        p-6 shadow-2xl border
                                         ${t.card}
                                     `}
+                                    style={{
+                                        animation: window.matchMedia('(min-width: 768px)').matches
+                                            ? 'desktopPopIn 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both'
+                                            : 'sheetSpringIn 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both',
+                                    }}
                                     onTouchStart={e => { swipeStartY.current = e.touches[0].clientY; }}
                                     onTouchEnd={e => { if (swipeStartY.current !== null && e.changedTouches[0].clientY - swipeStartY.current > 60) setIsDateMenuOpen(false); swipeStartY.current = null; }}
                                 >
                                     {/* Handle bar (mobile) */}
-                                    <div className="md:hidden w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
+                                    <div className="md:hidden w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" style={{ animation: 'popInBounce 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: '40ms' }} />
 
                                     {dateMode !== 'range' && (
-                                        <div className={`flex items-center justify-between mb-4 p-1.5 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+                                        <div
+                                            className={`flex items-center justify-between mb-4 p-1.5 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}
+                                            style={{ animation: 'popInBounce 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: '120ms' }}
+                                        >
                                             <button onClick={() => handleNavigate(-1)} className={`p-2.5 rounded-xl transition-colors ${t.hover} active:scale-90`} aria-label="Anterior">
                                                 <ChevronLeft size={18} />
                                             </button>
@@ -213,7 +221,10 @@ const DashboardView = ({
                                         </div>
                                     )}
 
-                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${t.textSec}`}>Cambiar período</p>
+                                    <p
+                                        className={`text-[10px] font-black uppercase tracking-widest mb-3 ${t.textSec}`}
+                                        style={{ animation: 'popInBounce 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: '200ms' }}
+                                    >Cambiar período</p>
 
                                     <div className="grid grid-cols-4 gap-2 mb-4">
                                         {[
@@ -221,11 +232,12 @@ const DashboardView = ({
                                             { val: 'month', label: 'Mes' },
                                             { val: 'year', label: 'Año' },
                                             { val: 'range', label: 'Rango' },
-                                        ].map(m => (
+                                        ].map((m, i) => (
                                             <button
                                                 key={m.val}
                                                 onClick={() => { setDateMode(m.val); }}
                                                 className={`py-2.5 text-xs font-black rounded-xl uppercase transition-all active:scale-95 ${dateMode === m.val ? `${activeColor.bg} text-white shadow-lg` : `${t.hover} ${t.textSec} border border-white/5`}`}
+                                                style={{ animation: 'popInBounce 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: `${260 + i * 70}ms` }}
                                             >
                                                 {m.label}
                                             </button>
@@ -233,14 +245,18 @@ const DashboardView = ({
                                     </div>
 
                                     {dateMode === 'range' && (
-                                        <div className="space-y-3 pt-4 border-t border-white/5">
+                                        <div className="space-y-3 pt-4 border-t border-white/5" style={{ animation: 'popInBounce 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: '560ms' }}>
                                             <input type="date" className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
                                             <input type="date" className={`w-full p-3 rounded-xl text-sm font-bold ${t.input}`} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
                                             <button onClick={() => setIsDateMenuOpen(false)} className={`w-full py-3 ${activeColor.bg} text-white rounded-2xl text-sm font-black active:scale-95 transition-all`}>Aplicar</button>
                                         </div>
                                     )}
 
-                                    <button onClick={() => setIsDateMenuOpen(false)} className={`mt-2 w-full py-3 rounded-2xl text-sm font-black ${t.hover} ${t.textSec} active:scale-95 transition-all`}>
+                                    <button
+                                        onClick={() => setIsDateMenuOpen(false)}
+                                        className={`mt-2 w-full py-3 rounded-2xl text-sm font-black ${t.hover} ${t.textSec} active:scale-95 transition-all`}
+                                        style={{ animation: 'popInBounce 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: '580ms' }}
+                                    >
                                         Cerrar
                                     </button>
                                 </div>

@@ -164,6 +164,25 @@ select:focus {
   100% { background-position: 200% 0; }
 }
 
+@keyframes popInBounce {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.7); }
+  55%  { opacity: 1; transform: translateY(-3px) scale(1.06); }
+  80%  { transform: translateY(1px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sheetSpringIn {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.92); }
+  60%  { opacity: 1; transform: translateY(-6px) scale(1.015); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes desktopPopIn {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(-4deg); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04) rotate(1deg); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+
 @keyframes barFlow {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
