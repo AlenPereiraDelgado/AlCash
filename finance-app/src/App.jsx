@@ -9,7 +9,7 @@ import {
     Target, Wallet, ArrowRight, Save, Coins, Plane, User, LogOut,
     BarChart2, Droplet, Hexagon, Handshake, CheckCircle2, XCircle, Palette,
     Check, Minus, PiggyBank, Timer, Users,
-    ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles, Key,
+    ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles,
 } from 'lucide-react';
 
 import { useAuth } from './contexts/AuthContext';
@@ -116,23 +116,6 @@ export default function App() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isLocalLoading, setIsLocalLoading] = useState(false);
     
-    // --- CAPA DE SEGURIDAD GLOBAL ---
-    const [isGateUnlocked, setIsGateUnlocked] = useState(() => sessionStorage.getItem('alcash_gate') === 'unlocked');
-    const [gatePassword, setGatePassword] = useState('');
-    const [gateError, setGateError] = useState(false);
-
-    const handleUnlockGate = (e) => {
-        e.preventDefault();
-        // ESTA ES TU CONTRASEÑA MAESTRA
-        if (gatePassword === 'ALCASH-SECURE-VAULT-2024-XP-9@!') {
-            setIsGateUnlocked(true);
-            sessionStorage.setItem('alcash_gate', 'unlocked');
-        } else {
-            setGateError(true);
-            setTimeout(() => setGateError(false), 500);
-        }
-    };
-
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
     const [toasts, setToasts] = useState([]);
     
@@ -866,37 +849,7 @@ export default function App() {
         reader.readAsText(file);
     };
 
-    // 1. Capa de Seguridad Global (Muro)
-    if (!isGateUnlocked) {
-        return (
-            <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
-                <div className={`w-full max-w-sm p-10 rounded-[40px] border border-white/5 bg-[#0E0E11] shadow-2xl transition-all ${gateError ? 'animate-shake border-red-500/50' : ''}`}>
-                    <div className="bg-blue-500/10 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-8">
-                        <Key className="text-blue-500" size={32} />
-                    </div>
-                    <div className="text-center mb-8">
-                        <h2 className="text-2xl font-black tracking-tighter mb-2">Acceso Restringido</h2>
-                        <p className="text-xs font-black uppercase tracking-widest opacity-40">Introduce la clave maestra</p>
-                    </div>
-                    <form onSubmit={handleUnlockGate} className="space-y-4">
-                        <input 
-                            autoFocus
-                            type="password" 
-                            placeholder="Clave de acceso..."
-                            value={gatePassword}
-                            onChange={(e) => setGatePassword(e.target.value)}
-                            className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl font-black text-center outline-none focus:border-blue-500/50 transition-all"
-                        />
-                        <button className="w-full bg-blue-500 hover:bg-blue-600 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-blue-500/20">
-                            Desbloquear Bóveda
-                        </button>
-                    </form>
-                </div>
-            </div>
-        );
-    }
-
-    // 2. Pantalla de carga (En el sitio correcto tras los hooks)
+    // Pantalla de carga (En el sitio correcto tras los hooks)
     if (isAuthLoading) {
         return (
             <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white">
