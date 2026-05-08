@@ -130,11 +130,20 @@ export const GaugeChart = ({ percentage, theme }) => {
                         >{tk.p}</text>
                     );
                 })}
+                <text
+                    x={cx}
+                    y={cy - 14}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={32}
+                    fontWeight="900"
+                    fill={color}
+                    style={{ letterSpacing: '-0.04em' }}
+                >{Math.round(animPct)}%</text>
             </svg>
-            <div className="text-center -mt-1 flex flex-col items-center">
-                <span className="text-4xl md:text-5xl font-black tracking-tighter tabular-nums" style={{ color }}>{Math.round(animPct)}%</span>
+            <div className="text-center -mt-2 flex flex-col items-center">
                 <span
-                    className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest"
                     style={{ background: `${color}1A`, color, border: `1px solid ${color}33` }}
                 >
                     <span className="w-1 h-1 rounded-full" style={{ background: color, boxShadow: `0 0 5px ${color}` }} />
