@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-    Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
+    Layers, Calendar as CalendarIcon, CalendarDays, ChevronLeft, ChevronRight,
     TrendingUp, TrendingDown, Wallet, ShieldCheck,
     Box, Globe, PieChart as PieIcon, Repeat, Sparkles, Plus, Minus, Trash2,
     Award, Link2, BarChart3, Target, Check, Activity, Zap, Radar
@@ -56,6 +56,17 @@ const DashboardView = ({
     const swipeStartY = useRef(null);
     const [pieMonth, setPieMonth] = useState(() => new Date());
     const [pieYear, setPieYear] = useState(() => new Date().getFullYear());
+    const dateBarRef = useRef(null);
+    const [floatingDate, setFloatingDate] = useState(false);
+
+    useEffect(() => {
+        if (!dateBarRef.current) return;
+        const obs = new IntersectionObserver(([e]) => {
+            setFloatingDate(!e.isIntersecting);
+        }, { threshold: 0, rootMargin: '-12px 0px 0px 0px' });
+        obs.observe(dateBarRef.current);
+        return () => obs.disconnect();
+    }, []);
 
     const pieMonthData = useMemo(() => {
         const m = pieMonth.getMonth();
@@ -139,7 +150,7 @@ const DashboardView = ({
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Controles de Fecha en Dashboard */}
-            <div className={`p-4 md:p-6 rounded-[32px] border flex flex-col xl:flex-row justify-between items-center gap-6 ${t.card}`}>
+            <div ref={dateBarRef} className={`p-4 md:p-6 rounded-[32px] border flex flex-col xl:flex-row justify-between items-center gap-6 ${t.card}`}>
                 <div className="w-full xl:max-w-xl">
                     <MagicInput
                         onParse={onMagicParse}
@@ -226,6 +237,25 @@ const DashboardView = ({
                 </div>
 
             </div>
+
+            {createPortal(
+                <button
+                    onClick={() => setIsDateMenuOpen(true)}
+                    aria-label="Cambiar fecha"
+                    className={`fixed top-3 right-3 md:top-4 md:right-4 z-[140] w-11 h-11 rounded-full border shadow-2xl backdrop-blur-xl flex items-center justify-center group ${theme === 'dark' ? 'bg-black/70 border-white/10' : 'bg-white/80 border-gray-200'}`}
+                    style={{
+                        transform: floatingDate ? 'scale(1) translateY(0) rotate(0deg)' : 'scale(0.2) translateY(-32px) rotate(-120deg)',
+                        opacity: floatingDate ? 1 : 0,
+                        pointerEvents: floatingDate ? 'auto' : 'none',
+                        transition: 'transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 320ms ease-out',
+                    }}
+                >
+                    <span className="absolute inset-0 rounded-full opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: `radial-gradient(circle at 50% 50%, ${activeColor.hex}33 0%, transparent 70%)` }} />
+                    <CalendarDays size={18} className={`relative ${activeColor.text}`} strokeWidth={2.5} />
+                    <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 shadow" style={{ background: activeColor.hex, borderColor: theme === 'dark' ? '#000' : '#fff' }} />
+                </button>,
+                document.body
+            )}
             <div className="grid grid-cols-4 gap-2 md:gap-4">
                 {[
                     { label: 'Ingresos', val: stats.income, color: 'text-green-500', icon: TrendingUp, bg: 'bg-green-500/10' },
@@ -1265,18 +1295,9 @@ const RadarHabitsWidget = ({ filteredTransactions, transactions, theme, t, activ
             tabIndex={0}
             className={`p-5 md:p-6 rounded-[32px] border ${t.card} cursor-pointer transition-transform active:scale-[0.99]`}
         >
-            <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                    <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Radar size={16} className={activeColor.text} /> Radar de Hábitos</h3>
-                    <p className={`text-[11px] mt-1 ${t.textSec}`}>Toca para alternar histórico / periodo.</p>
-                </div>
-                <span
-                    className={`shrink-0 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}
-                    style={{ color: activeColor.hex }}
-                >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: activeColor.hex, boxShadow: `0 0 6px ${activeColor.hex}` }} />
-                    {showAll ? 'Histórico' : 'Periodo'}
-                </span>
+            <div className="mb-4">
+                <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Radar size={16} className={activeColor.text} /> {showAll ? 'Hábitos · Histórico' : 'Hábitos del Periodo'}</h3>
+                <p className={`text-[11px] mt-1 ${t.textSec}`}>{showAll ? 'Toca para volver al periodo seleccionado.' : 'Toca para ver todo el histórico.'}</p>
             </div>
             <RadarChart theme={theme} data={data} accentHex={activeColor.hex} />
         </div>
@@ -1371,33 +1392,27 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
                         )}
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="relative w-9 h-9 shrink-0">
-                                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                                    <circle cx="18" cy="18" r="15" fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} strokeWidth="3" />
-                                    <circle
-                                        cx="18" cy="18" r="15" fill="none"
-                                        stroke={accent}
-                                        strokeWidth="3"
-                                        strokeLinecap="round"
-                                        strokeDasharray={`${2 * Math.PI * 15}`}
-                                        strokeDashoffset={`${2 * Math.PI * 15 * (1 - (animate * monthProgress) / 100)}`}
-                                        style={{ transition: 'stroke-dashoffset 1s ease-out', filter: `drop-shadow(0 0 4px ${accent}88)` }}
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-[8px] font-black tabular-nums" style={{ color: accent }}>{stats.elapsed}</span>
-                                </div>
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Día del mes</p>
-                                <p className="text-sm font-black tabular-nums">{stats.elapsed}<span className="opacity-40">/{stats.total}</span></p>
+                    <div className="mt-3 flex items-center gap-2.5">
+                        <div className="relative w-10 h-10 shrink-0">
+                            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                                <circle cx="18" cy="18" r="15" fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} strokeWidth="3" />
+                                <circle
+                                    cx="18" cy="18" r="15" fill="none"
+                                    stroke={accent}
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeDasharray={`${2 * Math.PI * 15}`}
+                                    strokeDashoffset={`${2 * Math.PI * 15 * (1 - (animate * monthProgress) / 100)}`}
+                                    style={{ transition: 'stroke-dashoffset 1s ease-out', filter: `drop-shadow(0 0 4px ${accent}88)` }}
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-[9px] font-black tabular-nums leading-none" style={{ color: accent }}>{Math.round(animate * monthProgress)}%</span>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Avance</p>
-                            <p className="text-sm font-black tabular-nums" style={{ color: accent }}>{monthProgress.toFixed(0)}%</p>
+                        <div className="min-w-0 leading-tight">
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Día del mes</p>
+                            <p className="text-sm font-black tabular-nums">{stats.elapsed}<span className="opacity-40">/{stats.total}</span></p>
                         </div>
                     </div>
                 </div>
