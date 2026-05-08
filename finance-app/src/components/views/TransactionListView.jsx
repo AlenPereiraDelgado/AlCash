@@ -40,10 +40,22 @@ const TransactionListView = ({
     const [selectedIds, setSelectedIds] = useState([]);
     const [selectionMode, setSelectionMode] = useState(false);
     const [swipedId, setSwipedId] = useState(null);
+    const dateMenuRef = useRef(null);
 
     useEffect(() => {
         if (selectedIds.length === 0) setSelectionMode(false);
     }, [selectedIds]);
+
+    useEffect(() => {
+        if (!isDateMenuOpen) return;
+        const handler = (e) => {
+            if (dateMenuRef.current && !dateMenuRef.current.contains(e.target)) {
+                setIsDateMenuOpen(false);
+            }
+        };
+        const id = setTimeout(() => document.addEventListener('pointerdown', handler), 50);
+        return () => { clearTimeout(id); document.removeEventListener('pointerdown', handler); };
+    }, [isDateMenuOpen, setIsDateMenuOpen]);
 
     const toggleSelect = (id) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -308,7 +320,7 @@ const TransactionListView = ({
             <div className={`p-3 rounded-3xl border flex flex-col lg:flex-row justify-between items-center gap-4 ${t.card}`}>
                 <div className={`flex items-center p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
                     <button onClick={() => handleNavigate(-1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronLeft size={20} /></button>
-                    <div className="relative px-2">
+                    <div className="relative px-2" ref={dateMenuRef}>
                         <button onClick={() => setIsDateMenuOpen(!isDateMenuOpen)} className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${t.hover}`}>
                             {dateMode === 'range' ? <Layers size={18} className="text-purple-500" /> : <CalendarIcon size={18} className={activeColor.text} />}
                             <span className="font-black uppercase tracking-widest text-sm">{getDateLabel()}</span>
@@ -329,7 +341,6 @@ const TransactionListView = ({
                                 )}
                             </div>
                         )}
-                        {isDateMenuOpen && <div className="fixed inset-0 z-40" onClick={() => setIsDateMenuOpen(false)}></div>}
                     </div>
                     <button onClick={() => handleNavigate(1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronRight size={20} /></button>
                 </div>
