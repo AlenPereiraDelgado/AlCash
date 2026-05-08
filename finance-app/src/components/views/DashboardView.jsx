@@ -114,23 +114,6 @@ const DashboardView = ({
         return { income, expense, avg, days };
     }, [filteredTransactions]);
 
-    // --- Datos del radar de hábitos por grupo de categoría ---
-    const radarHabitsData = useMemo(() => {
-        const GROUPS = {
-            "Fijos": ["Vivienda", "Suscripciones", "Hogar"],
-            "Vida": ["Alimentación", "Ocio", "Salud", "Regalos"],
-            "Movilidad": ["Transporte", "Viajes"],
-            "Otros": ["Otros", "Compras"],
-        };
-        const result = {};
-        Object.keys(GROUPS).forEach(group => {
-            result[group] = (filteredTransactions || [])
-                .filter(tx => tx.type === 'expense' && GROUPS[group].includes(tx.category))
-                .reduce((a, b) => a + (b.amountVal || 0), 0);
-        });
-        return result;
-    }, [filteredTransactions]);
-
     // --- Datos para vista "stacked-by-category" del comparativo ---
     const chartCategoryData = useMemo(() => {
         const result = [];
@@ -367,30 +350,20 @@ const DashboardView = ({
                         />
                     ) : null,
                     saludGauge: dashboardWidgets?.saludGauge ? (
-                        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
-                            <h3 className="text-sm font-black tracking-tight mb-2 uppercase flex items-center gap-2"><Activity size={16} className={activeColor.text} /> Salud Financiera</h3>
-                            <p className={`text-[11px] ${t.textSec} mb-5`}>Ratio de gasto sobre ingresos.</p>
+                        <div className={`p-5 md:p-6 rounded-[32px] border ${t.card}`}>
+                            <h3 className="text-sm font-black tracking-tight mb-1 uppercase flex items-center gap-2"><Activity size={16} className={activeColor.text} /> Salud Financiera</h3>
+                            <p className={`text-[11px] ${t.textSec} mb-2`}>Ratio de gasto sobre ingresos.</p>
                             <GaugeChart percentage={(periodStats.expense / (periodStats.income || 1)) * 100} theme={theme} />
-                            <div className={`mt-6 grid grid-cols-2 gap-3 w-full`}>
-                                <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-                                    <p className={`text-[9px] uppercase font-black tracking-wider opacity-50 mb-1`}>Ingreso</p>
-                                    <p className={`text-base font-black tabular-nums text-green-500 ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.income.toFixed(0)}€</p>
-                                </div>
-                                <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-                                    <p className={`text-[9px] uppercase font-black tracking-wider opacity-50 mb-1`}>Gasto</p>
-                                    <p className={`text-base font-black tabular-nums text-red-500 ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.expense.toFixed(0)}€</p>
-                                </div>
-                            </div>
                         </div>
                     ) : null,
                     radarHabitos: dashboardWidgets?.radarHabitos ? (
-                        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
-                            <div className="mb-4">
-                                <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Radar size={16} className={activeColor.text} /> Radar de Hábitos</h3>
-                                <p className={`text-[11px] mt-1 ${t.textSec}`}>Intensidad de gasto por grupos de categoría.</p>
-                            </div>
-                            <RadarChart theme={theme} data={radarHabitsData} accentHex={activeColor.hex} />
-                        </div>
+                        <RadarHabitsWidget
+                            filteredTransactions={filteredTransactions}
+                            transactions={transactions}
+                            theme={theme}
+                            t={t}
+                            activeColor={activeColor}
+                        />
                     ) : null,
                     lineComparativa: dashboardWidgets?.lineComparativa ? (
                         <LineComparativaCard
@@ -1265,6 +1238,51 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
     );
 };
 
+// ===================== RADAR HÁBITOS WIDGET =====================
+const RADAR_GROUPS = {
+    "Fijos": ["Vivienda", "Suscripciones", "Hogar"],
+    "Vida": ["Alimentación", "Ocio", "Salud", "Regalos"],
+    "Movilidad": ["Transporte", "Viajes"],
+    "Otros": ["Otros", "Compras"],
+};
+const RadarHabitsWidget = ({ filteredTransactions, transactions, theme, t, activeColor }) => {
+    const [showAll, setShowAll] = useState(false);
+    const data = useMemo(() => {
+        const src = showAll ? transactions : filteredTransactions;
+        const result = {};
+        Object.keys(RADAR_GROUPS).forEach(group => {
+            result[group] = (src || [])
+                .filter(tx => tx.type === 'expense' && RADAR_GROUPS[group].includes(tx.category))
+                .reduce((a, b) => a + (b.amountVal || 0), 0);
+        });
+        return result;
+    }, [filteredTransactions, transactions, showAll]);
+
+    return (
+        <div
+            onClick={() => setShowAll(s => !s)}
+            role="button"
+            tabIndex={0}
+            className={`p-5 md:p-6 rounded-[32px] border ${t.card} cursor-pointer transition-transform active:scale-[0.99]`}
+        >
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                    <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Radar size={16} className={activeColor.text} /> Radar de Hábitos</h3>
+                    <p className={`text-[11px] mt-1 ${t.textSec}`}>Toca para alternar histórico / periodo.</p>
+                </div>
+                <span
+                    className={`shrink-0 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}
+                    style={{ color: activeColor.hex }}
+                >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: activeColor.hex, boxShadow: `0 0 6px ${activeColor.hex}` }} />
+                    {showAll ? 'Histórico' : 'Periodo'}
+                </span>
+            </div>
+            <RadarChart theme={theme} data={data} accentHex={activeColor.hex} />
+        </div>
+    );
+};
+
 // ===================== PROYECCIÓN WIDGET =====================
 const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) => {
     const ref = useRef(null);
@@ -1316,19 +1334,15 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
     const accent = activeColor.hex;
     const paceClamped = Math.min(stats.pace, 200);
     const paceColor = stats.pace > 100 ? '#FF453A' : stats.pace > 80 ? '#FF9F0A' : '#30D158';
+    const monthProgress = (stats.elapsed / stats.total) * 100;
 
     return (
         <div ref={ref} className={`p-6 md:p-7 rounded-[32px] border ${t.card} relative overflow-hidden`}>
             <div className="absolute inset-0 pointer-events-none opacity-30" style={{ background: `radial-gradient(circle at 100% 0%, ${accent}1A 0%, transparent 50%)` }} />
             <div className="relative">
-                <div className="flex items-center justify-between mb-5">
-                    <div>
-                        <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección · {stats.monthLabel}</h3>
-                        <p className={`text-[11px] mt-1 ${t.textSec}`}>Estimación al ritmo actual del mes.</p>
-                    </div>
-                    <div className={`px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
-                        Día {stats.elapsed}/{stats.total}
-                    </div>
+                <div className="mb-5">
+                    <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección · {stats.monthLabel}</h3>
+                    <p className={`text-[11px] mt-1 ${t.textSec}`}>Estimación al ritmo actual del mes.</p>
                 </div>
 
                 <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
@@ -1356,13 +1370,34 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
                             <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 12px)' }} />
                         )}
                     </div>
-                    <div className="flex justify-center mt-3">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full" style={{ background: `${paceColor}1A`, border: `1px solid ${paceColor}44` }}>
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: paceColor, boxShadow: `0 0 6px ${paceColor}` }} />
-                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: paceColor }}>
-                                {stats.pace > 100 ? 'Sobrepasa proyección' : stats.pace > 80 ? 'Cerca del límite' : 'Bajo control'}
-                            </span>
-                            <span className="text-[10px] font-black tabular-nums opacity-70" style={{ color: paceColor }}>· {stats.pace.toFixed(0)}%</span>
+
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative w-9 h-9 shrink-0">
+                                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                                    <circle cx="18" cy="18" r="15" fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} strokeWidth="3" />
+                                    <circle
+                                        cx="18" cy="18" r="15" fill="none"
+                                        stroke={accent}
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeDasharray={`${2 * Math.PI * 15}`}
+                                        strokeDashoffset={`${2 * Math.PI * 15 * (1 - (animate * monthProgress) / 100)}`}
+                                        style={{ transition: 'stroke-dashoffset 1s ease-out', filter: `drop-shadow(0 0 4px ${accent}88)` }}
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-[8px] font-black tabular-nums" style={{ color: accent }}>{stats.elapsed}</span>
+                                </div>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Día del mes</p>
+                                <p className="text-sm font-black tabular-nums">{stats.elapsed}<span className="opacity-40">/{stats.total}</span></p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Avance</p>
+                            <p className="text-sm font-black tabular-nums" style={{ color: accent }}>{monthProgress.toFixed(0)}%</p>
                         </div>
                     </div>
                 </div>

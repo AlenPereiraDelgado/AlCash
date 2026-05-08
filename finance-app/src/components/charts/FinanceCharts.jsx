@@ -34,46 +34,112 @@ export const GaugeChart = ({ percentage, theme }) => {
     }, [target]);
 
     const size = 200;
-    const stroke = 16;
+    const stroke = 14;
     const radius = (size - stroke) / 2;
     const circumference = Math.PI * radius;
     const offset = circumference - (animPct / 100) * circumference;
+    const cx = size / 2;
+    const cy = size / 2;
 
     let color = '#30D158';
-    if (percentage > 70) color = '#FF9F0A';
-    if (percentage > 100) color = '#FF453A';
-    const gid = color.replace('#', '');
+    let statusLabel = 'Saludable';
+    if (percentage > 70) { color = '#FF9F0A'; statusLabel = 'Atención'; }
+    if (percentage > 100) { color = '#FF453A'; statusLabel = 'Crítico'; }
+
+    const tipAngle = Math.PI * (1 - Math.min(animPct, 100) / 100);
+    const tipX = cx + radius * Math.cos(tipAngle);
+    const tipY = cy - radius * Math.sin(tipAngle);
+
+    const ticks = [50, 80, 100].map(p => {
+        const a = Math.PI * (1 - p / 100);
+        const inner = radius - stroke / 2 - 2;
+        const outer = radius + stroke / 2 + 2;
+        return {
+            p,
+            x1: cx + inner * Math.cos(a),
+            y1: cy - inner * Math.sin(a),
+            x2: cx + outer * Math.cos(a),
+            y2: cy - outer * Math.sin(a),
+        };
+    });
 
     return (
         <div ref={ref} className="flex flex-col items-center w-full">
-            <svg viewBox={`0 0 ${size} ${size / 2 + 12}`} className="w-full max-w-[280px] overflow-visible">
+            <svg viewBox={`0 0 ${size} ${size / 2 + 18}`} className="w-full max-w-[260px] overflow-visible">
                 <defs>
-                    <linearGradient id={`gaugeGrad-${gid}`} x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor={color} stopOpacity="0.55" />
-                        <stop offset="100%" stopColor={color} />
+                    <linearGradient id="gaugeMultiStop" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#30D158" />
+                        <stop offset="40%" stopColor="#A6E22E" />
+                        <stop offset="65%" stopColor="#FFD60A" />
+                        <stop offset="85%" stopColor="#FF9F0A" />
+                        <stop offset="100%" stopColor="#FF453A" />
                     </linearGradient>
+                    <radialGradient id="gaugeTipGlow">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </radialGradient>
                 </defs>
                 <path
-                    d={`M ${stroke / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - stroke / 2} ${size / 2}`}
+                    d={`M ${stroke / 2} ${cy} A ${radius} ${radius} 0 0 1 ${size - stroke / 2} ${cy}`}
                     fill="none"
-                    stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+                    stroke={theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
                     strokeWidth={stroke}
                     strokeLinecap="round"
                 />
+                {ticks.map(tk => (
+                    <line
+                        key={tk.p}
+                        x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2}
+                        stroke={theme === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)'}
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                    />
+                ))}
                 <path
-                    d={`M ${stroke / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - stroke / 2} ${size / 2}`}
+                    d={`M ${stroke / 2} ${cy} A ${radius} ${radius} 0 0 1 ${size - stroke / 2} ${cy}`}
                     fill="none"
-                    stroke={`url(#gaugeGrad-${gid})`}
+                    stroke="url(#gaugeMultiStop)"
                     strokeWidth={stroke}
                     strokeDasharray={circumference}
                     strokeDashoffset={offset}
                     strokeLinecap="round"
-                    style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
+                    style={{ filter: `drop-shadow(0 0 10px ${color}88)` }}
                 />
+                {animPct > 1 && (
+                    <>
+                        <circle cx={tipX} cy={tipY} r={14} fill="url(#gaugeTipGlow)">
+                            <animate attributeName="r" values="10;16;10" dur="2s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" />
+                        </circle>
+                        <circle cx={tipX} cy={tipY} r={4} fill={color} stroke={theme === 'dark' ? '#000' : '#fff'} strokeWidth={2} />
+                    </>
+                )}
+                {ticks.map(tk => {
+                    const a = Math.PI * (1 - tk.p / 100);
+                    const lr = radius + stroke / 2 + 11;
+                    return (
+                        <text
+                            key={`l-${tk.p}`}
+                            x={cx + lr * Math.cos(a)}
+                            y={cy - lr * Math.sin(a)}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize={8}
+                            fontWeight="900"
+                            fill={theme === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)'}
+                        >{tk.p}</text>
+                    );
+                })}
             </svg>
-            <div className="text-center mt-3">
+            <div className="text-center -mt-1 flex flex-col items-center">
                 <span className="text-4xl md:text-5xl font-black tracking-tighter tabular-nums" style={{ color }}>{Math.round(animPct)}%</span>
-                <p className={`text-[10px] uppercase font-black tracking-widest mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Gasto / Ingreso</p>
+                <span
+                    className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest"
+                    style={{ background: `${color}1A`, color, border: `1px solid ${color}33` }}
+                >
+                    <span className="w-1 h-1 rounded-full" style={{ background: color, boxShadow: `0 0 5px ${color}` }} />
+                    {statusLabel}
+                </span>
             </div>
         </div>
     );
