@@ -173,3 +173,9 @@ select:focus {
   0%, 100% { box-shadow: 0 0 22px rgba(59, 130, 246, 0.18), 0 0 0 1px rgba(59, 130, 246, 0.20); }
   50%      { box-shadow: 0 0 38px rgba(59, 130, 246, 0.45), 0 0 0 1px rgba(59, 130, 246, 0.35); }
 }
+
+@keyframes titleAura {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.08); }
+}
+.animate-title-aura { animation: titleAura 4s ease-in-out infinite; }

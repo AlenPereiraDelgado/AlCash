@@ -1,4 +1,4 @@
-import React, { useState, createElement } from 'react';
+import React, { useState, useRef, useEffect, createElement } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
@@ -38,6 +38,12 @@ const TransactionListView = ({
     const { categories, transactions, globalTags, updateTransaction, deleteTransaction, categoryColors } = useFinance();
     const getCatColor = (cat) => resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [swipedId, setSwipedId] = useState(null);
+
+    useEffect(() => {
+        if (selectedIds.length === 0) setSelectionMode(false);
+    }, [selectedIds]);
 
     const toggleSelect = (id) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -76,6 +82,168 @@ const TransactionListView = ({
     const handleBulkCategory = async (newCat) => {
         await Promise.all(selectedIds.map(id => updateTransaction(id, { category: newCat })));
         setSelectedIds([]);
+    };
+
+    const ACTIONS_WIDTH = 144;
+    const LONG_PRESS_MS = 480;
+
+    const SwipeRow = ({ tx }) => {
+        const isOpen = swipedId === tx.id;
+        const [dx, setDx] = useState(isOpen ? -ACTIONS_WIDTH : 0);
+        const [dragging, setDragging] = useState(false);
+        const startRef = useRef({ x: 0, y: 0, base: 0, axis: null });
+        const lpTimer = useRef(null);
+        const movedRef = useRef(false);
+        const suppressClickRef = useRef(false);
+
+        useEffect(() => {
+            if (swipedId !== tx.id && dx !== 0 && !dragging) setDx(0);
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [swipedId]);
+
+        const cancelLP = () => { if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; } };
+
+        const closeRow = () => { setDx(0); if (swipedId === tx.id) setSwipedId(null); };
+
+        const onTouchStart = (e) => {
+            if (selectionMode) return;
+            const p = e.touches[0];
+            startRef.current = { x: p.clientX, y: p.clientY, base: dx, axis: null };
+            movedRef.current = false;
+            setDragging(true);
+            cancelLP();
+            lpTimer.current = setTimeout(() => {
+                if (!movedRef.current) {
+                    if (navigator.vibrate) navigator.vibrate(40);
+                    setSelectionMode(true);
+                    toggleSelect(tx.id);
+                    suppressClickRef.current = true;
+                    setDragging(false);
+                }
+            }, LONG_PRESS_MS);
+        };
+
+        const onTouchMove = (e) => {
+            if (selectionMode) return;
+            const p = e.touches[0];
+            const ddx = p.clientX - startRef.current.x;
+            const ddy = p.clientY - startRef.current.y;
+            if (!startRef.current.axis) {
+                if (Math.abs(ddx) > 8 || Math.abs(ddy) > 8) {
+                    startRef.current.axis = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y';
+                    cancelLP();
+                    if (startRef.current.axis === 'y') setDragging(false);
+                }
+            }
+            if (startRef.current.axis === 'x') {
+                movedRef.current = true;
+                const next = startRef.current.base + ddx;
+                setDx(Math.min(20, Math.max(-ACTIONS_WIDTH - 20, next)));
+            }
+        };
+
+        const onTouchEnd = () => {
+            cancelLP();
+            const wasDragX = startRef.current.axis === 'x';
+            setDragging(false);
+            if (selectionMode) return;
+            if (wasDragX) {
+                if (dx < -ACTIONS_WIDTH / 3) {
+                    setDx(-ACTIONS_WIDTH);
+                    setSwipedId(tx.id);
+                } else {
+                    closeRow();
+                }
+                if (movedRef.current) {
+                    suppressClickRef.current = true;
+                    setTimeout(() => { suppressClickRef.current = false; }, 350);
+                }
+            }
+        };
+
+        const onClick = (e) => {
+            if (suppressClickRef.current) { e.preventDefault(); e.stopPropagation(); return; }
+            if (selectionMode) toggleSelect(tx.id);
+            else if (isOpen) closeRow();
+        };
+
+        const isSelected = selectedIds.includes(tx.id);
+        const isAuto = tx.tags?.includes('__auto__');
+        const auraCls = isSelected ? 'border-blue-500 bg-blue-500/5'
+            : isAuto ? 'border-yellow-500/40 bg-yellow-500/[0.04] shadow-[0_0_24px_-8px_rgba(234,179,8,0.4)]'
+            : t.card;
+
+        return (
+            <div className={`relative rounded-[24px] overflow-hidden border ${auraCls}`}>
+                {/* Drawer (acciones detrás) */}
+                <div className="absolute inset-y-0 right-0 flex items-stretch" style={{ width: ACTIONS_WIDTH }}>
+                    <button
+                        onClick={() => { toggleReminder(tx); closeRow(); }}
+                        className={`flex-1 flex items-center justify-center ${tx.tags?.includes('__reminder__') ? 'bg-cyan-500/30 text-cyan-300' : 'bg-cyan-500/15 text-cyan-400'}`}
+                        title="Aviso anual"
+                    >
+                        <Bell size={18} />
+                    </button>
+                    <button
+                        onClick={() => { handleEdit(tx); closeRow(); }}
+                        className="flex-1 flex items-center justify-center bg-blue-500/20 text-blue-400"
+                    >
+                        <Pencil size={18} />
+                    </button>
+                    <button
+                        onClick={() => { setConfirmModal({ open: true, title: 'Eliminar Movimiento', message: '¿Borrar este registro?', onConfirm: () => deleteTransaction(tx.id, tx.is_joint) }); closeRow(); }}
+                        className="flex-1 flex items-center justify-center bg-red-500/25 text-red-400"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </div>
+
+                {/* Foreground (fila visible) */}
+                <div
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    onTouchCancel={onTouchEnd}
+                    onClick={onClick}
+                    className={`relative flex items-center gap-3 p-3 active:scale-[0.99] ${theme === 'dark' ? 'bg-[#0E0E11]' : 'bg-white'}`}
+                    style={{
+                        transform: `translateX(${dx}px)`,
+                        transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        touchAction: 'pan-y',
+                    }}
+                >
+                    {selectionMode && (
+                        <button onClick={(e) => { e.stopPropagation(); toggleSelect(tx.id); }} className="shrink-0">
+                            {isSelected ? <CheckSquare size={20} className={activeColor.text} /> : <Square size={20} className="opacity-30" />}
+                        </button>
+                    )}
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-white/5" style={{ color: getCatColor(tx.category) }}>
+                        {React.createElement(CATEGORY_ICONS[tx.category] || Box, { size: 20 })}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                            <h4 className="font-bold text-sm truncate">{tx.note || tx.subCategory}</h4>
+                            <span className={`font-black text-sm whitespace-nowrap ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                                {tx.type === 'income' ? '+' : '-'}{Number(tx.amountVal).toFixed(2)}€
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <div className={`flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider min-w-0 ${t.textSec}`}>
+                                <span className="truncate">{tx.category}</span>
+                                <span className="opacity-30 shrink-0">·</span>
+                                <span className="opacity-50 shrink-0">{tx.date}</span>
+                            </div>
+                            {(isAuto || tx.tags?.includes('__reminder__')) && (
+                                <div className="flex gap-1 shrink-0">
+                                    {isAuto && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-yellow-500/15 text-yellow-400 text-[9px] font-black"><Zap size={8} />Auto</span>}
+                                    {tx.tags?.includes('__reminder__') && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-cyan-500/15 text-cyan-400 text-[9px] font-black"><Bell size={8} />Aviso</span>}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -290,39 +458,7 @@ const TransactionListView = ({
                     {/* LISTA DE TARJETAS (MOBILE) */}
                     <div className="md:hidden space-y-3">
                         {filteredTransactions.map(tx => (
-                            <div key={tx.id} className={`p-4 rounded-[24px] border transition-all active:scale-[0.98] flex items-center gap-4 ${selectedIds.includes(tx.id) ? 'border-blue-500 bg-blue-500/5' : tx.tags?.includes('__auto__') ? 'border-yellow-500/40 bg-yellow-500/[0.04] shadow-[0_0_24px_-8px_rgba(234,179,8,0.4)]' : t.card}`}>
-                                <div className="flex flex-col gap-1.5 shrink-0">
-                                    <button onClick={() => toggleSelect(tx.id)}>
-                                        {selectedIds.includes(tx.id) ? <CheckSquare size={20} className={activeColor.text} /> : <Square size={20} className="opacity-20" />}
-                                    </button>
-                                    <button onClick={() => toggleReminder(tx)} title="Marcar como aviso anual">
-                                        <Bell size={16} className={tx.tags?.includes('__reminder__') ? 'text-cyan-400 fill-cyan-400/30' : 'opacity-20'} />
-                                    </button>
-                                </div>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-white/5`} style={{ color: getCatColor(tx.category) }}>
-                                    {React.createElement(CATEGORY_ICONS[tx.category] || Box, { size: 24 })}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-start mb-0.5">
-                                        <h4 className="font-black text-sm truncate">{tx.note || tx.subCategory}</h4>
-                                        <span className={`font-black text-sm whitespace-nowrap ml-2 ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                                            {tx.type === 'income' ? '+' : '-'}{Number(tx.amountVal).toFixed(2)}€
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider">
-                                        <span className={`flex items-center gap-1.5 ${t.textSec}`}>
-                                            {tx.category}
-                                            {tx.tags?.includes('__auto__') && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-yellow-500/15 text-yellow-400 normal-case tracking-normal"><Zap size={8} />Auto</span>}
-                                            {tx.tags?.includes('__reminder__') && <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-cyan-500/15 text-cyan-400 normal-case tracking-normal"><Bell size={8} />Aviso</span>}
-                                        </span>
-                                        <span className="opacity-40">{tx.date}</span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <button onClick={() => handleEdit(tx)} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'} ${t.textSec}`}><Pencil size={14} /></button>
-                                    <button onClick={() => setConfirmModal({ open: true, title: 'Eliminar Movimiento', message: '¿Borrar este registro?', onConfirm: () => deleteTransaction(tx.id, tx.is_joint) })} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-red-500/10 text-red-500' : 'bg-gray-100 text-red-500'}`}><Trash2 size={14} /></button>
-                                </div>
-                            </div>
+                            <SwipeRow key={tx.id} tx={tx} />
                         ))}
                     </div>
                 </>

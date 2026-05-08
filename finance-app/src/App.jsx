@@ -1042,11 +1042,12 @@ export default function App() {
                 ) : (
                     <>
 
-                        <header className="flex flex-col items-center text-center mb-4 gap-1">
-                            <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-                                {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'joint' ? 'Cuenta Conjunta' : view === 'settings' ? 'Configuración' : 'Gestión'}
-                            </h2>
-                            <p className={`font-bold text-[10px] md:text-xs uppercase tracking-widest ${t.textSec}`}>{getDateLabel()}</p>
+                        <header className="flex justify-center mb-3">
+                            <div className="relative inline-flex items-center px-4">
+                                <h2 className="relative text-2xl md:text-3xl font-black tracking-tight">
+                                    {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'joint' ? 'Cuenta Conjunta' : view === 'settings' ? 'Configuración' : 'Gestión'}
+                                </h2>
+                            </div>
                         </header>
 
                 <ErrorBoundary>
