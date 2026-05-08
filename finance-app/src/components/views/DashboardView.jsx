@@ -4,10 +4,17 @@ import MagicInput from '../common/MagicInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import {
+    DndContext, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter,
+} from '@dnd-kit/core';
+import {
+    SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
     Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
     TrendingUp, TrendingDown, Wallet, ShieldCheck,
     Box, Globe, PieChart as PieIcon, Repeat, Sparkles, Plus, Minus, Trash2,
-    Award, Link2, BarChart3, Target
+    Award, Link2, BarChart3, Target, Check
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
@@ -41,8 +48,11 @@ const DashboardView = ({
         transactions, categoryColors, recurringRules,
         savingsWidgets, addSavingsWidget, deleteSavingsWidget,
         adjustSavingsWidget, reopenSavingsWidget,
-        dashboardWidgets,
+        dashboardWidgets, setDashboardWidgets,
     } = useFinance();
+    const [editMode, setEditMode] = useState(false);
+    const longPressTimer = useRef(null);
+    const longPressStart = useRef({ x: 0, y: 0, fired: false });
     const getCatColor = (cat) => resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS);
     const swipeStartY = useRef(null);
     const [pieMonth, setPieMonth] = useState(() => new Date());
@@ -232,93 +242,210 @@ const DashboardView = ({
                     );
                 })}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <ComparativaCard
-                    chartData={chartData}
-                    chartCategoryData={chartCategoryData}
-                    hoveredMonth={hoveredMonth}
-                    setHoveredMonth={setHoveredMonth}
-                    selectedChartYear={selectedChartYear}
-                    setSelectedChartYear={setSelectedChartYear}
-                    theme={theme}
-                    t={t}
-                    getCatColor={getCatColor}
-                />
-
-                {/* SALUD FINANCIERA */}
-                <div className={`p-5 md:p-6 rounded-[32px] border ${t.card}`}>
-                    <h3 className="text-sm font-black tracking-tight mb-4 uppercase">Salud Financiera</h3>
-                    <div className="grid grid-cols-3 gap-3 md:gap-4">
-                        {/* TASA AHORRO */}
-                        <div className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-                            <div className="relative inline-flex items-center justify-center">
-                                <svg className="w-14 h-14 transform -rotate-90">
-                                    <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="5" fill="transparent" className="text-gray-500/10" />
-                                    <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="5" fill="transparent" strokeDasharray={150.8} strokeDashoffset={150.8 - (150.8 * Math.max(0, Math.min(100, savingsRate))) / 100} className={`transition-all duration-1000 ${savingsRate > 20 ? 'text-green-500' : 'text-yellow-500'}`} strokeLinecap="round" />
-                                </svg>
-                                <span className="absolute text-xs font-black tabular-nums">{(savingsRate || 0).toFixed(0)}%</span>
+            <ReorderableWidgets
+                editMode={editMode}
+                setEditMode={setEditMode}
+                longPressTimer={longPressTimer}
+                longPressStart={longPressStart}
+                dashboardWidgets={dashboardWidgets}
+                setDashboardWidgets={setDashboardWidgets}
+                widgets={{
+                    comparativa: (
+                        <ComparativaCard
+                            chartData={chartData}
+                            chartCategoryData={chartCategoryData}
+                            hoveredMonth={hoveredMonth}
+                            setHoveredMonth={setHoveredMonth}
+                            selectedChartYear={selectedChartYear}
+                            setSelectedChartYear={setSelectedChartYear}
+                            theme={theme}
+                            t={t}
+                            getCatColor={getCatColor}
+                        />
+                    ),
+                    salud: (
+                        <div className={`p-5 md:p-6 rounded-[32px] border ${t.card}`}>
+                            <h3 className="text-sm font-black tracking-tight mb-4 uppercase">Salud Financiera</h3>
+                            <div className="grid grid-cols-3 gap-3 md:gap-4">
+                                <div className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                                    <div className="relative inline-flex items-center justify-center">
+                                        <svg className="w-14 h-14 transform -rotate-90">
+                                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="5" fill="transparent" className="text-gray-500/10" />
+                                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="5" fill="transparent" strokeDasharray={150.8} strokeDashoffset={150.8 - (150.8 * Math.max(0, Math.min(100, savingsRate))) / 100} className={`transition-all duration-1000 ${savingsRate > 20 ? 'text-green-500' : 'text-yellow-500'}`} strokeLinecap="round" />
+                                        </svg>
+                                        <span className="absolute text-xs font-black tabular-nums">{(savingsRate || 0).toFixed(0)}%</span>
+                                    </div>
+                                    <p className={`text-[9px] font-black uppercase tracking-wider opacity-60`}>Tasa Ahorro</p>
+                                </div>
+                                <div className="p-3 rounded-2xl bg-blue-600/10 border border-blue-600/20 flex flex-col items-center text-center gap-1">
+                                    <p className={`text-[9px] font-black uppercase tracking-wider text-blue-500 leading-tight`}>Colchón</p>
+                                    <div className={`flex items-baseline gap-1 ${privacyMode ? 'privacy-blur' : ''}`}>
+                                        <span className="text-xl md:text-2xl font-black tabular-nums">{emergencyFundMonths.toFixed(1)}</span>
+                                        <span className="text-[10px] font-bold opacity-60">meses</span>
+                                    </div>
+                                    <p className={`text-[9px] font-medium leading-tight opacity-50`}>vida cubierta</p>
+                                </div>
+                                <div className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+                                    <p className={`text-[9px] font-black uppercase tracking-wider opacity-60 leading-tight`}>Eficiencia</p>
+                                    <p className={`text-xl md:text-2xl font-black tabular-nums ${privacyMode ? 'privacy-blur' : ''}`}>{(100 - (savingsRate || 0)).toFixed(0)}%</p>
+                                    <p className={`text-[9px] font-medium leading-tight opacity-50`}>ingresos gastados</p>
+                                </div>
                             </div>
-                            <p className={`text-[9px] font-black uppercase tracking-wider opacity-60`}>Tasa Ahorro</p>
                         </div>
-                        {/* COLCHÓN */}
-                        <div className="p-3 rounded-2xl bg-blue-600/10 border border-blue-600/20 flex flex-col items-center text-center gap-1">
-                            <p className={`text-[9px] font-black uppercase tracking-wider text-blue-500 leading-tight`}>Colchón</p>
-                            <div className={`flex items-baseline gap-1 ${privacyMode ? 'privacy-blur' : ''}`}>
-                                <span className="text-xl md:text-2xl font-black tabular-nums">{emergencyFundMonths.toFixed(1)}</span>
-                                <span className="text-[10px] font-bold opacity-60">meses</span>
-                            </div>
-                            <p className={`text-[9px] font-medium leading-tight opacity-50`}>vida cubierta</p>
-                        </div>
-                        {/* EFICIENCIA */}
-                        <div className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
-                            <p className={`text-[9px] font-black uppercase tracking-wider opacity-60 leading-tight`}>Eficiencia</p>
-                            <p className={`text-xl md:text-2xl font-black tabular-nums ${privacyMode ? 'privacy-blur' : ''}`}>{(100 - (savingsRate || 0)).toFixed(0)}%</p>
-                            <p className={`text-[9px] font-medium leading-tight opacity-50`}>ingresos gastados</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <HistoricalAverageCard avg={historicalAverages} t={t} theme={theme} privacyMode={privacyMode} activeColor={activeColor} />
-
-            <PiePanel
-                pieMonth={pieMonth}
-                setPieMonth={setPieMonth}
-                pieYear={pieYear}
-                setPieYear={setPieYear}
-                pieMonthData={pieMonthData}
-                pieYearData={pieYearData}
-                transactions={transactions}
-                theme={theme}
-                t={t}
+                    ),
+                    historical: (
+                        <HistoricalAverageCard avg={historicalAverages} t={t} theme={theme} privacyMode={privacyMode} activeColor={activeColor} />
+                    ),
+                    pie: (
+                        <PiePanel
+                            pieMonth={pieMonth}
+                            setPieMonth={setPieMonth}
+                            pieYear={pieYear}
+                            setPieYear={setPieYear}
+                            pieMonthData={pieMonthData}
+                            pieYearData={pieYearData}
+                            transactions={transactions}
+                            theme={theme}
+                            t={t}
+                            activeColor={activeColor}
+                            getCatColor={getCatColor}
+                        />
+                    ),
+                    fixedInfo: dashboardWidgets?.fixedInfo ? (
+                        <FixedInfoWidget recurringRules={recurringRules} t={t} theme={theme} activeColor={activeColor} privacyMode={privacyMode} />
+                    ) : null,
+                    nextExpense: dashboardWidgets?.nextExpense ? (
+                        <NextExpenseWidget recurringRules={recurringRules} transactions={transactions} t={t} theme={theme} activeColor={activeColor} privacyMode={privacyMode} getCatColor={getCatColor} />
+                    ) : null,
+                    savings: dashboardWidgets?.savings ? (
+                        <SavingsWidget
+                            items={savingsWidgets || []}
+                            rules={recurringRules || []}
+                            transactions={transactions}
+                            onAdd={addSavingsWidget}
+                            onDelete={deleteSavingsWidget}
+                            onAdjust={adjustSavingsWidget}
+                            onReopen={reopenSavingsWidget}
+                            t={t}
+                            theme={theme}
+                            activeColor={activeColor}
+                            privacyMode={privacyMode}
+                        />
+                    ) : null,
+                }}
                 activeColor={activeColor}
-                getCatColor={getCatColor}
             />
-
-            {dashboardWidgets?.fixedInfo && (
-                <FixedInfoWidget recurringRules={recurringRules} t={t} theme={theme} activeColor={activeColor} privacyMode={privacyMode} />
-            )}
-
-            {dashboardWidgets?.nextExpense && (
-                <NextExpenseWidget recurringRules={recurringRules} transactions={transactions} t={t} theme={theme} activeColor={activeColor} privacyMode={privacyMode} getCatColor={getCatColor} />
-            )}
-
-            {dashboardWidgets?.savings && (
-                <SavingsWidget
-                    items={savingsWidgets || []}
-                    rules={recurringRules || []}
-                    transactions={transactions}
-                    onAdd={addSavingsWidget}
-                    onDelete={deleteSavingsWidget}
-                    onAdjust={adjustSavingsWidget}
-                    onReopen={reopenSavingsWidget}
-                    t={t}
-                    theme={theme}
-                    activeColor={activeColor}
-                    privacyMode={privacyMode}
-                />
-            )}
         </div>
+    );
+};
+
+const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings'];
+
+const SortableWidget = ({ id, editMode, children }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !editMode });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        opacity: isDragging ? 0.85 : 1,
+    };
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={editMode ? 'touch-none' : ''}>
+            <div className={editMode && !isDragging ? 'animate-wiggle' : ''}>
+                {children}
+            </div>
+        </div>
+    );
+};
+
+const ReorderableWidgets = ({ editMode, setEditMode, longPressTimer, longPressStart, dashboardWidgets, setDashboardWidgets, widgets, activeColor }) => {
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(TouchSensor, { activationConstraint: { distance: 6 } }),
+    );
+
+    const storedOrder = Array.isArray(dashboardWidgets?._order) ? dashboardWidgets._order : DEFAULT_ORDER;
+    const merged = [...storedOrder, ...DEFAULT_ORDER.filter(k => !storedOrder.includes(k))];
+    const visible = merged.filter(k => widgets[k]);
+
+    const enterEdit = () => {
+        if (editMode) return;
+        if (navigator.vibrate) navigator.vibrate(50);
+        setEditMode(true);
+    };
+
+    const startLP = (e) => {
+        if (editMode) return;
+        const p = e.touches?.[0] || e;
+        longPressStart.current = { x: p.clientX, y: p.clientY, fired: false };
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        longPressTimer.current = setTimeout(() => {
+            longPressStart.current.fired = true;
+            enterEdit();
+        }, 480);
+    };
+    const cancelLP = (e) => {
+        if (longPressTimer.current && e?.touches?.[0]) {
+            const p = e.touches[0];
+            const dx = p.clientX - longPressStart.current.x;
+            const dy = p.clientY - longPressStart.current.y;
+            if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                clearTimeout(longPressTimer.current);
+                longPressTimer.current = null;
+            }
+        } else if (longPressTimer.current && !e?.touches) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
+    const endLP = () => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    };
+
+    const handleDragEnd = (ev) => {
+        const { active, over } = ev;
+        if (!over || active.id === over.id) return;
+        const oldIdx = visible.indexOf(active.id);
+        const newIdx = visible.indexOf(over.id);
+        if (oldIdx < 0 || newIdx < 0) return;
+        const newVisible = arrayMove(visible, oldIdx, newIdx);
+        const fullOrder = [...newVisible, ...DEFAULT_ORDER.filter(k => !newVisible.includes(k))];
+        setDashboardWidgets(prev => ({ ...prev, _order: fullOrder }));
+    };
+
+    return (
+        <>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={visible} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-6 md:space-y-8">
+                        {visible.map(key => (
+                            <div
+                                key={key}
+                                onTouchStart={startLP}
+                                onTouchMove={cancelLP}
+                                onTouchEnd={endLP}
+                                onTouchCancel={endLP}
+                                onContextMenu={(e) => { if (editMode) e.preventDefault(); }}
+                            >
+                                <SortableWidget id={key} editMode={editMode}>
+                                    {widgets[key]}
+                                </SortableWidget>
+                            </div>
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
+
+            {editMode && (
+                <button
+                    onClick={() => setEditMode(false)}
+                    className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-6 py-3 rounded-full text-white font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all"
+                    style={{ background: activeColor.hex, boxShadow: `0 10px 30px ${activeColor.hex}66` }}
+                >
+                    <Check size={16} /> Listo
+                </button>
+            )}
+        </>
     );
 };
 

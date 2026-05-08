@@ -179,3 +179,9 @@ select:focus {
   50%      { opacity: 0.85; transform: scale(1.08); }
 }
 .animate-title-aura { animation: titleAura 4s ease-in-out infinite; }
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-0.6deg); }
+  50%      { transform: rotate(0.7deg); }
+}
+.animate-wiggle { animation: wiggle 0.22s ease-in-out infinite; transform-origin: center; }
