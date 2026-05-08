@@ -364,25 +364,24 @@ const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashbo
         }),
     );
 
+    const draggingRef = useRef(false);
+    const dragEndTimeRef = useRef(0);
+
     const storedOrder = Array.isArray(dashboardWidgets?._order) ? dashboardWidgets._order : DEFAULT_ORDER;
     const merged = [...storedOrder, ...DEFAULT_ORDER.filter(k => !storedOrder.includes(k))];
     const visible = merged.filter(k => widgets[k]);
 
     const handleDragStart = () => {
+        draggingRef.current = true;
         if (!editMode) {
             if (navigator.vibrate) navigator.vibrate(50);
             setEditMode(true);
         }
     };
 
-    useEffect(() => {
-        if (!editMode) return;
-        const handler = () => setEditMode(false);
-        const t = setTimeout(() => document.addEventListener('click', handler), 250);
-        return () => { clearTimeout(t); document.removeEventListener('click', handler); };
-    }, [editMode, setEditMode]);
-
     const handleDragEnd = (ev) => {
+        draggingRef.current = false;
+        dragEndTimeRef.current = Date.now();
         const { active, over } = ev;
         if (!over || active.id === over.id) return;
         const oldIdx = visible.indexOf(active.id);
@@ -392,6 +391,37 @@ const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashbo
         const fullOrder = [...newVisible, ...DEFAULT_ORDER.filter(k => !newVisible.includes(k))];
         setDashboardWidgets(prev => ({ ...prev, _order: fullOrder }));
     };
+
+    useEffect(() => {
+        if (!editMode) return;
+        let downX = 0, downY = 0, downT = 0, downId = -1;
+        const onDown = (e) => {
+            downX = e.clientX;
+            downY = e.clientY;
+            downT = Date.now();
+            downId = e.pointerId ?? -1;
+        };
+        const onUp = (e) => {
+            if ((e.pointerId ?? -1) !== downId) return;
+            if (draggingRef.current) return;
+            if (Date.now() - dragEndTimeRef.current < 200) return;
+            const dx = Math.abs((e.clientX ?? 0) - downX);
+            const dy = Math.abs((e.clientY ?? 0) - downY);
+            const dt = Date.now() - downT;
+            if (dx > 10 || dy > 10) return;
+            if (dt > 600) return;
+            setEditMode(false);
+        };
+        const armId = setTimeout(() => {
+            document.addEventListener('pointerdown', onDown, true);
+            document.addEventListener('pointerup', onUp, true);
+        }, 150);
+        return () => {
+            clearTimeout(armId);
+            document.removeEventListener('pointerdown', onDown, true);
+            document.removeEventListener('pointerup', onUp, true);
+        };
+    }, [editMode, setEditMode]);
 
     return (
         <>
