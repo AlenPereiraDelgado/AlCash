@@ -17,7 +17,7 @@ import {
     Award, Link2, BarChart3, Target, Check, Activity, Zap, Radar
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
-import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
+import { parseLocalDate, resolveCategoryColor, themeGradient } from '../../utils/helpers';
 import { GaugeChart, RadarChart } from '../charts/FinanceCharts';
 
 const DashboardView = ({
@@ -1369,7 +1369,6 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
     const blur = privacyMode ? 'privacy-blur' : '';
     const accent = activeColor.hex;
     const paceClamped = Math.min(stats.pace, 200);
-    const paceColor = stats.pace > 100 ? '#FF453A' : stats.pace > 80 ? '#FF9F0A' : '#30D158';
     const monthProgress = (stats.elapsed / stats.total) * 100;
 
     return (
@@ -1399,8 +1398,8 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
                                 className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
                                 style={{
                                     width: `${animate * Math.min(paceClamped, 100)}%`,
-                                    background: `linear-gradient(90deg, ${paceColor}AA, ${paceColor})`,
-                                    boxShadow: `0 0 14px ${paceColor}77`,
+                                    background: themeGradient(accent),
+                                    boxShadow: `0 0 14px ${accent}77`,
                                 }}
                             />
                             {paceClamped > 100 && (
@@ -2226,7 +2225,7 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                                             className="h-full rounded-full relative overflow-hidden"
                                             style={{
                                                 width: `${animPct}%`,
-                                                background: `linear-gradient(90deg, ${accentHex}, #30D158)`,
+                                                background: themeGradient(accentHex),
                                                 boxShadow: animPct > 0 ? `0 0 14px ${accentHex}55, inset 0 1px 0 rgba(255,255,255,.22)` : 'none',
                                                 transition: `width 1.1s cubic-bezier(.2,.8,.2,1) ${idx * 80 + 200}ms, box-shadow .5s ease`,
                                             }}

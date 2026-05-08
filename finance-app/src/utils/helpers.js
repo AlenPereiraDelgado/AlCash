@@ -70,3 +70,37 @@ export const getDynamicFontSize = (value) => {
     if (str.length > 5) return 'text-3xl';
     return 'text-4xl';
 };
+
+/**
+ * Devuelve un tono más claro o más oscuro de un hex.
+ * percent > 0 mezcla con blanco, < 0 mezcla con negro.
+ */
+export const shadeColor = (hex, percent) => {
+    const clean = (hex || '#888888').replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+    const num = parseInt(full, 16);
+    let r = (num >> 16) & 255;
+    let g = (num >> 8) & 255;
+    let b = num & 255;
+    if (percent >= 0) {
+        r = Math.round(r + (255 - r) * percent);
+        g = Math.round(g + (255 - g) * percent);
+        b = Math.round(b + (255 - b) * percent);
+    } else {
+        const k = 1 + percent;
+        r = Math.round(r * k);
+        g = Math.round(g * k);
+        b = Math.round(b * k);
+    }
+    const toHex = (v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+/**
+ * Genera string CSS gradient horizontal con tonos del color base.
+ */
+export const themeGradient = (hex) => {
+    const light = shadeColor(hex, 0.35);
+    const dark = shadeColor(hex, -0.2);
+    return `linear-gradient(90deg, ${light} 0%, ${hex} 55%, ${dark} 100%)`;
+};
