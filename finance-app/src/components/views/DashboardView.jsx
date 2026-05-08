@@ -344,6 +344,7 @@ const SortableWidget = ({ id, editMode, children }) => {
         transition,
         zIndex: isDragging ? 50 : 'auto',
         opacity: isDragging ? 0.85 : 1,
+        touchAction: editMode ? 'none' : 'auto',
     };
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
