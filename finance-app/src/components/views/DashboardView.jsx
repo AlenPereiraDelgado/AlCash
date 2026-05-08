@@ -375,6 +375,13 @@ const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashbo
         }
     };
 
+    useEffect(() => {
+        if (!editMode) return;
+        const handler = () => setEditMode(false);
+        const t = setTimeout(() => document.addEventListener('click', handler), 250);
+        return () => { clearTimeout(t); document.removeEventListener('click', handler); };
+    }, [editMode, setEditMode]);
+
     const handleDragEnd = (ev) => {
         const { active, over } = ev;
         if (!over || active.id === over.id) return;
@@ -409,10 +416,10 @@ const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashbo
             {editMode && (
                 <button
                     onClick={() => setEditMode(false)}
-                    className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-6 py-3 rounded-full text-white font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all"
+                    className="fixed top-4 right-4 z-[60] flex items-center gap-2 px-5 py-2.5 rounded-full text-white font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all"
                     style={{ background: activeColor.hex, boxShadow: `0 10px 30px ${activeColor.hex}66` }}
                 >
-                    <Check size={16} /> Listo
+                    <Check size={14} /> Listo
                 </button>
             )}
         </>
