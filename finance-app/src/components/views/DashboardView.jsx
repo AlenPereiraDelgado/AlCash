@@ -359,9 +359,7 @@ const DashboardView = ({
                     ) : null,
                     proyeccion: dashboardWidgets?.proyeccion ? (
                         <ProyeccionWidget
-                            filteredTransactions={filteredTransactions}
-                            dateMode={dateMode}
-                            dateRange={dateRange}
+                            transactions={transactions}
                             t={t}
                             theme={theme}
                             activeColor={activeColor}
@@ -1227,51 +1225,29 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
 };
 
 // ===================== PROYECCIÓN WIDGET =====================
-const ProyeccionWidget = ({ filteredTransactions, dateMode, dateRange, t, theme, activeColor, privacyMode }) => {
+const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) => {
     const ref = useRef(null);
     const [animate, setAnimate] = useState(0);
     const stats = useMemo(() => {
-        const list = filteredTransactions || [];
-        const income = list.filter(tx => tx.type === 'income').reduce((a, b) => a + (b.amountVal || 0), 0);
-        const expense = list.filter(tx => tx.type === 'expense').reduce((a, b) => a + (b.amountVal || 0), 0);
-        const net = income - expense;
         const today = new Date();
-
-        let unit = 'día';
-        let elapsed = 1, total = 1;
-        if (dateMode === 'month') {
-            const ref = list.length ? parseLocalDate(list[0].date) : today;
-            const y = ref.getFullYear();
-            const m = ref.getMonth();
-            total = new Date(y, m + 1, 0).getDate();
-            const isCurrent = (y === today.getFullYear() && m === today.getMonth());
-            elapsed = isCurrent ? today.getDate() : total;
-            unit = 'día';
-        } else if (dateMode === 'year') {
-            const ref = list.length ? parseLocalDate(list[0].date) : today;
-            const y = ref.getFullYear();
-            total = 12;
-            elapsed = (y === today.getFullYear()) ? today.getMonth() + 1 : 12;
-            unit = 'mes';
-        } else if (dateMode === 'range') {
-            const s = dateRange?.start ? parseLocalDate(dateRange.start) : today;
-            const e = dateRange?.end ? parseLocalDate(dateRange.end) : today;
-            const days = Math.max(1, Math.round((e - s) / 86400000) + 1);
-            total = days;
-            elapsed = days;
-            unit = 'día';
-        } else {
-            total = 1; elapsed = 1; unit = 'día';
-        }
-
+        const y = today.getFullYear();
+        const m = today.getMonth();
+        const monthList = (transactions || []).filter(tx => {
+            const d = parseLocalDate(tx.date);
+            return d.getFullYear() === y && d.getMonth() === m;
+        });
+        const income = monthList.filter(tx => tx.type === 'income').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const expense = monthList.filter(tx => tx.type === 'expense').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const net = income - expense;
+        const total = new Date(y, m + 1, 0).getDate();
+        const elapsed = today.getDate();
         const avgPerUnit = expense / Math.max(elapsed, 1);
         const projected = avgPerUnit * total;
         const pace = elapsed < total ? (expense / projected) * 100 : 100;
         const remaining = Math.max(projected - expense, 0);
-        const incomeAvg = income / Math.max(elapsed, 1);
-
-        return { income, expense, net, avgPerUnit, projected, pace, remaining, unit, elapsed, total, incomeAvg };
-    }, [filteredTransactions, dateMode, dateRange]);
+        const monthLabel = today.toLocaleString('es-ES', { month: 'long' });
+        return { income, expense, net, avgPerUnit, projected, pace, remaining, unit: 'día', elapsed, total, monthLabel };
+    }, [transactions]);
 
     useEffect(() => {
         if (!ref.current) return;
@@ -1306,11 +1282,11 @@ const ProyeccionWidget = ({ filteredTransactions, dateMode, dateRange, t, theme,
             <div className="relative">
                 <div className="flex items-center justify-between mb-5">
                     <div>
-                        <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección</h3>
-                        <p className={`text-[11px] mt-1 ${t.textSec}`}>Estimación al ritmo actual.</p>
+                        <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección · {stats.monthLabel}</h3>
+                        <p className={`text-[11px] mt-1 ${t.textSec}`}>Estimación al ritmo actual del mes.</p>
                     </div>
                     <div className={`px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
-                        {stats.elapsed}/{stats.total} {stats.unit}{stats.total !== 1 ? 's' : ''}
+                        Día {stats.elapsed}/{stats.total}
                     </div>
                 </div>
 
