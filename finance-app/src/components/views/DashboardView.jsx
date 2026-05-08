@@ -68,6 +68,12 @@ const DashboardView = ({
         return () => obs.disconnect();
     }, []);
 
+    const prevFloatingDate = useRef(floatingDate);
+    useEffect(() => {
+        if (prevFloatingDate.current && !floatingDate && isDateMenuOpen) setIsDateMenuOpen(false);
+        prevFloatingDate.current = floatingDate;
+    }, [floatingDate, isDateMenuOpen, setIsDateMenuOpen]);
+
     const pieMonthData = useMemo(() => {
         const m = pieMonth.getMonth();
         const y = pieMonth.getFullYear();
