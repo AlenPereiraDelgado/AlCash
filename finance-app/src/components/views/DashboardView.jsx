@@ -257,17 +257,18 @@ const DashboardView = ({
                 <button
                     onClick={() => setIsDateMenuOpen(true)}
                     aria-label="Cambiar fecha"
-                    className={`fixed top-3 right-3 md:top-4 md:right-4 z-[140] w-11 h-11 rounded-full border shadow-2xl backdrop-blur-xl flex items-center justify-center group ${theme === 'dark' ? 'bg-black/70 border-white/10' : 'bg-white/80 border-gray-200'}`}
+                    className={`fixed top-3 right-3 md:top-4 md:right-4 z-[140] w-11 h-11 rounded-full backdrop-blur-xl flex items-center justify-center group ${theme === 'dark' ? 'bg-black/70' : 'bg-white/80'}`}
                     style={{
                         transform: floatingDate ? 'scale(1) translateY(0) rotate(0deg)' : 'scale(0.2) translateY(-32px) rotate(-120deg)',
                         opacity: floatingDate ? 1 : 0,
                         pointerEvents: floatingDate ? 'auto' : 'none',
                         transition: 'transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 320ms ease-out',
+                        border: `1.5px solid ${activeColor.hex}`,
+                        boxShadow: `0 0 0 3px ${activeColor.hex}1F, 0 0 18px ${activeColor.hex}66, 0 8px 24px rgba(0,0,0,0.35)`,
                     }}
                 >
                     <span className="absolute inset-0 rounded-full opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: `radial-gradient(circle at 50% 50%, ${activeColor.hex}33 0%, transparent 70%)` }} />
                     <CalendarDays size={18} className={`relative ${activeColor.text}`} strokeWidth={2.5} />
-                    <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 shadow" style={{ background: activeColor.hex, borderColor: theme === 'dark' ? '#000' : '#fff' }} />
                 </button>,
                 document.body
             )}
