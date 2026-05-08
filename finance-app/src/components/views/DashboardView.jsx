@@ -1302,26 +1302,27 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
                         </div>
                     </div>
 
-                    <div className="relative h-2 rounded-full overflow-hidden mb-2" style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                    <div className="relative h-2.5 rounded-full overflow-hidden" style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                         <div
                             className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
                             style={{
                                 width: `${animate * Math.min(paceClamped, 100)}%`,
                                 background: `linear-gradient(90deg, ${paceColor}AA, ${paceColor})`,
-                                boxShadow: `0 0 12px ${paceColor}66`,
+                                boxShadow: `0 0 14px ${paceColor}77`,
                             }}
                         />
                         {paceClamped > 100 && (
-                            <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.15) 0 6px, transparent 6px 12px)' }} />
+                            <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 12px)' }} />
                         )}
                     </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider opacity-60">
-                        <span>{stats.pace.toFixed(0)}% del periodo</span>
-                        {stats.elapsed < stats.total ? (
-                            <span>Quedan ~{stats.remaining.toFixed(0)}€</span>
-                        ) : (
-                            <span>Periodo completo</span>
-                        )}
+                    <div className="flex justify-center mt-3">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full" style={{ background: `${paceColor}1A`, border: `1px solid ${paceColor}44` }}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: paceColor, boxShadow: `0 0 6px ${paceColor}` }} />
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: paceColor }}>
+                                {stats.pace > 100 ? 'Sobrepasa proyección' : stats.pace > 80 ? 'Cerca del límite' : 'Bajo control'}
+                            </span>
+                            <span className="text-[10px] font-black tabular-nums opacity-70" style={{ color: paceColor }}>· {stats.pace.toFixed(0)}%</span>
+                        </div>
                     </div>
                 </div>
             </div>
