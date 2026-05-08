@@ -205,7 +205,7 @@ const DashboardView = ({
                                         }}
                                     />
 
-                                    {dateMode !== 'range' && (
+                                    {floatingDate && dateMode !== 'range' && (
                                         <div
                                             className={`flex items-center justify-between mb-2 p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}
                                             style={{ animation: 'hangItemDrop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both', animationDelay: '60ms' }}
