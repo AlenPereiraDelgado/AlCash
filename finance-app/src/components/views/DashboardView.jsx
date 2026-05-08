@@ -198,9 +198,24 @@ const DashboardView = ({
                                     {/* Handle bar (mobile) */}
                                     <div className="md:hidden w-10 h-1 rounded-full bg-white/20 mx-auto mb-6" />
 
-                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-4 ${t.textSec}`}>Período de tiempo</p>
+                                    {dateMode !== 'range' && (
+                                        <div className={`flex items-center justify-between mb-4 p-1.5 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+                                            <button onClick={() => handleNavigate(-1)} className={`p-2.5 rounded-xl transition-colors ${t.hover} active:scale-90`} aria-label="Anterior">
+                                                <ChevronLeft size={18} />
+                                            </button>
+                                            <div className="flex items-center gap-2 min-w-0 px-2">
+                                                <CalendarIcon size={14} className={activeColor.text} />
+                                                <span className="font-black uppercase tracking-widest text-sm truncate">{getDateLabel()}</span>
+                                            </div>
+                                            <button onClick={() => handleNavigate(1)} className={`p-2.5 rounded-xl transition-colors ${t.hover} active:scale-90`} aria-label="Siguiente">
+                                                <ChevronRight size={18} />
+                                            </button>
+                                        </div>
+                                    )}
 
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${t.textSec}`}>Cambiar período</p>
+
+                                    <div className="grid grid-cols-4 gap-2 mb-4">
                                         {[
                                             { val: 'day', label: 'Día' },
                                             { val: 'month', label: 'Mes' },
@@ -209,8 +224,8 @@ const DashboardView = ({
                                         ].map(m => (
                                             <button
                                                 key={m.val}
-                                                onClick={() => { setDateMode(m.val); if (m.val !== 'range') setIsDateMenuOpen(false); }}
-                                                className={`py-3 text-sm font-black rounded-2xl uppercase transition-all active:scale-95 ${dateMode === m.val ? `${activeColor.bg} text-white shadow-lg` : `${t.hover} ${t.textSec} border border-white/5`}`}
+                                                onClick={() => { setDateMode(m.val); }}
+                                                className={`py-2.5 text-xs font-black rounded-xl uppercase transition-all active:scale-95 ${dateMode === m.val ? `${activeColor.bg} text-white shadow-lg` : `${t.hover} ${t.textSec} border border-white/5`}`}
                                             >
                                                 {m.label}
                                             </button>
@@ -225,8 +240,8 @@ const DashboardView = ({
                                         </div>
                                     )}
 
-                                    <button onClick={() => setIsDateMenuOpen(false)} className={`mt-3 w-full py-3 rounded-2xl text-sm font-black ${t.hover} ${t.textSec} active:scale-95 transition-all`}>
-                                        Cancelar
+                                    <button onClick={() => setIsDateMenuOpen(false)} className={`mt-2 w-full py-3 rounded-2xl text-sm font-black ${t.hover} ${t.textSec} active:scale-95 transition-all`}>
+                                        Cerrar
                                     </button>
                                 </div>
                             </>,
@@ -1378,41 +1393,39 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
                         </div>
                     </div>
 
-                    <div className="relative h-2.5 rounded-full overflow-hidden" style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-                        <div
-                            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
-                            style={{
-                                width: `${animate * Math.min(paceClamped, 100)}%`,
-                                background: `linear-gradient(90deg, ${paceColor}AA, ${paceColor})`,
-                                boxShadow: `0 0 14px ${paceColor}77`,
-                            }}
-                        />
-                        {paceClamped > 100 && (
-                            <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 12px)' }} />
-                        )}
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2.5">
-                        <div className="relative w-10 h-10 shrink-0">
-                            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                                <circle cx="18" cy="18" r="15" fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} strokeWidth="3" />
-                                <circle
-                                    cx="18" cy="18" r="15" fill="none"
-                                    stroke={accent}
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeDasharray={`${2 * Math.PI * 15}`}
-                                    strokeDashoffset={`${2 * Math.PI * 15 * (1 - (animate * monthProgress) / 100)}`}
-                                    style={{ transition: 'stroke-dashoffset 1s ease-out', filter: `drop-shadow(0 0 4px ${accent}88)` }}
-                                />
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-[9px] font-black tabular-nums leading-none" style={{ color: accent }}>{Math.round(animate * monthProgress)}%</span>
-                            </div>
+                    <div className="flex items-center gap-3">
+                        <div className="relative h-2.5 rounded-full overflow-hidden flex-1" style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                            <div
+                                className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
+                                style={{
+                                    width: `${animate * Math.min(paceClamped, 100)}%`,
+                                    background: `linear-gradient(90deg, ${paceColor}AA, ${paceColor})`,
+                                    boxShadow: `0 0 14px ${paceColor}77`,
+                                }}
+                            />
+                            {paceClamped > 100 && (
+                                <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 12px)' }} />
+                            )}
                         </div>
-                        <div className="min-w-0 leading-tight">
-                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Día del mes</p>
-                            <p className="text-sm font-black tabular-nums">{stats.elapsed}<span className="opacity-40">/{stats.total}</span></p>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="relative w-9 h-9 shrink-0">
+                                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                                    <circle cx="18" cy="18" r="15" fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} strokeWidth="3" />
+                                    <circle
+                                        cx="18" cy="18" r="15" fill="none"
+                                        stroke={accent}
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeDasharray={`${2 * Math.PI * 15}`}
+                                        strokeDashoffset={`${2 * Math.PI * 15 * (1 - (animate * monthProgress) / 100)}`}
+                                        style={{ transition: 'stroke-dashoffset 1s ease-out', filter: `drop-shadow(0 0 4px ${accent}88)` }}
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-[8px] font-black tabular-nums leading-none" style={{ color: accent }}>{Math.round(animate * monthProgress)}%</span>
+                                </div>
+                            </div>
+                            <p className="text-xs font-black tabular-nums leading-none whitespace-nowrap">{stats.elapsed}<span className="opacity-40">/{stats.total}</span></p>
                         </div>
                     </div>
                 </div>
