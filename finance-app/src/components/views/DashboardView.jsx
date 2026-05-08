@@ -413,6 +413,38 @@ const DashboardView = ({
 
 const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings', 'proyeccion', 'saludGauge', 'radarHabitos', 'lineComparativa'];
 
+const useInViewOnce = (threshold = 0.2) => {
+    const ref = useRef(null);
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+        if (!ref.current) return;
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } });
+        }, { threshold });
+        obs.observe(ref.current);
+        return () => obs.disconnect();
+    }, [threshold]);
+    return [ref, visible];
+};
+
+const useCountUp = (target, visible, duration = 1100) => {
+    const [val, setVal] = useState(0);
+    useEffect(() => {
+        if (!visible) return;
+        let raf;
+        const start = performance.now();
+        const tick = (now) => {
+            const k = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - k, 3);
+            setVal(target * eased);
+            if (k < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => { if (raf) cancelAnimationFrame(raf); };
+    }, [target, visible, duration]);
+    return val;
+};
+
 const SortableWidget = ({ id, editMode, children }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style = {
@@ -1032,6 +1064,7 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
     const lockedAxis = useRef(null);
     const [selectedBar, setSelectedBar] = useState(null); // { i, kind: 'income' | 'expense' | 'both' }
     const cardRef = useRef(null);
+    const [viewRef, visible] = useInViewOnce(0.2);
 
     useEffect(() => {
         if (!selectedBar) return;
@@ -1084,7 +1117,7 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
     const enterOpacity = (transitioning && transitionDir !== 0) ? 0 : 1;
 
     return (
-        <div ref={cardRef} className={`p-8 rounded-[32px] border ${t.card} relative overflow-hidden`}>
+        <div ref={(n) => { cardRef.current = n; viewRef.current = n; }} className={`p-8 rounded-[32px] border ${t.card} relative overflow-hidden`}>
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h3 className="text-lg font-bold">Comparativa {selectedChartYear}</h3>
@@ -1142,24 +1175,32 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setSelectedBar(prev => prev?.i === i && prev?.kind === 'income' ? null : { i, kind: 'income' }); }}
-                                        className={`w-1/2 rounded-t-md overflow-hidden flex flex-col-reverse min-h-[2px] transition-all duration-500 cursor-pointer ${isHovered || (chosen?.i === i) ? 'brightness-125 scale-x-110' : ''} ${chosen?.i === i && chosen?.kind === 'income' ? 'ring-2 ring-green-400/60' : ''}`}
-                                        style={{ height: `${incH}%`, background: mode === 0 ? (theme === 'dark' ? '#30D158' : '#22C55E') : 'rgba(48,209,88,.12)' }}
+                                        className={`w-1/2 rounded-t-md overflow-hidden flex flex-col-reverse min-h-[2px] cursor-pointer ${isHovered || (chosen?.i === i) ? 'brightness-125 scale-x-110' : ''} ${chosen?.i === i && chosen?.kind === 'income' ? 'ring-2 ring-green-400/60' : ''}`}
+                                        style={{
+                                            height: `${visible ? incH : 0}%`,
+                                            background: mode === 0 ? (theme === 'dark' ? '#30D158' : '#22C55E') : 'rgba(48,209,88,.12)',
+                                            transition: `height .9s cubic-bezier(.2,.8,.2,1) ${i * 40}ms, transform .3s, filter .3s, background .4s`,
+                                        }}
                                     >
                                         {mode === 1 && cat.incomeBreak.map(b => {
                                             const pct = d.income ? (b.val / d.income) * 100 : 0;
-                                            return <div key={b.cat} style={{ height: `${pct}%`, background: getCatColor(b.cat) }} />;
+                                            return <div key={b.cat} style={{ height: `${pct}%`, background: getCatColor(b.cat), transition: 'height .6s ease' }} />;
                                         })}
                                     </button>
                                     {/* EXPENSE BAR */}
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setSelectedBar(prev => prev?.i === i && prev?.kind === 'expense' ? null : { i, kind: 'expense' }); }}
-                                        className={`w-1/2 rounded-t-md overflow-hidden flex flex-col-reverse min-h-[2px] transition-all duration-500 cursor-pointer ${isHovered || (chosen?.i === i) ? 'brightness-125 scale-x-110' : ''} ${chosen?.i === i && chosen?.kind === 'expense' ? 'ring-2 ring-red-400/60' : ''}`}
-                                        style={{ height: `${expH}%`, background: mode === 0 ? (theme === 'dark' ? '#FF453A' : '#EF4444') : 'rgba(255,69,58,.12)' }}
+                                        className={`w-1/2 rounded-t-md overflow-hidden flex flex-col-reverse min-h-[2px] cursor-pointer ${isHovered || (chosen?.i === i) ? 'brightness-125 scale-x-110' : ''} ${chosen?.i === i && chosen?.kind === 'expense' ? 'ring-2 ring-red-400/60' : ''}`}
+                                        style={{
+                                            height: `${visible ? expH : 0}%`,
+                                            background: mode === 0 ? (theme === 'dark' ? '#FF453A' : '#EF4444') : 'rgba(255,69,58,.12)',
+                                            transition: `height .9s cubic-bezier(.2,.8,.2,1) ${i * 40 + 80}ms, transform .3s, filter .3s, background .4s`,
+                                        }}
                                     >
                                         {mode === 1 && cat.expenseBreak.map(b => {
                                             const pct = d.expense ? (b.val / d.expense) * 100 : 0;
-                                            return <div key={b.cat} style={{ height: `${pct}%`, background: getCatColor(b.cat) }} />;
+                                            return <div key={b.cat} style={{ height: `${pct}%`, background: getCatColor(b.cat), transition: 'height .6s ease' }} />;
                                         })}
                                     </button>
                                 </div>
@@ -1628,15 +1669,21 @@ const LineComparativaCard = ({ chartData, chartCategoryData, selectedChartYear, 
 
 // ===================== HISTORICAL AVG CARD =====================
 const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
+    const [viewRef, visible] = useInViewOnce(0.2);
+    const dailyIncome = useCountUp(avg.dailyIncome || 0, visible);
+    const dailyExpense = useCountUp(avg.dailyExpense || 0, visible);
+    const dailyNet = useCountUp(avg.netDaily || 0, visible);
+    const monthlyIncome = useCountUp(avg.monthlyIncome || 0, visible);
+    const monthlyExpense = useCountUp(avg.monthlyExpense || 0, visible);
+    const monthlyNet = useCountUp((avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), visible);
     const fmt = (v) => privacyMode ? '••••' : `${(v || 0).toFixed(0)}€`;
-    const net = avg.netDaily || 0;
     const items = [
-        { key: 'income',  label: 'Ingreso', daily: avg.dailyIncome,  monthly: avg.monthlyIncome, color: '#30D158', textCls: 'text-green-500', Icon: TrendingUp },
-        { key: 'expense', label: 'Gasto',   daily: avg.dailyExpense, monthly: avg.monthlyExpense, color: '#FF453A', textCls: 'text-red-500',   Icon: TrendingDown },
-        { key: 'net',     label: 'Balance', daily: net,              monthly: (avg.monthlyIncome || 0) - (avg.monthlyExpense || 0), color: '#0A84FF', textCls: 'text-blue-500', Icon: Wallet },
+        { key: 'income',  label: 'Ingreso', daily: dailyIncome,  monthly: monthlyIncome, color: '#30D158', textCls: 'text-green-500', Icon: TrendingUp },
+        { key: 'expense', label: 'Gasto',   daily: dailyExpense, monthly: monthlyExpense, color: '#FF453A', textCls: 'text-red-500',   Icon: TrendingDown },
+        { key: 'net',     label: 'Balance', daily: dailyNet,     monthly: monthlyNet, color: '#0A84FF', textCls: 'text-blue-500', Icon: Wallet },
     ];
     return (
-        <div className={`p-4 md:p-5 rounded-[32px] border ${t.card}`}>
+        <div ref={viewRef} className={`p-4 md:p-5 rounded-[32px] border ${t.card}`}>
             <div className="flex items-center gap-2 mb-3">
                 <BarChart3 size={14} className={activeColor.text} />
                 <h3 className="text-xs font-black tracking-tight uppercase">Promedios Históricos</h3>
@@ -1644,7 +1691,13 @@ const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
             </div>
             <div className={`flex items-stretch rounded-2xl border ${theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-white border-gray-200'}`}>
                 {items.map((it, idx) => (
-                    <div key={it.key} className={`flex-1 px-2 md:px-3 py-2.5 min-w-0 flex flex-col items-center text-center ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}>
+                    <div key={it.key} className={`flex-1 px-2 md:px-3 py-2.5 min-w-0 flex flex-col items-center text-center ${idx > 0 ? (theme === 'dark' ? 'border-l border-white/5' : 'border-l border-gray-200') : ''}`}
+                        style={{
+                            opacity: visible ? 1 : 0,
+                            transform: visible ? 'translateY(0)' : 'translateY(8px)',
+                            transition: `opacity .5s ease ${idx * 100}ms, transform .5s cubic-bezier(.2,.8,.2,1) ${idx * 100}ms`,
+                        }}
+                    >
                         <div className="flex items-center gap-1 mb-1">
                             <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0" style={{ background: it.color + '22', color: it.color }}>
                                 <it.Icon size={9} strokeWidth={2.6} />
@@ -1666,6 +1719,7 @@ const HistoricalAverageCard = ({ avg, t, theme, privacyMode, activeColor }) => {
 // ===================== FIXED INFO WIDGET =====================
 const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode }) => {
     const [openCard, setOpenCard] = useState(null); // 'monthly' | 'annual' | 'total' | null
+    const [viewRef, visible] = useInViewOnce(0.2);
 
     const data = useMemo(() => {
         const active = (recurringRules || []).filter(r => r.active && r.type === 'expense');
@@ -1738,14 +1792,14 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
     const list = renderList();
 
     return (
-        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+        <div ref={viewRef} className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
             <div className="flex items-center gap-2 mb-6">
                 <Repeat size={18} className={activeColor.text} />
                 <h3 className="text-base font-black tracking-tight">Gastos Fijos</h3>
                 <span className={`ml-auto text-[10px] font-black uppercase tracking-widest opacity-40`}>{data.list.length} reglas</span>
             </div>
             <div className="grid grid-cols-4 gap-2 md:gap-3">
-                {cards.map(c => {
+                {cards.map((c, idx) => {
                     const open = openCard === c.key;
                     const clickable = c.key !== 'avg';
                     const display = fmt(c.val);
@@ -1757,7 +1811,12 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
                             type="button"
                             onClick={clickable ? () => setOpenCard(open ? null : c.key) : undefined}
                             className={`relative text-left p-2 md:p-3 rounded-2xl border transition-all ${c.cls} ${open ? 'ring-2 ring-current scale-[1.02]' : clickable ? 'hover:-translate-y-0.5' : ''}`}
-                            style={c.aura ? { animation: 'auraGlow 2.6s ease-in-out infinite' } : undefined}
+                            style={{
+                                ...(c.aura ? { animation: 'auraGlow 2.6s ease-in-out infinite' } : {}),
+                                opacity: visible ? 1 : 0,
+                                transform: visible ? (open ? 'scale(1.02)' : 'translateY(0)') : 'translateY(12px) scale(.95)',
+                                transition: `opacity .5s ease ${idx * 90}ms, transform .55s cubic-bezier(.2,.8,.2,1) ${idx * 90}ms`,
+                            }}
                         >
                             <p className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider mb-0.5 truncate ${c.textCls || 'opacity-50'}`}>{c.label}</p>
                             <p className={`font-black tabular-nums whitespace-nowrap leading-tight ${valSize}`}>{display}</p>
@@ -1824,6 +1883,7 @@ const FixedInfoWidget = ({ recurringRules, t, theme, activeColor, privacyMode })
 
 // ===================== NEXT EXPENSE WIDGET =====================
 const NextExpenseWidget = ({ recurringRules, transactions, t, theme, activeColor, privacyMode, getCatColor }) => {
+    const [viewRef, visible] = useInViewOnce(0.2);
     const upcoming = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -1869,7 +1929,7 @@ const NextExpenseWidget = ({ recurringRules, transactions, t, theme, activeColor
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     return (
-        <div className={`p-5 md:p-6 rounded-[32px] border ${t.card}`}>
+        <div ref={viewRef} className={`p-5 md:p-6 rounded-[32px] border ${t.card}`}>
             <div className="flex items-center gap-2 mb-3">
                 <CalendarIcon size={16} className={activeColor.text} />
                 <h3 className="text-sm font-black tracking-tight">Próximos gastos</h3>
@@ -1879,7 +1939,7 @@ const NextExpenseWidget = ({ recurringRules, transactions, t, theme, activeColor
                 <p className={`text-center py-4 text-xs font-bold opacity-30 ${t.textSec}`}>Sin gastos previstos.</p>
             ) : (
                 <div className="space-y-1.5">
-                    {upcoming.map(it => {
+                    {upcoming.map((it, idx) => {
                         const days = Math.max(0, Math.ceil((it.date - today) / 86400000));
                         const color = getCatColor(it.category);
                         const Ic = CATEGORY_ICONS[it.category] || Box;
@@ -1887,7 +1947,15 @@ const NextExpenseWidget = ({ recurringRules, transactions, t, theme, activeColor
                         const subline = [it.category, it.subCategory].filter(Boolean).join(' · ');
                         const dateStr = it.date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
                         return (
-                            <div key={it.key} className={`flex items-center gap-2.5 p-2 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
+                            <div
+                                key={it.key}
+                                className={`flex items-center gap-2.5 p-2 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}
+                                style={{
+                                    opacity: visible ? 1 : 0,
+                                    transform: visible ? 'translateX(0)' : 'translateX(-12px)',
+                                    transition: `opacity 600ms cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms, transform 600ms cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms`,
+                                }}
+                            >
                                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: color }}>
                                     <Ic size={12} className="text-white" strokeWidth={2.5} />
                                 </div>
@@ -1925,6 +1993,7 @@ const formatDuration = (days) => {
 };
 
 const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, onReopen, t, theme, activeColor, privacyMode }) => {
+    const [viewRef, visible] = useInViewOnce(0.15);
     const [showForm, setShowForm] = useState(false);
     const [showCompleted, setShowCompleted] = useState(false);
     const [name, setName] = useState('');
@@ -1991,6 +2060,7 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
 
     return (
         <div
+            ref={viewRef}
             onClick={() => setControlsOpen(o => !o)}
             className={`p-6 md:p-8 rounded-[32px] border cursor-pointer ${t.card}`}
         >
@@ -2066,10 +2136,11 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                 <p className={`text-center py-8 text-sm font-bold opacity-30 ${t.textSec}`}>Sin objetivos activos.</p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {active.map(it => {
+                    {active.map((it, idx) => {
                         const ruleAmt = ruleProgress[it.id] || 0;
                         const total = Number(it.current || 0) + ruleAmt;
                         const pct = it.target > 0 ? Math.min(100, (total / it.target) * 100) : 0;
+                        const animPct = visible ? pct : 0;
                         const linkedRuleObj = rules.find(r => r.id === it.linked_rule_id);
                         const adj = adjustState[it.id] ?? '';
                         const isOpen = expandedId === it.id;
@@ -2079,6 +2150,11 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                             <div
                                 key={it.id}
                                 onClick={(e) => { e.stopPropagation(); setExpandedId(prev => prev === it.id ? null : it.id); }}
+                                style={{
+                                    opacity: visible ? 1 : 0,
+                                    transform: visible ? 'translateY(0)' : 'translateY(10px)',
+                                    transition: `opacity .5s ease ${idx * 80}ms, transform .5s cubic-bezier(.2,.8,.2,1) ${idx * 80}ms`,
+                                }}
                                 className={`p-5 rounded-2xl border cursor-pointer transition-all duration-300 ${isOpen ? `${activeColor.border} shadow-lg scale-[1.01]` : theme === 'dark' ? 'border-white/5 bg-white/[0.03] hover:border-white/10' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
                             >
                                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -2100,11 +2176,12 @@ const SavingsWidget = ({ items, rules, transactions, onAdd, onDelete, onAdjust, 
                                 <div className="relative">
                                     <div className={`h-3 w-full rounded-full overflow-hidden relative ${theme === 'dark' ? 'bg-white/[0.06]' : 'bg-gray-200'}`}>
                                         <div
-                                            className="h-full rounded-full transition-all duration-700 relative overflow-hidden"
+                                            className="h-full rounded-full relative overflow-hidden"
                                             style={{
-                                                width: `${pct}%`,
+                                                width: `${animPct}%`,
                                                 background: `linear-gradient(90deg, ${accentHex}, #30D158)`,
-                                                boxShadow: pct > 0 ? `0 0 14px ${accentHex}55, inset 0 1px 0 rgba(255,255,255,.22)` : 'none',
+                                                boxShadow: animPct > 0 ? `0 0 14px ${accentHex}55, inset 0 1px 0 rgba(255,255,255,.22)` : 'none',
+                                                transition: `width 1.1s cubic-bezier(.2,.8,.2,1) ${idx * 80 + 200}ms, box-shadow .5s ease`,
                                             }}
                                         >
                                             {pct > 0 && pct < 100 && (
