@@ -1407,25 +1407,9 @@ const ProyeccionWidget = ({ transactions, t, theme, activeColor, privacyMode }) 
                                 <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 12px)' }} />
                             )}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <div className="relative w-9 h-9 shrink-0">
-                                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                                    <circle cx="18" cy="18" r="15" fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} strokeWidth="3" />
-                                    <circle
-                                        cx="18" cy="18" r="15" fill="none"
-                                        stroke={accent}
-                                        strokeWidth="3"
-                                        strokeLinecap="round"
-                                        strokeDasharray={`${2 * Math.PI * 15}`}
-                                        strokeDashoffset={`${2 * Math.PI * 15 * (1 - (animate * monthProgress) / 100)}`}
-                                        style={{ transition: 'stroke-dashoffset 1s ease-out', filter: `drop-shadow(0 0 4px ${accent}88)` }}
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-[8px] font-black tabular-nums leading-none" style={{ color: accent }}>{Math.round(animate * monthProgress)}%</span>
-                                </div>
-                            </div>
-                            <p className="text-xs font-black tabular-nums leading-none whitespace-nowrap">{stats.elapsed}<span className="opacity-40">/{stats.total}</span></p>
+                        <div className="text-right leading-tight shrink-0">
+                            <p className="text-[8px] font-black uppercase tracking-widest opacity-50 whitespace-nowrap">Día {stats.elapsed}/{stats.total}</p>
+                            <p className="text-base font-black tabular-nums leading-none mt-0.5" style={{ color: accent }}>{Math.round(animate * monthProgress)}%</p>
                         </div>
                     </div>
                 </div>
