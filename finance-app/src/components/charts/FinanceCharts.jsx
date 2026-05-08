@@ -4,46 +4,76 @@ import React from 'react';
  * Gráfico de aguja para visualización de presupuestos o porcentajes.
  */
 export const GaugeChart = ({ percentage, theme }) => {
-    const size = 180;
-    const strokeWidth = 15;
-    const radius = (size - strokeWidth) / 2;
+    const [animPct, setAnimPct] = React.useState(0);
+    const ref = React.useRef(null);
+    const target = Math.min(Math.max(percentage || 0, 0), 100);
+
+    React.useEffect(() => {
+        if (!ref.current) return;
+        let raf;
+        let started = false;
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting && !started) {
+                    started = true;
+                    const begin = performance.now();
+                    const dur = 1400;
+                    const tick = (now) => {
+                        const k = Math.min(1, (now - begin) / dur);
+                        const eased = 1 - Math.pow(1 - k, 3);
+                        setAnimPct(target * eased);
+                        if (k < 1) raf = requestAnimationFrame(tick);
+                    };
+                    raf = requestAnimationFrame(tick);
+                    obs.disconnect();
+                }
+            });
+        }, { threshold: 0.25 });
+        obs.observe(ref.current);
+        return () => { obs.disconnect(); if (raf) cancelAnimationFrame(raf); };
+    }, [target]);
+
+    const size = 200;
+    const stroke = 16;
+    const radius = (size - stroke) / 2;
     const circumference = Math.PI * radius;
-    const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+    const offset = circumference - (animPct / 100) * circumference;
 
     let color = '#30D158';
     if (percentage > 70) color = '#FF9F0A';
     if (percentage > 100) color = '#FF453A';
+    const gid = color.replace('#', '');
 
     return (
-        <div className="relative flex flex-col items-center">
-            <svg width={size} height={size / 2 + strokeWidth}>
+        <div ref={ref} className="flex flex-col items-center w-full">
+            <svg viewBox={`0 0 ${size} ${size / 2 + 12}`} className="w-full max-w-[280px] overflow-visible">
                 <defs>
-                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor={color} stopOpacity="0.8" />
+                    <linearGradient id={`gaugeGrad-${gid}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.55" />
                         <stop offset="100%" stopColor={color} />
                     </linearGradient>
                 </defs>
-                <path 
-                    d={`M ${strokeWidth / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - strokeWidth / 2} ${size / 2}`} 
-                    fill="none" 
-                    stroke={theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'} 
-                    strokeWidth={strokeWidth} 
-                    strokeLinecap="round" 
+                <path
+                    d={`M ${stroke / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - stroke / 2} ${size / 2}`}
+                    fill="none"
+                    stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+                    strokeWidth={stroke}
+                    strokeLinecap="round"
                 />
-                <path 
-                    d={`M ${strokeWidth / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - strokeWidth / 2} ${size / 2}`} 
-                    fill="none" 
-                    stroke="url(#gaugeGradient)" 
-                    strokeWidth={strokeWidth} 
-                    strokeDasharray={circumference} 
-                    strokeDashoffset={offset} 
-                    strokeLinecap="round" 
-                    className="transition-all duration-1000 ease-out" 
+                <path
+                    d={`M ${stroke / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - stroke / 2} ${size / 2}`}
+                    fill="none"
+                    stroke={`url(#gaugeGrad-${gid})`}
+                    strokeWidth={stroke}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
                 />
             </svg>
-            <div className="absolute bottom-0 text-center">
-                <span className="text-4xl font-black tracking-tighter" style={{ color }}>{Math.round(percentage)}%</span>
-                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Ejecución</p>
+            <div className="text-center mt-3">
+                <span className="text-4xl md:text-5xl font-black tracking-tighter tabular-nums" style={{ color }}>{Math.round(animPct)}%</span>
+                <p className={`text-[10px] uppercase font-black tracking-widest mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Gasto / Ingreso</p>
             </div>
         </div>
     );

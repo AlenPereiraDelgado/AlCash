@@ -358,24 +358,31 @@ const DashboardView = ({
                         />
                     ) : null,
                     proyeccion: dashboardWidgets?.proyeccion ? (
-                        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
-                            <h3 className="text-sm font-black tracking-tight mb-5 uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-                                    <p className={`text-[9px] uppercase font-black tracking-wider mb-1 opacity-50`}>Diario medio</p>
-                                    <p className={`text-2xl md:text-3xl font-black tabular-nums ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.avg.toFixed(2)}€</p>
-                                </div>
-                                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
-                                    <p className={`text-[9px] uppercase font-black tracking-wider mb-1 opacity-50`}>Total gasto</p>
-                                    <p className={`text-2xl md:text-3xl font-black tabular-nums ${t.danger} ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.expense.toFixed(2)}€</p>
-                                </div>
-                            </div>
-                        </div>
+                        <ProyeccionWidget
+                            filteredTransactions={filteredTransactions}
+                            dateMode={dateMode}
+                            dateRange={dateRange}
+                            t={t}
+                            theme={theme}
+                            activeColor={activeColor}
+                            privacyMode={privacyMode}
+                        />
                     ) : null,
                     saludGauge: dashboardWidgets?.saludGauge ? (
-                        <div className={`p-6 md:p-8 rounded-[32px] border flex flex-col items-center ${t.card}`}>
-                            <h3 className="text-sm font-black tracking-tight mb-5 uppercase flex items-center gap-2 self-start"><Activity size={16} className={activeColor.text} /> Salud Financiera</h3>
+                        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+                            <h3 className="text-sm font-black tracking-tight mb-2 uppercase flex items-center gap-2"><Activity size={16} className={activeColor.text} /> Salud Financiera</h3>
+                            <p className={`text-[11px] ${t.textSec} mb-5`}>Ratio de gasto sobre ingresos.</p>
                             <GaugeChart percentage={(periodStats.expense / (periodStats.income || 1)) * 100} theme={theme} />
+                            <div className={`mt-6 grid grid-cols-2 gap-3 w-full`}>
+                                <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                                    <p className={`text-[9px] uppercase font-black tracking-wider opacity-50 mb-1`}>Ingreso</p>
+                                    <p className={`text-base font-black tabular-nums text-green-500 ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.income.toFixed(0)}€</p>
+                                </div>
+                                <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                                    <p className={`text-[9px] uppercase font-black tracking-wider opacity-50 mb-1`}>Gasto</p>
+                                    <p className={`text-base font-black tabular-nums text-red-500 ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.expense.toFixed(0)}€</p>
+                                </div>
+                            </div>
                         </div>
                     ) : null,
                     radarHabitos: dashboardWidgets?.radarHabitos ? (
@@ -387,6 +394,18 @@ const DashboardView = ({
                             <RadarChart theme={theme} data={radarHabitsData} accentHex={activeColor.hex} />
                         </div>
                     ) : null,
+                    lineComparativa: dashboardWidgets?.lineComparativa ? (
+                        <LineComparativaCard
+                            chartData={chartData}
+                            chartCategoryData={chartCategoryData}
+                            selectedChartYear={selectedChartYear}
+                            setSelectedChartYear={setSelectedChartYear}
+                            theme={theme}
+                            t={t}
+                            getCatColor={getCatColor}
+                            activeColor={activeColor}
+                        />
+                    ) : null,
                 }}
                 activeColor={activeColor}
             />
@@ -394,7 +413,7 @@ const DashboardView = ({
     );
 };
 
-const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings', 'proyeccion', 'saludGauge', 'radarHabitos'];
+const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings', 'proyeccion', 'saludGauge', 'radarHabitos', 'lineComparativa'];
 
 const SortableWidget = ({ id, editMode, children }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -1198,6 +1217,444 @@ const ComparativaCard = ({ chartData, chartCategoryData, hoveredMonth, setHovere
             </div>
 
             {/* Pager dots */}
+            <div className="flex justify-center gap-2 mt-4">
+                {[0, 1].map(idx => (
+                    <button key={idx} onClick={() => idx !== mode && animateTo(idx > mode ? 1 : -1)} className={`h-1.5 rounded-full transition-all ${mode === idx ? `w-8 bg-current opacity-80` : 'w-1.5 bg-current opacity-20'}`} />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// ===================== PROYECCIÓN WIDGET =====================
+const ProyeccionWidget = ({ filteredTransactions, dateMode, dateRange, t, theme, activeColor, privacyMode }) => {
+    const ref = useRef(null);
+    const [animate, setAnimate] = useState(0);
+    const stats = useMemo(() => {
+        const list = filteredTransactions || [];
+        const income = list.filter(tx => tx.type === 'income').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const expense = list.filter(tx => tx.type === 'expense').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const net = income - expense;
+        const today = new Date();
+
+        let unit = 'día';
+        let elapsed = 1, total = 1;
+        if (dateMode === 'month') {
+            const ref = list.length ? parseLocalDate(list[0].date) : today;
+            const y = ref.getFullYear();
+            const m = ref.getMonth();
+            total = new Date(y, m + 1, 0).getDate();
+            const isCurrent = (y === today.getFullYear() && m === today.getMonth());
+            elapsed = isCurrent ? today.getDate() : total;
+            unit = 'día';
+        } else if (dateMode === 'year') {
+            const ref = list.length ? parseLocalDate(list[0].date) : today;
+            const y = ref.getFullYear();
+            total = 12;
+            elapsed = (y === today.getFullYear()) ? today.getMonth() + 1 : 12;
+            unit = 'mes';
+        } else if (dateMode === 'range') {
+            const s = dateRange?.start ? parseLocalDate(dateRange.start) : today;
+            const e = dateRange?.end ? parseLocalDate(dateRange.end) : today;
+            const days = Math.max(1, Math.round((e - s) / 86400000) + 1);
+            total = days;
+            elapsed = days;
+            unit = 'día';
+        } else {
+            total = 1; elapsed = 1; unit = 'día';
+        }
+
+        const avgPerUnit = expense / Math.max(elapsed, 1);
+        const projected = avgPerUnit * total;
+        const pace = elapsed < total ? (expense / projected) * 100 : 100;
+        const remaining = Math.max(projected - expense, 0);
+        const incomeAvg = income / Math.max(elapsed, 1);
+
+        return { income, expense, net, avgPerUnit, projected, pace, remaining, unit, elapsed, total, incomeAvg };
+    }, [filteredTransactions, dateMode, dateRange]);
+
+    useEffect(() => {
+        if (!ref.current) return;
+        let raf;
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    const begin = performance.now();
+                    const dur = 1100;
+                    const tick = (now) => {
+                        const k = Math.min(1, (now - begin) / dur);
+                        setAnimate(1 - Math.pow(1 - k, 3));
+                        if (k < 1) raf = requestAnimationFrame(tick);
+                    };
+                    raf = requestAnimationFrame(tick);
+                    obs.disconnect();
+                }
+            });
+        }, { threshold: 0.25 });
+        obs.observe(ref.current);
+        return () => { obs.disconnect(); if (raf) cancelAnimationFrame(raf); };
+    }, []);
+
+    const blur = privacyMode ? 'privacy-blur' : '';
+    const accent = activeColor.hex;
+    const paceClamped = Math.min(stats.pace, 200);
+    const paceColor = stats.pace > 100 ? '#FF453A' : stats.pace > 80 ? '#FF9F0A' : '#30D158';
+
+    return (
+        <div ref={ref} className={`p-6 md:p-7 rounded-[32px] border ${t.card} relative overflow-hidden`}>
+            <div className="absolute inset-0 pointer-events-none opacity-30" style={{ background: `radial-gradient(circle at 100% 0%, ${accent}1A 0%, transparent 50%)` }} />
+            <div className="relative">
+                <div className="flex items-center justify-between mb-5">
+                    <div>
+                        <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección</h3>
+                        <p className={`text-[11px] mt-1 ${t.textSec}`}>Estimación al ritmo actual.</p>
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
+                        {stats.elapsed}/{stats.total} {stats.unit}{stats.total !== 1 ? 's' : ''}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5">
+                    <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200'}`}>
+                        <div className="flex items-center gap-1.5 mb-1"><TrendingUp size={11} className="text-green-500" /><p className="text-[9px] uppercase font-black tracking-wider text-green-500">Ingreso</p></div>
+                        <p className={`text-base md:text-lg font-black tabular-nums ${blur}`}>{stats.income.toFixed(0)}€</p>
+                    </div>
+                    <div className={`p-3 rounded-2xl border ${theme === 'dark' ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
+                        <div className="flex items-center gap-1.5 mb-1"><TrendingDown size={11} className="text-red-500" /><p className="text-[9px] uppercase font-black tracking-wider text-red-500">Gasto</p></div>
+                        <p className={`text-base md:text-lg font-black tabular-nums ${blur}`}>{stats.expense.toFixed(0)}€</p>
+                    </div>
+                    <div className={`p-3 rounded-2xl border ${stats.net >= 0 ? (theme === 'dark' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200') : (theme === 'dark' ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200')}`}>
+                        <div className="flex items-center gap-1.5 mb-1"><Wallet size={11} className={stats.net >= 0 ? 'text-blue-500' : 'text-orange-500'} /><p className={`text-[9px] uppercase font-black tracking-wider ${stats.net >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>Neto</p></div>
+                        <p className={`text-base md:text-lg font-black tabular-nums ${blur} ${stats.net >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>{stats.net >= 0 ? '+' : ''}{stats.net.toFixed(0)}€</p>
+                    </div>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-baseline justify-between mb-3">
+                        <div>
+                            <p className={`text-[9px] uppercase font-black tracking-widest opacity-50 mb-0.5`}>Gasto medio / {stats.unit}</p>
+                            <p className={`text-2xl md:text-3xl font-black tabular-nums ${blur}`} style={{ color: accent }}>{stats.avgPerUnit.toFixed(2)}€</p>
+                        </div>
+                        <div className="text-right">
+                            <p className={`text-[9px] uppercase font-black tracking-widest opacity-50 mb-0.5`}>Proyección final</p>
+                            <p className={`text-lg md:text-xl font-black tabular-nums ${blur}`}>{stats.projected.toFixed(0)}€</p>
+                        </div>
+                    </div>
+
+                    <div className="relative h-2 rounded-full overflow-hidden mb-2" style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                        <div
+                            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
+                            style={{
+                                width: `${animate * Math.min(paceClamped, 100)}%`,
+                                background: `linear-gradient(90deg, ${paceColor}AA, ${paceColor})`,
+                                boxShadow: `0 0 12px ${paceColor}66`,
+                            }}
+                        />
+                        {paceClamped > 100 && (
+                            <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${animate * 100}%`, background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.15) 0 6px, transparent 6px 12px)' }} />
+                        )}
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider opacity-60">
+                        <span>{stats.pace.toFixed(0)}% del periodo</span>
+                        {stats.elapsed < stats.total ? (
+                            <span>Quedan ~{stats.remaining.toFixed(0)}€</span>
+                        ) : (
+                            <span>Periodo completo</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ===================== LINE COMPARATIVA CARD =====================
+const LineComparativaCard = ({ chartData, chartCategoryData, selectedChartYear, setSelectedChartYear, theme, t, getCatColor, activeColor }) => {
+    const [mode, setMode] = useState(0);
+    const [dragX, setDragX] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [transitioning, setTransitioning] = useState(false);
+    const [transitionDir, setTransitionDir] = useState(0);
+    const [hoverIdx, setHoverIdx] = useState(null);
+    const startX = useRef(null);
+    const startY = useRef(null);
+    const lockedAxis = useRef(null);
+    const ref = useRef(null);
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        if (!ref.current) return;
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } });
+        }, { threshold: 0.2 });
+        obs.observe(ref.current);
+        return () => obs.disconnect();
+    }, []);
+
+    const animateTo = (delta) => {
+        if (transitioning) return;
+        setTransitionDir(delta);
+        setTransitioning(true);
+        setTimeout(() => {
+            setMode(m => (m + delta + 2) % 2);
+            setTransitionDir(-delta);
+            setTimeout(() => { setTransitionDir(0); setTransitioning(false); }, 360);
+        }, 200);
+    };
+
+    const onTouchStart = (e) => { startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY; lockedAxis.current = null; setIsDragging(true); };
+    const onTouchMove = (e) => {
+        if (startX.current == null) return;
+        const dx = e.touches[0].clientX - startX.current;
+        const dy = e.touches[0].clientY - startY.current;
+        if (!lockedAxis.current && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+            lockedAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        }
+        if (lockedAxis.current === 'x') setDragX(dx);
+    };
+    const onTouchEnd = () => {
+        const dx = dragX;
+        startX.current = null;
+        setIsDragging(false);
+        setDragX(0);
+        if (Math.abs(dx) > 60) animateTo(dx < 0 ? 1 : -1);
+    };
+
+    const W = 600, H = 220, padX = 24, padY = 16;
+    const innerW = W - padX * 2;
+    const innerH = H - padY * 2;
+    const n = chartData.length;
+    const xAt = (i) => padX + (i * innerW) / Math.max(n - 1, 1);
+
+    // Mode 0: total income/expense lines
+    const totalSeries = useMemo(() => {
+        const incomes = chartData.map(d => d.income || 0);
+        const expenses = chartData.map(d => d.expense || 0);
+        const max = Math.max(...incomes, ...expenses, 1);
+        const yAt = (v) => padY + innerH - (v / max) * innerH;
+        return {
+            max,
+            yAt,
+            income: incomes.map((v, i) => ({ x: xAt(i), y: yAt(v), v })),
+            expense: expenses.map((v, i) => ({ x: xAt(i), y: yAt(v), v })),
+        };
+    }, [chartData]);
+
+    // Mode 1: per-category expense lines
+    const catSeries = useMemo(() => {
+        const cats = new Set();
+        chartCategoryData.forEach(m => (m.expenseBreak || []).forEach(b => cats.add(b.cat)));
+        const series = Array.from(cats).map(cat => {
+            const values = chartCategoryData.map(m => {
+                const found = (m.expenseBreak || []).find(b => b.cat === cat);
+                return found ? found.val : 0;
+            });
+            const total = values.reduce((a, b) => a + b, 0);
+            return { cat, values, total };
+        }).sort((a, b) => b.total - a.total).slice(0, 8);
+        const max = Math.max(...series.flatMap(s => s.values), 1);
+        const yAt = (v) => padY + innerH - (v / max) * innerH;
+        return {
+            max,
+            yAt,
+            lines: series.map(s => ({
+                cat: s.cat,
+                color: getCatColor(s.cat),
+                points: s.values.map((v, i) => ({ x: xAt(i), y: yAt(v), v })),
+                total: s.total,
+            })),
+        };
+    }, [chartCategoryData]);
+
+    const smoothPath = (pts) => {
+        if (pts.length === 0) return '';
+        if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+        let d = `M ${pts[0].x} ${pts[0].y}`;
+        for (let i = 0; i < pts.length - 1; i++) {
+            const p0 = pts[Math.max(i - 1, 0)];
+            const p1 = pts[i];
+            const p2 = pts[i + 1];
+            const p3 = pts[Math.min(i + 2, pts.length - 1)];
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+            const cp2x = p2.x - (p3.x - p1.x) / 6;
+            const cp2y = p2.y - (p3.y - p1.y) / 6;
+            d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+        }
+        return d;
+    };
+
+    const enterTransform = transitionDir !== 0 && transitioning
+        ? `translateX(${transitionDir * 18}%) scale(.94)`
+        : `translateX(${dragX * 0.6}px) scale(${1 - Math.min(0.04, Math.abs(dragX) / 1800)})`;
+    const enterOpacity = (transitioning && transitionDir !== 0) ? 0 : 1;
+
+    const incomePath = smoothPath(totalSeries.income);
+    const expensePath = smoothPath(totalSeries.expense);
+    const incomeArea = `${incomePath} L ${xAt(n - 1)} ${padY + innerH} L ${xAt(0)} ${padY + innerH} Z`;
+    const expenseArea = `${expensePath} L ${xAt(n - 1)} ${padY + innerH} L ${xAt(0)} ${padY + innerH} Z`;
+
+    return (
+        <div ref={ref} className={`p-6 md:p-8 rounded-[32px] border ${t.card} relative overflow-hidden`}>
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><BarChart3 size={16} className={activeColor.text} /> Tendencias {selectedChartYear}</h3>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${t.textSec}`}>{mode === 0 ? 'Ingresos vs Gastos' : 'Por categoría'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setSelectedChartYear(y => y - 1)} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronLeft size={16} /></button>
+                    <span className="text-sm font-black">{selectedChartYear}</span>
+                    <button onClick={() => setSelectedChartYear(y => y + 1)} className={`p-1.5 rounded-lg ${t.hover}`}><ChevronRight size={16} /></button>
+                </div>
+            </div>
+
+            <div
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                style={{ touchAction: 'pan-y' }}
+            >
+                <div
+                    key={mode}
+                    style={{
+                        transform: enterTransform,
+                        opacity: enterOpacity,
+                        transition: isDragging ? 'none' : 'transform .38s cubic-bezier(.6,.05,.3,1.05), opacity .25s ease',
+                    }}
+                >
+                    <svg
+                        viewBox={`0 0 ${W} ${H}`}
+                        className="w-full h-[220px] overflow-visible"
+                        onMouseLeave={() => setHoverIdx(null)}
+                    >
+                        <defs>
+                            <linearGradient id="lineIncomeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#30D158" stopOpacity="0.35" />
+                                <stop offset="100%" stopColor="#30D158" stopOpacity="0" />
+                            </linearGradient>
+                            <linearGradient id="lineExpenseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#FF453A" stopOpacity="0.35" />
+                                <stop offset="100%" stopColor="#FF453A" stopOpacity="0" />
+                            </linearGradient>
+                        </defs>
+
+                        {[0.25, 0.5, 0.75].map(p => (
+                            <line key={p} x1={padX} x2={W - padX} y1={padY + innerH * p} y2={padY + innerH * p} stroke={theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'} strokeDasharray="3 4" />
+                        ))}
+
+                        {mode === 0 ? (
+                            <g style={{ opacity: visible ? 1 : 0, transition: 'opacity .5s ease' }}>
+                                <path d={incomeArea} fill="url(#lineIncomeGrad)" style={{ opacity: visible ? 1 : 0, transition: 'opacity .9s ease .3s' }} />
+                                <path d={expenseArea} fill="url(#lineExpenseGrad)" style={{ opacity: visible ? 1 : 0, transition: 'opacity .9s ease .4s' }} />
+                                <path d={incomePath} fill="none" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                    style={{
+                                        strokeDasharray: 2000,
+                                        strokeDashoffset: visible ? 0 : 2000,
+                                        transition: 'stroke-dashoffset 1.4s cubic-bezier(.6,0,.3,1)',
+                                        filter: 'drop-shadow(0 0 6px rgba(48,209,88,0.5))',
+                                    }}
+                                />
+                                <path d={expensePath} fill="none" stroke="#FF453A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                    style={{
+                                        strokeDasharray: 2000,
+                                        strokeDashoffset: visible ? 0 : 2000,
+                                        transition: 'stroke-dashoffset 1.4s cubic-bezier(.6,0,.3,1) .15s',
+                                        filter: 'drop-shadow(0 0 6px rgba(255,69,58,0.5))',
+                                    }}
+                                />
+                                {totalSeries.income.map((p, i) => (
+                                    <circle key={`i-${i}`} cx={p.x} cy={p.y} r={hoverIdx === i ? 5 : 3} fill="#30D158" stroke={theme === 'dark' ? '#0E0E11' : '#fff'} strokeWidth="2"
+                                        style={{ opacity: visible ? 1 : 0, transition: `opacity .3s ease ${0.8 + i * 0.04}s, r .2s ease` }} />
+                                ))}
+                                {totalSeries.expense.map((p, i) => (
+                                    <circle key={`e-${i}`} cx={p.x} cy={p.y} r={hoverIdx === i ? 5 : 3} fill="#FF453A" stroke={theme === 'dark' ? '#0E0E11' : '#fff'} strokeWidth="2"
+                                        style={{ opacity: visible ? 1 : 0, transition: `opacity .3s ease ${0.85 + i * 0.04}s, r .2s ease` }} />
+                                ))}
+                            </g>
+                        ) : (
+                            <g style={{ opacity: visible ? 1 : 0, transition: 'opacity .5s ease' }}>
+                                {catSeries.lines.map((line, idx) => (
+                                    <g key={line.cat}>
+                                        <path
+                                            d={smoothPath(line.points)}
+                                            fill="none"
+                                            stroke={line.color}
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            style={{
+                                                strokeDasharray: 2000,
+                                                strokeDashoffset: visible ? 0 : 2000,
+                                                transition: `stroke-dashoffset 1.2s cubic-bezier(.6,0,.3,1) ${idx * 0.08}s`,
+                                                filter: `drop-shadow(0 0 4px ${line.color}66)`,
+                                            }}
+                                        />
+                                        {line.points.map((p, i) => (
+                                            <circle key={i} cx={p.x} cy={p.y} r={hoverIdx === i ? 4 : 2.5} fill={line.color} stroke={theme === 'dark' ? '#0E0E11' : '#fff'} strokeWidth="1.5"
+                                                style={{ opacity: visible ? 1 : 0, transition: `opacity .3s ease ${0.6 + idx * 0.08 + i * 0.02}s, r .2s ease` }} />
+                                        ))}
+                                    </g>
+                                ))}
+                            </g>
+                        )}
+
+                        {/* hover overlay */}
+                        {chartData.map((_, i) => (
+                            <rect key={i} x={xAt(i) - innerW / (n * 2)} y={padY} width={innerW / n} height={innerH}
+                                fill="transparent"
+                                onMouseEnter={() => setHoverIdx(i)}
+                            />
+                        ))}
+                        {hoverIdx != null && (
+                            <line x1={xAt(hoverIdx)} x2={xAt(hoverIdx)} y1={padY} y2={padY + innerH}
+                                stroke={theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'} strokeDasharray="2 3" />
+                        )}
+
+                        {/* x labels */}
+                        {chartData.map((d, i) => (
+                            <text key={i} x={xAt(i)} y={H - 2} textAnchor="middle" fontSize="9" fontWeight="800"
+                                fill={hoverIdx === i ? (theme === 'dark' ? '#fff' : '#000') : (theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')}>
+                                {d.label.charAt(0)}
+                            </text>
+                        ))}
+                    </svg>
+                </div>
+            </div>
+
+            {/* Legend / hover info */}
+            <div className={`mt-4 p-3 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                {mode === 0 ? (
+                    <div className="flex justify-around text-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{ background: '#30D158', boxShadow: '0 0 8px #30D15877' }} />
+                            <span className="font-bold opacity-70">Ingreso</span>
+                            <span className="font-black tabular-nums text-green-500">
+                                {hoverIdx != null ? `+${(chartData[hoverIdx]?.income || 0).toFixed(0)}€` : `${chartData.reduce((a, b) => a + (b.income || 0), 0).toFixed(0)}€`}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{ background: '#FF453A', boxShadow: '0 0 8px #FF453A77' }} />
+                            <span className="font-bold opacity-70">Gasto</span>
+                            <span className="font-black tabular-nums text-red-500">
+                                {hoverIdx != null ? `-${(chartData[hoverIdx]?.expense || 0).toFixed(0)}€` : `${chartData.reduce((a, b) => a + (b.expense || 0), 0).toFixed(0)}€`}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
+                        {catSeries.lines.map(line => (
+                            <div key={line.cat} className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ background: line.color, boxShadow: `0 0 6px ${line.color}77` }} />
+                                <span className="text-[10px] font-bold opacity-70 truncate max-w-[80px]">{line.cat}</span>
+                                <span className="text-[10px] font-black tabular-nums" style={{ color: line.color }}>
+                                    {hoverIdx != null ? `${(line.points[hoverIdx]?.v || 0).toFixed(0)}€` : `${line.total.toFixed(0)}€`}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <div className="flex justify-center gap-2 mt-4">
                 {[0, 1].map(idx => (
                     <button key={idx} onClick={() => idx !== mode && animateTo(idx > mode ? 1 : -1)} className={`h-1.5 rounded-full transition-all ${mode === idx ? `w-8 bg-current opacity-80` : 'w-1.5 bg-current opacity-20'}`} />

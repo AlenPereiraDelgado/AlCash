@@ -62,7 +62,7 @@ export const FinanceProvider = ({ children }) => {
     const [quickButtons, _setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
     const [categoryColors, _setCategoryColors] = useState({});
     const [savingsWidgets, _setSavingsWidgets] = useState([]);
-    const [dashboardWidgets, _setDashboardWidgets] = useState({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false });
+    const [dashboardWidgets, _setDashboardWidgets] = useState({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
 
     const setBudgets = (val) => {
         _setBudgets(prev => {
@@ -343,7 +343,7 @@ export const FinanceProvider = ({ children }) => {
         _setQuickButtons(DEFAULT_QUICK_BUTTONS);
         _setCategoryColors({});
         _setSavingsWidgets([]);
-        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false });
+        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
         setIsDataLoaded(false);
     };
 
@@ -580,7 +580,7 @@ export const FinanceProvider = ({ children }) => {
                 quick_buttons: DEFAULT_QUICK_BUTTONS,
                 category_colors: {},
                 savings_widgets: [],
-                dashboard_widgets: { savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false },
+                dashboard_widgets: { savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false },
             }).eq('id', user.id),
         ]);
         try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
@@ -595,7 +595,7 @@ export const FinanceProvider = ({ children }) => {
         _setQuickButtons(DEFAULT_QUICK_BUTTONS);
         _setCategoryColors({});
         _setSavingsWidgets([]);
-        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false });
+        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
     };
 
     const updateGlobalTags = async (newTags) => {
