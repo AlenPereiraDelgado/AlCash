@@ -51,8 +51,6 @@ const DashboardView = ({
         dashboardWidgets, setDashboardWidgets,
     } = useFinance();
     const [editMode, setEditMode] = useState(false);
-    const longPressTimer = useRef(null);
-    const longPressStart = useRef({ x: 0, y: 0, fired: false });
     const getCatColor = (cat) => resolveCategoryColor(cat, categoryColors, CATEGORY_COLORS);
     const swipeStartY = useRef(null);
     const [pieMonth, setPieMonth] = useState(() => new Date());
@@ -245,8 +243,6 @@ const DashboardView = ({
             <ReorderableWidgets
                 editMode={editMode}
                 setEditMode={setEditMode}
-                longPressTimer={longPressTimer}
-                longPressStart={longPressStart}
                 dashboardWidgets={dashboardWidgets}
                 setDashboardWidgets={setDashboardWidgets}
                 widgets={{
@@ -342,7 +338,7 @@ const DashboardView = ({
 const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings'];
 
 const SortableWidget = ({ id, editMode, children }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !editMode });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -350,7 +346,7 @@ const SortableWidget = ({ id, editMode, children }) => {
         opacity: isDragging ? 0.85 : 1,
     };
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={editMode ? 'touch-none' : ''}>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
             <div className={editMode && !isDragging ? 'animate-wiggle' : ''}>
                 {children}
             </div>
@@ -358,48 +354,25 @@ const SortableWidget = ({ id, editMode, children }) => {
     );
 };
 
-const ReorderableWidgets = ({ editMode, setEditMode, longPressTimer, longPressStart, dashboardWidgets, setDashboardWidgets, widgets, activeColor }) => {
+const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashboardWidgets, widgets, activeColor }) => {
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-        useSensor(TouchSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(PointerSensor, {
+            activationConstraint: editMode ? { distance: 5 } : { delay: 480, tolerance: 8 },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: editMode ? { distance: 5 } : { delay: 480, tolerance: 8 },
+        }),
     );
 
     const storedOrder = Array.isArray(dashboardWidgets?._order) ? dashboardWidgets._order : DEFAULT_ORDER;
     const merged = [...storedOrder, ...DEFAULT_ORDER.filter(k => !storedOrder.includes(k))];
     const visible = merged.filter(k => widgets[k]);
 
-    const enterEdit = () => {
-        if (editMode) return;
-        if (navigator.vibrate) navigator.vibrate(50);
-        setEditMode(true);
-    };
-
-    const startLP = (e) => {
-        if (editMode) return;
-        const p = e.touches?.[0] || e;
-        longPressStart.current = { x: p.clientX, y: p.clientY, fired: false };
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
-        longPressTimer.current = setTimeout(() => {
-            longPressStart.current.fired = true;
-            enterEdit();
-        }, 480);
-    };
-    const cancelLP = (e) => {
-        if (longPressTimer.current && e?.touches?.[0]) {
-            const p = e.touches[0];
-            const dx = p.clientX - longPressStart.current.x;
-            const dy = p.clientY - longPressStart.current.y;
-            if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-                clearTimeout(longPressTimer.current);
-                longPressTimer.current = null;
-            }
-        } else if (longPressTimer.current && !e?.touches) {
-            clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
+    const handleDragStart = () => {
+        if (!editMode) {
+            if (navigator.vibrate) navigator.vibrate(50);
+            setEditMode(true);
         }
-    };
-    const endLP = () => {
-        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     };
 
     const handleDragEnd = (ev) => {
@@ -415,22 +388,19 @@ const ReorderableWidgets = ({ editMode, setEditMode, longPressTimer, longPressSt
 
     return (
         <>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext
+                key={editMode ? 'edit' : 'view'}
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+            >
                 <SortableContext items={visible} strategy={verticalListSortingStrategy}>
                     <div className="space-y-6 md:space-y-8">
                         {visible.map(key => (
-                            <div
-                                key={key}
-                                onTouchStart={startLP}
-                                onTouchMove={cancelLP}
-                                onTouchEnd={endLP}
-                                onTouchCancel={endLP}
-                                onContextMenu={(e) => { if (editMode) e.preventDefault(); }}
-                            >
-                                <SortableWidget id={key} editMode={editMode}>
-                                    {widgets[key]}
-                                </SortableWidget>
-                            </div>
+                            <SortableWidget key={key} id={key} editMode={editMode}>
+                                {widgets[key]}
+                            </SortableWidget>
                         ))}
                     </div>
                 </SortableContext>
