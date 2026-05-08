@@ -14,10 +14,11 @@ import {
     Layers, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
     TrendingUp, TrendingDown, Wallet, ShieldCheck,
     Box, Globe, PieChart as PieIcon, Repeat, Sparkles, Plus, Minus, Trash2,
-    Award, Link2, BarChart3, Target, Check
+    Award, Link2, BarChart3, Target, Check, Activity, Zap, Radar
 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
 import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
+import { GaugeChart, RadarChart } from '../charts/FinanceCharts';
 
 const DashboardView = ({
     dateMode,
@@ -101,6 +102,34 @@ const DashboardView = ({
             netDaily: (totalIncome - totalExpense) / days,
         };
     }, [transactions]);
+
+    // --- Stats agregadas del periodo filtrado (Proyección + Salud Gauge) ---
+    const periodStats = useMemo(() => {
+        const list = filteredTransactions || [];
+        const income = list.filter(tx => tx.type === 'income').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const expense = list.filter(tx => tx.type === 'expense').reduce((a, b) => a + (b.amountVal || 0), 0);
+        const uniqueDays = new Set(list.map(tx => tx.date).filter(Boolean));
+        const days = Math.max(uniqueDays.size, 1);
+        const avg = expense / days;
+        return { income, expense, avg, days };
+    }, [filteredTransactions]);
+
+    // --- Datos del radar de hábitos por grupo de categoría ---
+    const radarHabitsData = useMemo(() => {
+        const GROUPS = {
+            "Fijos": ["Vivienda", "Suscripciones", "Hogar"],
+            "Vida": ["Alimentación", "Ocio", "Salud", "Regalos"],
+            "Movilidad": ["Transporte", "Viajes"],
+            "Otros": ["Otros", "Compras"],
+        };
+        const result = {};
+        Object.keys(GROUPS).forEach(group => {
+            result[group] = (filteredTransactions || [])
+                .filter(tx => tx.type === 'expense' && GROUPS[group].includes(tx.category))
+                .reduce((a, b) => a + (b.amountVal || 0), 0);
+        });
+        return result;
+    }, [filteredTransactions]);
 
     // --- Datos para vista "stacked-by-category" del comparativo ---
     const chartCategoryData = useMemo(() => {
@@ -328,6 +357,36 @@ const DashboardView = ({
                             privacyMode={privacyMode}
                         />
                     ) : null,
+                    proyeccion: dashboardWidgets?.proyeccion ? (
+                        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+                            <h3 className="text-sm font-black tracking-tight mb-5 uppercase flex items-center gap-2"><Zap size={16} className={activeColor.text} /> Proyección</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                                    <p className={`text-[9px] uppercase font-black tracking-wider mb-1 opacity-50`}>Diario medio</p>
+                                    <p className={`text-2xl md:text-3xl font-black tabular-nums ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.avg.toFixed(2)}€</p>
+                                </div>
+                                <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+                                    <p className={`text-[9px] uppercase font-black tracking-wider mb-1 opacity-50`}>Total gasto</p>
+                                    <p className={`text-2xl md:text-3xl font-black tabular-nums ${t.danger} ${privacyMode ? 'privacy-blur' : ''}`}>{periodStats.expense.toFixed(2)}€</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null,
+                    saludGauge: dashboardWidgets?.saludGauge ? (
+                        <div className={`p-6 md:p-8 rounded-[32px] border flex flex-col items-center ${t.card}`}>
+                            <h3 className="text-sm font-black tracking-tight mb-5 uppercase flex items-center gap-2 self-start"><Activity size={16} className={activeColor.text} /> Salud Financiera</h3>
+                            <GaugeChart percentage={(periodStats.expense / (periodStats.income || 1)) * 100} theme={theme} />
+                        </div>
+                    ) : null,
+                    radarHabitos: dashboardWidgets?.radarHabitos ? (
+                        <div className={`p-6 md:p-8 rounded-[32px] border ${t.card}`}>
+                            <div className="mb-4">
+                                <h3 className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Radar size={16} className={activeColor.text} /> Radar de Hábitos</h3>
+                                <p className={`text-[11px] mt-1 ${t.textSec}`}>Intensidad de gasto por grupos de categoría.</p>
+                            </div>
+                            <RadarChart theme={theme} data={radarHabitsData} accentHex={activeColor.hex} />
+                        </div>
+                    ) : null,
                 }}
                 activeColor={activeColor}
             />
@@ -335,7 +394,7 @@ const DashboardView = ({
     );
 };
 
-const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings'];
+const DEFAULT_ORDER = ['comparativa', 'salud', 'historical', 'pie', 'fixedInfo', 'nextExpense', 'savings', 'proyeccion', 'saludGauge', 'radarHabitos'];
 
 const SortableWidget = ({ id, editMode, children }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });

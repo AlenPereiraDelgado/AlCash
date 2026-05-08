@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { ACCENT_COLORS, CATEGORY_COLORS } from '../../constants/theme';
-import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download, Pencil, Target, LayoutGrid } from 'lucide-react';
+import { Palette, Moon, Sun, Check, Settings, Trash2, LogOut, User, ChevronLeft, Sparkles, Zap, Download, Pencil, Target, LayoutGrid, Activity, Radar } from 'lucide-react';
 import { exportMonthlyPDF, generateYearlyPDF } from '../../services/pdfService';
 import AppSelect from '../common/AppSelect';
 import PromptModal from '../common/PromptModal';
@@ -209,6 +209,9 @@ const SettingsView = () => {
                         { key: 'savings',     label: 'Objetivos de ahorro', desc: 'Barras de progreso para metas de ahorro.', Icon: Target },
                         { key: 'fixedInfo',   label: 'Resumen gastos fijos', desc: 'Mensual + extras anuales prorrateados.', Icon: Zap },
                         { key: 'nextExpense', label: 'Próximos gastos',     desc: 'Predicción de los siguientes gastos recurrentes.', Icon: Sparkles },
+                        { key: 'proyeccion',  label: 'Proyección',          desc: 'Diario medio y total de gasto del periodo.', Icon: Zap },
+                        { key: 'saludGauge',  label: 'Salud Financiera (gauge)', desc: 'Indicador visual de gasto vs ingreso.', Icon: Activity },
+                        { key: 'radarHabitos',label: 'Radar de Hábitos',    desc: 'Intensidad de gasto por grupos de categoría.', Icon: Radar },
                     ].map(({ key, label, desc, Icon }) => {
                         const on = !!dashboardWidgets?.[key];
                         return (

@@ -2,12 +2,12 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../../constants/theme';
-import { 
-    Zap, ChevronLeft, ChevronRight, Activity, TrendingUp, 
-    PieChart as PieChartIcon, Layers 
+import {
+    ChevronLeft, ChevronRight, TrendingUp,
+    PieChart as PieChartIcon
 } from 'lucide-react';
 import {
-    GaugeChart, DailyEvolutionChart, CategoryDonutChart, RadarChart
+    DailyEvolutionChart, CategoryDonutChart
 } from '../charts/FinanceCharts';
 import { parseLocalDate, resolveCategoryColor } from '../../utils/helpers';
 
@@ -64,42 +64,6 @@ const AnalysisView = ({
         })).filter(d => d.value > 0);
     }, [periodTransactions, categories, categoryColors]);
 
-    // 4. DATOS DE RADAR
-    const radarData = React.useMemo(() => {
-        const GROUPS = {
-            "Fijos": ["Vivienda", "Suscripciones", "Hogar"],
-            "Vida": ["Alimentación", "Ocio", "Salud", "Regalos"],
-            "Movilidad": ["Transporte", "Viajes"],
-            "Otros": ["Otros", "Compras"]
-        };
-        const result = {};
-        Object.keys(GROUPS).forEach(group => {
-            const value = periodTransactions
-                .filter(tx => tx.type === 'expense' && GROUPS[group].includes(tx.category))
-                .reduce((a, b) => a + b.amountVal, 0);
-            result[group] = value;
-        });
-        return result;
-    }, [periodTransactions]);
-
-    // 5. ESTADÍSTICAS RÁPIDAS
-    const stats = React.useMemo(() => {
-        const income = periodTransactions.filter(tx => tx.type === 'income').reduce((a, b) => a + b.amountVal, 0);
-        const expense = periodTransactions.filter(tx => tx.type === 'expense').reduce((a, b) => a + b.amountVal, 0);
-        
-        let avg;
-        if (analysisType === 'month') {
-            const daysInMonth = new Date(analysisDate.getFullYear(), analysisDate.getMonth() + 1, 0).getDate();
-            const currentDay = analysisDate.getMonth() === new Date().getMonth() ? new Date().getDate() : daysInMonth;
-            avg = (expense / Math.max(currentDay, 1));
-        } else {
-            const currentMonth = analysisDate.getFullYear() === new Date().getFullYear() ? new Date().getMonth() + 1 : 12;
-            avg = (expense / Math.max(currentMonth, 1));
-        }
-
-        return { income, expense, avg };
-    }, [periodTransactions, analysisDate, analysisType]);
-
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* CONTROLES DE FECHA PARA ANÁLISIS */}
@@ -125,31 +89,6 @@ const AnalysisView = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* 1. PROYECCIÓN / TOTALES */}
-                <div className={`p-4 md:p-8 rounded-[32px] border flex flex-col justify-center ${t.card}`}>
-                    <h3 className="text-base md:text-lg font-bold mb-4 md:mb-6 flex items-center gap-2"><Zap size={18} /> {analysisType === 'month' ? 'Proyección' : 'Anual'}</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className={`text-[9px] md:text-xs uppercase font-bold mb-1 ${t.textSec}`}>
-                                {analysisType === 'month' ? 'Diario' : 'Mensual'}
-                            </p>
-                            <p className="text-lg md:text-2xl font-black">{stats.avg.toFixed(2)}€</p>
-                        </div>
-                        <div className="text-right border-l border-white/5 pl-4">
-                            <p className={`text-[9px] md:text-xs uppercase font-bold mb-1 ${t.textSec}`}>
-                                {analysisType === 'month' ? 'Total' : 'Total Año'}
-                            </p>
-                            <p className={`text-lg md:text-2xl font-black ${t.danger}`}>{stats.expense.toFixed(2)}€</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. SALUD FINANCIERA */}
-                <div className={`p-8 rounded-[32px] border flex flex-col items-center justify-center ${t.card}`}>
-                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Activity size={18} /> Salud Financiera</h3>
-                    <GaugeChart percentage={(stats.expense / (stats.income || 1)) * 100} theme={theme} />
-                </div>
-
                 {/* 2. GRÁFICO DE EVOLUCIÓN */}
                 <div className={`p-8 rounded-[32px] border ${t.card}`}>
                     <div className="mb-6">
@@ -172,20 +111,6 @@ const AnalysisView = ({
                     <CategoryDonutChart
                         theme={theme}
                         data={donutData}
-                    />
-                </div>
-
-                {/* 5. RADAR DE HÁBITOS */}
-                <div className={`p-8 rounded-[32px] border lg:col-span-2 ${t.card}`}>
-                    <div className="mb-6 flex justify-between items-end">
-                        <div>
-                            <h3 className="text-lg font-bold flex items-center gap-2"><Layers size={18} /> Radar de Hábitos</h3>
-                            <p className={`text-xs ${t.textSec} mt-1`}>Intensidad de gasto por grupos de categoría.</p>
-                        </div>
-                    </div>
-                    <RadarChart
-                        theme={theme}
-                        data={radarData}
                     />
                 </div>
             </div>
