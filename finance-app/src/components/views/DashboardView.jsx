@@ -447,10 +447,11 @@ const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashbo
             {editMode && (
                 <button
                     onClick={() => setEditMode(false)}
-                    className="fixed top-4 right-4 z-[60] flex items-center gap-2 px-5 py-2.5 rounded-full text-white font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all"
+                    className="fixed top-4 right-4 z-[60] flex items-center justify-center w-10 h-10 rounded-full text-white shadow-2xl active:scale-95 transition-all"
                     style={{ background: activeColor.hex, boxShadow: `0 10px 30px ${activeColor.hex}66` }}
+                    aria-label="Listo"
                 >
-                    <Check size={14} /> Listo
+                    <Check size={18} strokeWidth={3} />
                 </button>
             )}
         </>
