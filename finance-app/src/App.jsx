@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import {
-    TrendingUp, TrendingDown, PieChart, Activity, Trash2,
+    TrendingUp, TrendingDown, PieChart, Trash2,
     Calendar as CalendarIcon, Repeat, Tag, Layers, ChevronLeft,
     ChevronRight, Search, Filter, Download, AlertCircle, CalendarDays,
     CalendarRange, Clock, X, LayoutGrid, List, Sun, Moon, Settings,
@@ -847,10 +847,14 @@ export default function App() {
         return (
             <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
                 <div className="w-full max-w-md bg-[#111111] border border-white/5 p-8 rounded-[40px] shadow-2xl">
-                    <div className="flex justify-center mb-8">
-                        <Activity size={40} className="text-white" />
+                    <div className="flex justify-center mb-6">
+                        <img
+                            src={`${import.meta.env.BASE_URL}alcash-favicon.png`}
+                            alt="AlCash"
+                            className="w-24 h-24 rounded-3xl shadow-2xl shadow-amber-500/20"
+                        />
                     </div>
-                    <h1 className="text-3xl font-black text-white mb-2">AlCash</h1>
+                    <h1 className="text-3xl font-black text-white mb-2 text-center">AlCash</h1>
                     <p className="text-gray-500 text-sm mb-6">
                         {recoveryMode ? 'Introduce tu nueva contraseña'
                             : forgotMode ? 'Recupera el acceso a tu cuenta'
