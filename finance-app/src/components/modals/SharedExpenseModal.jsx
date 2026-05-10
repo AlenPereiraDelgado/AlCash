@@ -1,37 +1,161 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, Plus, Minus, Check, Users, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Plus, Minus, Check, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import AppSelect from '../common/AppSelect';
 import AddTabBar from '../common/AddTabBar';
 
-const MULTIPLIERS = [
-    { value: 0.5, label: 'x0.5' },
-    { value: 1,   label: 'x1'   },
-    { value: 1.5, label: 'x1.5' },
-    { value: 2,   label: 'x2'   },
-    { value: 3,   label: 'x3'   },
-];
+const MULT_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+
+const formatMult = (v) => {
+    const n = Number(v) || 0;
+    if (Number.isInteger(n)) return `x${n}`;
+    return `x${n.toFixed(2).replace(/\.?0+$/, '')}`;
+};
+
+const formatEur = (v) => {
+    const n = Number(v) || 0;
+    if (Number.isInteger(n)) return `${n}€`;
+    return `${n.toFixed(2).replace(/\.?0+$/, '')}€`;
+};
+
+const WheelMultPicker = ({ mult, custom, customAmount, onPickMult, onPickCustom, theme, t, activeColor }) => {
+    const [open, setOpen] = useState(false);
+    const [customOpen, setCustomOpen] = useState(false);
+    const [customVal, setCustomVal] = useState(String(custom ? customAmount : ''));
+    const ref = useRef(null);
+    const listRef = useRef(null);
+    const ITEM_H = 36;
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => { if (!ref.current?.contains(e.target)) { setOpen(false); setCustomOpen(false); } };
+        const id = setTimeout(() => document.addEventListener('mousedown', handler), 100);
+        return () => { clearTimeout(id); document.removeEventListener('mousedown', handler); };
+    }, [open]);
+
+    useEffect(() => {
+        if (!open || customOpen || custom || !listRef.current) return;
+        const idx = MULT_OPTIONS.findIndex(v => Math.abs(v - mult) < 0.0001);
+        if (idx >= 0) listRef.current.scrollTop = idx * ITEM_H;
+    }, [open, mult, customOpen, custom]);
+
+    const pickMult = (v) => { onPickMult(v); setOpen(false); setCustomOpen(false); };
+    const onScrollEnd = () => {
+        if (!listRef.current || custom) return;
+        const idx = Math.round(listRef.current.scrollTop / ITEM_H);
+        const v = MULT_OPTIONS[Math.max(0, Math.min(MULT_OPTIONS.length - 1, idx))];
+        if (v !== undefined && Math.abs(v - mult) > 0.0001) onPickMult(v);
+    };
+
+    return (
+        <div ref={ref} className="relative shrink-0">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className={`min-w-14 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${activeColor.bg} text-white`}
+            >
+                {custom ? formatEur(customAmount) : formatMult(mult)}
+            </button>
+            {open && (
+                <div className={`absolute z-30 right-0 top-full mt-1 w-32 rounded-2xl border shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-[#0E0E11] border-white/10' : 'bg-white border-gray-200'}`}>
+                    {!customOpen ? (
+                        <>
+                            <div className="relative" style={{ height: 144 }}>
+                                <div
+                                    ref={listRef}
+                                    onScroll={() => { clearTimeout(listRef.current._t); listRef.current._t = setTimeout(onScrollEnd, 120); }}
+                                    className="h-full overflow-y-scroll snap-y snap-mandatory"
+                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                >
+                                    <style>{`.wheel-list::-webkit-scrollbar{display:none}`}</style>
+                                    <div style={{ height: 54 }} />
+                                    {MULT_OPTIONS.map(v => (
+                                        <button
+                                            key={v}
+                                            type="button"
+                                            onClick={() => pickMult(v)}
+                                            className={`w-full snap-center flex items-center justify-center font-black transition-all ${!custom && Math.abs(v - mult) < 0.0001 ? `${activeColor.text} text-base` : 'opacity-40 text-sm'}`}
+                                            style={{ height: ITEM_H }}
+                                        >
+                                            {formatMult(v)}
+                                        </button>
+                                    ))}
+                                    <div style={{ height: 54 }} />
+                                </div>
+                                <div className={`pointer-events-none absolute left-2 right-2 top-1/2 -translate-y-1/2 rounded-lg border-y ${theme === 'dark' ? 'border-white/15' : 'border-gray-300'}`} style={{ height: ITEM_H }} />
+                                <div className={`pointer-events-none absolute inset-x-0 top-0 h-12 ${theme === 'dark' ? 'bg-gradient-to-b from-[#0E0E11]' : 'bg-gradient-to-b from-white'} to-transparent`} />
+                                <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 ${theme === 'dark' ? 'bg-gradient-to-t from-[#0E0E11]' : 'bg-gradient-to-t from-white'} to-transparent`} />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setCustomVal(String(custom ? customAmount : '')); setCustomOpen(true); }}
+                                className={`w-full py-2 text-[10px] font-black uppercase tracking-wider border-t ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'}`}
+                            >
+                                Personalizado (€)
+                            </button>
+                        </>
+                    ) : (
+                        <div className="p-3 space-y-2">
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Importe fijo</p>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={customVal}
+                                    onChange={e => setCustomVal(e.target.value)}
+                                    autoFocus
+                                    className={`w-full p-2 pr-7 rounded-lg text-center font-black ${t.input}`}
+                                />
+                                <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black ${t.textSec}`}>€</span>
+                            </div>
+                            <div className="flex gap-1.5">
+                                <button type="button" onClick={() => setCustomOpen(false)} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'}`}>Atrás</button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const n = parseFloat(customVal);
+                                        if (!Number.isNaN(n) && n >= 0) {
+                                            onPickCustom(n);
+                                            setOpen(false);
+                                            setCustomOpen(false);
+                                        }
+                                    }}
+                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase ${activeColor.bg} text-white`}
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const buildParticipants = (count, names, includeMe) => {
     const list = [];
-    if (includeMe) list.push({ id: 'me', name: 'Yo', mult: 1, custom: null, paid: true, isMe: true });
+    if (includeMe) list.push({ id: 'me', name: 'Yo', mult: 1, custom: false, customAmount: 0, paid: true, paidAmount: 0, isMe: true });
     for (let i = 0; i < count; i++) {
         list.push({
             id: `p${i}`,
             name: names[i] || `Persona ${i + 1}`,
             mult: 1,
-            custom: null,
+            custom: false,
+            customAmount: 0,
             paid: false,
+            paidAmount: 0,
             isMe: false,
         });
     }
     return list;
 };
 
-const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
+const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab, prefill, onPrefillConsumed }) => {
     const { theme, t, activeColor } = useAuth();
-    const { categories, addTransaction } = useFinance();
+    const { categories, addTransaction, deleteTransaction } = useFinance();
 
     const [total, setTotal] = useState('');
     const [category, setCategory] = useState('');
@@ -42,7 +166,19 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
     const [names, setNames] = useState([]);
     const [includeMe, setIncludeMe] = useState(true);
     const [participants, setParticipants] = useState([]);
-    const [customMode, setCustomMode] = useState(false);
+    const [replacingTxId, setReplacingTxId] = useState(null);
+
+    // Hidratar desde prefill (al fraccionar un movimiento existente)
+    useEffect(() => {
+        if (!isOpen || !prefill) return;
+        setTotal(String(prefill.total ?? ''));
+        setCategory(prefill.category || '');
+        setSubCategory(prefill.subCategory || '');
+        setNote(prefill.note || '');
+        setDate(prefill.date || new Date().toISOString().split('T')[0]);
+        setReplacingTxId(prefill.originalTxId || null);
+        onPrefillConsumed?.();
+    }, [isOpen, prefill, onPrefillConsumed]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -61,24 +197,16 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
     const totalNum = parseFloat(total) || 0;
 
     const computedShares = useMemo(() => {
-        if (!totalNum || participants.length === 0) return participants.map(p => ({ ...p, share: 0 }));
-        if (customMode) {
-            const fixed = participants.filter(p => p.custom !== null && p.custom !== '');
-            const fixedSum = fixed.reduce((a, p) => a + (parseFloat(p.custom) || 0), 0);
-            const remaining = Math.max(0, totalNum - fixedSum);
-            const flexMultSum = participants
-                .filter(p => p.custom === null || p.custom === '')
-                .reduce((a, p) => a + p.mult, 0);
-            return participants.map(p => {
-                if (p.custom !== null && p.custom !== '') return { ...p, share: parseFloat(p.custom) || 0 };
-                if (flexMultSum === 0) return { ...p, share: 0 };
-                return { ...p, share: (remaining * p.mult) / flexMultSum };
-            });
-        }
-        const multSum = participants.reduce((a, p) => a + p.mult, 0);
-        if (multSum === 0) return participants.map(p => ({ ...p, share: 0 }));
-        return participants.map(p => ({ ...p, share: (totalNum * p.mult) / multSum }));
-    }, [participants, totalNum, customMode]);
+        if (participants.length === 0) return [];
+        const customSum = participants.reduce((a, p) => a + (p.custom ? (Number(p.customAmount) || 0) : 0), 0);
+        const remaining = Math.max(0, totalNum - customSum);
+        const multSum = participants.reduce((a, p) => a + (p.custom ? 0 : p.mult), 0);
+        return participants.map(p => {
+            if (p.custom) return { ...p, share: Number(p.customAmount) || 0 };
+            if (multSum === 0) return { ...p, share: 0 };
+            return { ...p, share: (remaining * p.mult) / multSum };
+        });
+    }, [participants, totalNum]);
 
     const totalAssigned = computedShares.reduce((a, p) => a + p.share, 0);
     const drift = totalNum - totalAssigned;
@@ -91,9 +219,8 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
         setNames(next);
     };
 
-    const setMult = (id, mult) => setParticipants(prev => prev.map(p => p.id === id ? { ...p, mult } : p));
-    const setCustom = (id, custom) => setParticipants(prev => prev.map(p => p.id === id ? { ...p, custom } : p));
-    const togglePaid = (id) => setParticipants(prev => prev.map(p => p.id === id ? { ...p, paid: !p.paid } : p));
+    const setMult = (id, mult) => setParticipants(prev => prev.map(p => p.id === id ? { ...p, mult, custom: false, customAmount: 0 } : p));
+    const setCustomAmount = (id, amount) => setParticipants(prev => prev.map(p => p.id === id ? { ...p, custom: true, customAmount: amount } : p));
 
     const allPaid = computedShares.every(p => p.paid);
     const myShare = computedShares.find(p => p.isMe)?.share || 0;
@@ -104,6 +231,7 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
             name: p.name,
             share: Number(p.share.toFixed(2)),
             paid: p.paid,
+            paidAmount: p.isMe ? Number(p.share.toFixed(2)) : (p.paid ? Number(p.share.toFixed(2)) : 0),
             isMe: p.isMe,
         }));
         const meta = {
@@ -128,8 +256,12 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
             periodicity: 'puntual',
             is_joint: false,
         });
+        if (replacingTxId) {
+            await deleteTransaction(replacingTxId, false);
+        }
         setTotal(''); setNote(''); setCategory(''); setSubCategory('');
-        setCount(2); setNames([]); setIncludeMe(true); setCustomMode(false);
+        setCount(2); setNames([]); setIncludeMe(true);
+        setReplacingTxId(null);
         onClose();
     };
 
@@ -194,61 +326,39 @@ const SharedExpenseModal = ({ isOpen, onClose, onSwitchTab }) => {
                             <span className={`w-5 h-5 rounded-md flex items-center justify-center border-2 ${includeMe ? `${activeColor.bg} border-transparent` : 'border-gray-500/40'}`}>
                                 {includeMe && <Check size={13} className="text-white" />}
                             </span>
-                            Yo participo en el gasto
+                            Yo participo
                         </button>
 
-                        <div className="space-y-2">
-                            {Array.from({ length: count }).map((_, i) => (
-                                <input
-                                    key={i}
-                                    value={names[i] || ''}
-                                    onChange={e => setName(i, e.target.value)}
-                                    placeholder={`Persona ${i + 1}`}
-                                    className={`w-full p-2.5 rounded-xl text-xs font-bold ${t.input}`}
-                                />
-                            ))}
+                        <div className="space-y-1.5">
+                            {computedShares.map(p => {
+                                const personaIdx = !p.isMe ? parseInt(p.id.slice(1), 10) : -1;
+                                return (
+                                    <div key={p.id} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border ${theme === 'dark' ? 'border-white/5 bg-white/[0.02]' : 'border-gray-100 bg-white'}`}>
+                                        {p.isMe ? (
+                                            <div className={`flex-1 min-w-0 px-1.5 py-1 text-[11px] font-black ${activeColor.text}`}>Yo · tú</div>
+                                        ) : (
+                                            <input
+                                                value={names[personaIdx] || ''}
+                                                onChange={e => setName(personaIdx, e.target.value)}
+                                                placeholder={`Persona ${personaIdx + 1}`}
+                                                className={`flex-1 min-w-0 px-2 py-1 rounded-md text-[11px] font-bold ${t.input}`}
+                                            />
+                                        )}
+                                        <span className="shrink-0 text-right text-[11px] font-black tabular-nums opacity-70 px-1">{p.share.toFixed(2)}€</span>
+                                        <WheelMultPicker
+                                            mult={p.mult}
+                                            custom={p.custom}
+                                            customAmount={p.customAmount}
+                                            onPickMult={(v) => setMult(p.id, v)}
+                                            onPickCustom={(v) => setCustomAmount(p.id, v)}
+                                            theme={theme}
+                                            t={t}
+                                            activeColor={activeColor}
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </div>
-
-                    {/* DISTRIBUCIÓN */}
-                    <div className="flex items-center justify-between">
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Distribución</p>
-                        <button
-                            onClick={() => setCustomMode(v => !v)}
-                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                                customMode ? `${activeColor.bg} text-white` : (theme === 'dark' ? 'bg-white/5 text-white/70' : 'bg-gray-100 text-gray-600')
-                            }`}
-                        >
-                            {customMode ? 'Personalizada' : 'Equitativa'}
-                        </button>
-                    </div>
-
-                    <div className="space-y-2">
-                        {computedShares.map(p => (
-                            <div key={p.id} className={`p-3 rounded-2xl border flex items-center gap-2 ${theme === 'dark' ? 'border-white/5 bg-white/[0.02]' : 'border-gray-100 bg-white'}`}>
-                                <button onClick={() => togglePaid(p.id)} className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${p.paid ? `${activeColor.bg}` : (theme === 'dark' ? 'bg-white/5' : 'bg-gray-100')}`}>
-                                    {p.paid && <Check size={14} className="text-white" />}
-                                </button>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-black text-xs truncate">{p.name}{p.isMe && <span className={`ml-1.5 text-[9px] ${activeColor.text}`}>· tú</span>}</p>
-                                    <p className={`text-[10px] font-bold ${t.textSec}`}>{p.share.toFixed(2)} €</p>
-                                </div>
-                                {customMode ? (
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="auto"
-                                        value={p.custom ?? ''}
-                                        onChange={e => setCustom(p.id, e.target.value === '' ? null : e.target.value)}
-                                        className={`w-20 p-2 rounded-lg text-xs font-black text-right ${t.input}`}
-                                    />
-                                ) : (
-                                    <AppSelect value={p.mult} onChange={e => setMult(p.id, parseFloat(e.target.value))} className="p-2 rounded-lg text-[10px] font-black" wrapperClass="w-20">
-                                        {MULTIPLIERS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                                    </AppSelect>
-                                )}
-                            </div>
-                        ))}
                     </div>
 
                     {/* RESUMEN */}

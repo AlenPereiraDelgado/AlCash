@@ -216,3 +216,7 @@ select:focus {
   50%      { transform: rotate(0.7deg); }
 }
 .animate-wiggle { animation: wiggle 0.22s ease-in-out infinite; transform-origin: center; }
+
+/* Wheel picker (iOS-style) — hide scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

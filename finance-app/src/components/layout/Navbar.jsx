@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFinance } from '../../contexts/FinanceContext';
 import {
-    LayoutGrid, List, Users, Target, Settings, TrendingUp,
-    Eye, EyeOff, BarChart2, Repeat, ShieldCheck, X, Plus, MoreHorizontal
+    LayoutGrid, List, Users, Settings,
+    Repeat, ShieldCheck, Plus
 } from 'lucide-react';
 
-const Navbar = ({ view, setView, isScrolled, onAdd, onBudget }) => {
-    const { activeColor, theme, t, privacyMode, setPrivacyMode } = useAuth();
+const Navbar = ({ view, setView, isScrolled, onAdd, onOpenHouseholdGate }) => {
+    const { activeColor, theme, t, setMode, isSocial, activeHouseholdId, setActiveHouseholdId } = useAuth();
+    const { households } = useFinance();
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     useEffect(() => {
         const handleResize = () => {
@@ -25,77 +26,44 @@ const Navbar = ({ view, setView, isScrolled, onAdd, onBudget }) => {
     const leftNav = [
         { id: 'dashboard', icon: LayoutGrid, label: 'Panel' },
         { id: 'list', icon: List, label: 'Movim' },
+        { id: 'fixed', icon: Repeat, label: 'Fijos' },
     ];
 
-    const rightNav = [
-        { id: 'joint', icon: Users, label: 'Social' },
-    ];
-
-    const secondaryNav = [
-        { id: 'analysis', icon: BarChart2, label: 'Análisis' },
-        { id: 'fixed', icon: Repeat, label: 'Gastos Fijos' },
-        { id: 'forecasting', icon: TrendingUp, label: 'Proyecciones' },
-        { id: 'debts', icon: ShieldCheck, label: 'Gestión Deudas' },
-        { id: 'settings', icon: Settings, label: 'Ajustes' },
-    ];
+    // Social = mode toggle, NO una vista. Pulsar alterna personal <-> social.
+    // Sin hogar listo (≥2 miembros reclamados) → abre el modal para crear/aceptar.
+    const handleSocialToggle = () => {
+        if (isSocial) {
+            setMode('personal');
+            return;
+        }
+        const ready = (households || []).filter(h => (h.members || []).filter(m => m.userId).length >= 2);
+        if (ready.length === 0) {
+            onOpenHouseholdGate?.();
+            return;
+        }
+        const target = ready.find(h => h.id === activeHouseholdId) || ready[0];
+        if (target.id !== activeHouseholdId) setActiveHouseholdId(target.id);
+        setMode('social');
+    };
 
     return (
         <div className={`md:hidden fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'opacity-90' : 'opacity-100'}`}>
-            {/* MENU ADICIONAL (DRAWER-LIKE) */}
-            {isMenuOpen && (
-                <>
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsMenuOpen(false)}></div>
-                    <div className={`fixed bottom-24 left-4 right-4 z-50 p-6 rounded-[32px] border shadow-2xl animate-in slide-in-from-bottom-5 ${t.card} ${theme === 'dark' ? 'bg-black/90' : 'bg-white'}`}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-black">Más Opciones</h3>
-                            <button onClick={() => setIsMenuOpen(false)} className={`p-2 rounded-xl ${t.hover}`}><X size={20} /></button>
-                        </div>
-                        <button
-                            onClick={() => { setPrivacyMode(!privacyMode); setIsMenuOpen(false); }}
-                            className={`w-full mb-4 flex items-center justify-center gap-3 p-3 rounded-2xl transition-all border ${privacyMode ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'border-white/5 ' + t.hover}`}
-                        >
-                            {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
-                            <span className="font-black text-xs uppercase tracking-widest">Privacidad {privacyMode ? 'ON' : 'OFF'}</span>
-                        </button>
-                        <div className="grid grid-cols-2 gap-4">
-                            {secondaryNav.map(nav => (
-                                <button
-                                    key={nav.id}
-                                    onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
-                                    className={`flex items-center gap-4 p-4 rounded-2xl transition-all border ${view === nav.id ? activeColor.bg + ' text-white border-transparent' : 'border-white/5 ' + t.hover}`}
-                                >
-                                    <nav.icon size={20} />
-                                    <span className="font-bold text-sm">{nav.label}</span>
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => { onBudget?.(); setIsMenuOpen(false); }}
-                                className={`flex items-center gap-4 p-4 rounded-2xl transition-all border border-white/5 ${t.hover}`}
-                            >
-                                <Target size={20} />
-                                <span className="font-bold text-sm">Presupuestos</span>
-                            </button>
-                        </div>
-                    </div>
-                </>
-            )}
-
             {/* BARRA PRINCIPAL */}
-            <div className={`relative flex items-end justify-around py-2 px-4 pb-6 rounded-t-[32px] border-t shadow-[0_-10px_40px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${theme === 'dark' ? 'bg-black/80 border-white/5' : 'bg-white/95 border-gray-100'}`}>
+            <div className={`relative flex items-end justify-around py-2 px-2 pb-6 rounded-t-[32px] border-t shadow-[0_-10px_40px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${theme === 'dark' ? 'bg-black/80 border-white/5' : 'bg-white/95 border-gray-100'}`}>
                 {leftNav.map(nav => (
                     <button
                         key={nav.id}
-                        onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
-                        className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
+                        onClick={() => setView(nav.id)}
+                        className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
                     >
-                        <nav.icon size={22} strokeWidth={view === nav.id ? 2.5 : 2} className={`transition-transform duration-300 ${view === nav.id ? 'scale-110' : 'opacity-60'}`} />
-                        <span className={`text-[10px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
+                        <nav.icon size={19} strokeWidth={view === nav.id ? 2.5 : 2} className={`transition-transform duration-300 ${view === nav.id ? 'scale-110' : 'opacity-60'}`} />
+                        <span className={`text-[9px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
                     </button>
                 ))}
 
                 {/* BOTÓN PRINCIPAL: AÑADIR */}
                 <button
-                    onClick={() => { onAdd?.(); setIsMenuOpen(false); }}
+                    onClick={() => onAdd?.()}
                     className="group flex flex-col items-center gap-1 -translate-y-3 transition-all active:scale-90"
                 >
                     <div className="relative">
@@ -107,23 +75,41 @@ const Navbar = ({ view, setView, isScrolled, onAdd, onBudget }) => {
                     <span className={`text-[9px] font-black uppercase tracking-widest ${activeColor.text}`}>Añadir</span>
                 </button>
 
-                {rightNav.map(nav => (
-                    <button
-                        key={nav.id}
-                        onClick={() => { setView(nav.id); setIsMenuOpen(false); }}
-                        className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
-                    >
-                        <nav.icon size={22} strokeWidth={view === nav.id ? 2.5 : 2} className={`transition-transform duration-300 ${view === nav.id ? 'scale-110' : 'opacity-60'}`} />
-                        <span className={`text-[10px] font-black uppercase tracking-tighter ${view === nav.id ? 'opacity-100' : 'opacity-40'}`}>{nav.label}</span>
-                    </button>
-                ))}
-
+                {/* TOGGLE MODO SOCIAL */}
                 <button
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${isMenuOpen ? activeColor.text : t.textSec}`}
+                    onClick={handleSocialToggle}
+                    className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${isSocial ? 'text-[#D4AF37]' : t.textSec}`}
+                    aria-pressed={isSocial}
                 >
-                    <MoreHorizontal size={22} className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-90 scale-110' : 'opacity-60'}`} />
-                    <span className={`text-[10px] font-black uppercase tracking-tighter ${isMenuOpen ? 'opacity-100' : 'opacity-40'}`}>Más</span>
+                    <div className="relative">
+                        <Users
+                            size={19}
+                            strokeWidth={isSocial ? 2.5 : 2}
+                            className={`transition-transform duration-300 ${isSocial ? 'scale-110 drop-shadow-[0_0_8px_rgba(240,180,41,0.6)]' : 'opacity-60'}`}
+                        />
+                        {isSocial && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#D4AF37] ring-2 ring-black/40 animate-pulse" />
+                        )}
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-tighter ${isSocial ? 'opacity-100' : 'opacity-40'}`}>Social</span>
+                </button>
+
+                {/* GESTIÓN DEUDAS */}
+                <button
+                    onClick={() => setView('debts')}
+                    className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${view === 'debts' ? activeColor.text : t.textSec}`}
+                >
+                    <ShieldCheck size={19} strokeWidth={view === 'debts' ? 2.5 : 2} className={`transition-transform duration-300 ${view === 'debts' ? 'scale-110' : 'opacity-60'}`} />
+                    <span className={`text-[9px] font-black uppercase tracking-tighter ${view === 'debts' ? 'opacity-100' : 'opacity-40'}`}>Deudas</span>
+                </button>
+
+                {/* AJUSTES */}
+                <button
+                    onClick={() => setView('settings')}
+                    className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${view === 'settings' ? activeColor.text : t.textSec}`}
+                >
+                    <Settings size={19} strokeWidth={view === 'settings' ? 2.5 : 2} className={`transition-transform duration-300 ${view === 'settings' ? 'scale-110' : 'opacity-60'}`} />
+                    <span className={`text-[9px] font-black uppercase tracking-tighter ${view === 'settings' ? 'opacity-100' : 'opacity-40'}`}>Ajustes</span>
                 </button>
             </div>
         </div>

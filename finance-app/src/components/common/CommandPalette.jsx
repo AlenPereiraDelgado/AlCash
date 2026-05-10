@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, LayoutGrid, List, TrendingUp, BarChart2, Target, Settings, Shield, Download, Moon, Sun, X, ArrowRight, Zap, Tag } from 'lucide-react';
+import { Search, LayoutGrid, List, TrendingUp, Target, Settings, Shield, Download, Moon, Sun, X, ArrowRight, Zap, Tag } from 'lucide-react';
 
 const CommandPalette = ({ isOpen, onClose, setView, setPrivacyMode, privacyMode, setTheme, theme, exportToExcel, transactions, activeColor, t }) => {
     const [query, setQuery] = useState('');
@@ -10,8 +10,6 @@ const CommandPalette = ({ isOpen, onClose, setView, setPrivacyMode, privacyMode,
     const navCommands = [
         { id: 'dashboard', label: 'Ir a Panel de Control', icon: LayoutGrid, category: 'Navegación' },
         { id: 'list', label: 'Ver Movimientos', icon: List, category: 'Navegación' },
-        { id: 'analysis', label: 'Ver Análisis Detallado', icon: BarChart2, category: 'Navegación' },
-        { id: 'forecasting', label: 'Ver Proyecciones de Patrimonio', icon: TrendingUp, category: 'Navegación' },
         { id: 'goals', label: 'Gestionar Metas de Ahorro', icon: Target, category: 'Navegación' },
         { id: 'settings', label: 'Gestión de Etiquetas y App', icon: Tag, category: 'Navegación' }
     ];

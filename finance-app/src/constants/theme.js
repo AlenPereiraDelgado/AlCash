@@ -16,6 +16,7 @@ export const ACCENT_COLORS = {
     violet: { name: 'Violeta', bg: 'bg-violet-600', text: 'text-violet-600', border: 'border-violet-600', hover: 'hover:bg-violet-700', ring: 'ring-violet-500', hex: '#7C3AED' },
     emerald: { name: 'Esmeralda', bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-600', hover: 'hover:bg-emerald-700', ring: 'ring-emerald-500', hex: '#059669' },
     orange: { name: 'Naranja', bg: 'bg-orange-600', text: 'text-orange-600', border: 'border-orange-600', hover: 'hover:bg-orange-700', ring: 'ring-orange-500', hex: '#EA580C' },
+    gold:   { name: 'Oro Social', bg: 'bg-[#D4AF37]', text: 'text-[#D4AF37]', border: 'border-[#D4AF37]', hover: 'hover:bg-[#B8860B]', ring: 'ring-[#D4AF37]', hex: '#D4AF37', isSocial: true },
 };
 
 export const MODERN_THEMES = {

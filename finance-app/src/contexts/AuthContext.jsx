@@ -16,13 +16,29 @@ export const AuthProvider = ({ children }) => {
     const [theme, setTheme] = useState(() => localStorage.getItem('alcash_theme') || 'dark');
     const [accent, setAccent] = useState(() => localStorage.getItem('alcash_accent') || 'blue');
     const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem('alcash_privacy') === 'true');
+    const [mode, _setMode] = useState(() => localStorage.getItem('alcash_mode') || 'personal');
+    const [activeHouseholdId, _setActiveHouseholdId] = useState(() => localStorage.getItem('alcash_active_household') || null);
     const [authError, setAuthError] = useState('');
     const [authInfo, setAuthInfo] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [geminiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
 
-    const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS['blue'];
+    // Modo social fuerza color dorado; el accent personal queda guardado y se restaura.
+    const effectiveAccent = (mode === 'social' && activeHouseholdId) ? 'gold' : accent;
+    const activeColor = ACCENT_COLORS[effectiveAccent] || ACCENT_COLORS['blue'];
+
+    const setMode = (next) => {
+        _setMode(next);
+        try { localStorage.setItem('alcash_mode', next); } catch {}
+    };
+    const setActiveHouseholdId = (id) => {
+        _setActiveHouseholdId(id);
+        try {
+            if (id) localStorage.setItem('alcash_active_household', id);
+            else localStorage.removeItem('alcash_active_household');
+        } catch {}
+    };
 
     // 1. Monitorizar sesión de Supabase
     useEffect(() => {
@@ -187,6 +203,9 @@ export const AuthProvider = ({ children }) => {
             user, session, isLoading,
             theme, setTheme, accent, setAccent,
             privacyMode, setPrivacyMode,
+            mode, setMode,
+            activeHouseholdId, setActiveHouseholdId,
+            isSocial: mode === 'social' && !!activeHouseholdId,
             activeColor, t,
             authError, setAuthError,
             authInfo, setAuthInfo,

@@ -51,12 +51,6 @@ const FixedExpensesView = ({
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-gray-500/10">
-                            <div className="text-right">
-                                <span className="block text-[10px] font-bold opacity-60 uppercase">Prorrateo Anual</span>
-                                <span className="font-bold text-xs">{((prorrateoMensual.annual || 0) + (prorrateoMensual.weekly || 0)).toFixed(2)}€/mes</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <div className={`p-8 rounded-[40px] border ${t.card}`}>

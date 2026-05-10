@@ -1,49 +1,50 @@
 import React from 'react';
 import { 
-    LayoutGrid, List, Repeat, BarChart2, TrendingUp, 
-    Target, Users, Settings, LogOut, CheckCircle2, 
-    Save, Eye, EyeOff, XCircle, ShieldCheck, HeartPulse
+    LayoutGrid, List, Repeat,
+    Users, Settings, LogOut, CheckCircle2,
+    Eye, EyeOff, XCircle, ShieldCheck, HeartPulse
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 
-const Sidebar = ({ view, setView, travelMode, setTravelMode, onBudget }) => {
-    const { currentUser, theme, t, activeColor, logout, privacyMode, setPrivacyMode } = useAuth();
-    const { saveStatus } = useFinance();
+const Sidebar = ({ view, setView, onOpenHouseholdGate }) => {
+    const { currentUser, theme, t, activeColor, logout, privacyMode, setPrivacyMode, isSocial, setMode, activeHouseholdId, setActiveHouseholdId } = useAuth();
+    const { saveStatus, households } = useFinance();
 
     const navItems = [
         { id: 'dashboard', icon: LayoutGrid, label: 'Resumen' },
         { id: 'list', icon: List, label: 'Movimientos' },
         { id: 'fixed', icon: Repeat, label: 'Gastos Fijos' },
-        { id: 'analysis', icon: BarChart2, label: 'Análisis' },
-        { id: 'forecasting', icon: TrendingUp, label: 'Proyecciones' },
         { id: 'debts', icon: ShieldCheck, label: 'Gestión Deudas' },
-        { id: 'joint', icon: Users, label: 'Cuenta Conjunta' },
         { id: 'settings', icon: Settings, label: 'Ajustes' }
     ];
 
+    const isHouseholdReady = (h) => (h?.members || []).filter(m => m.userId).length >= 2;
+    const readyHouseholds = (households || []).filter(isHouseholdReady);
+
+    const handleSocialToggle = () => {
+        if (isSocial) { setMode('personal'); return; }
+        if (readyHouseholds.length === 0) { onOpenHouseholdGate?.(); return; }
+        const target = readyHouseholds.find(h => h.id === activeHouseholdId) || readyHouseholds[0];
+        if (target?.id !== activeHouseholdId) setActiveHouseholdId(target.id);
+        setMode('social');
+    };
+
+    const activeHousehold = (households || []).find(h => h.id === activeHouseholdId) || null;
+
     const settingsRow = (
-        <div className="flex gap-2 items-stretch">
-            <button
-                onClick={() => setView('settings')}
-                className={`flex-1 group relative flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 ${view === 'settings'
-                    ? `${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-100 text-black'}`
-                    : `${t.textSec} hover:bg-white/5`}`}
-            >
-                {view === 'settings' && (
-                    <div className={`absolute left-0 w-1.5 h-8 rounded-r-full ${activeColor.bg} shadow-[0_0_15px_rgba(59,130,246,0.5)]`} />
-                )}
-                <Settings size={22} strokeWidth={view === 'settings' ? 2.5 : 2} className={`transition-all duration-300 ${view === 'settings' ? activeColor.text + ' scale-110' : 'group-hover:scale-110'}`} />
-                <span className={`hidden lg:block font-black text-sm tracking-tight transition-all ${view === 'settings' ? 'translate-x-1' : ''}`}>Ajustes</span>
-            </button>
-            <button
-                onClick={onBudget}
-                title="Presupuestos"
-                className={`shrink-0 w-14 lg:w-14 flex items-center justify-center rounded-2xl border transition-all ${theme === 'dark' ? 'border-white/5 hover:bg-white/5' : 'border-gray-100 hover:bg-gray-50'} ${t.textSec}`}
-            >
-                <Target size={20} strokeWidth={2.4} className={`${activeColor.text}`} />
-            </button>
-        </div>
+        <button
+            onClick={() => setView('settings')}
+            className={`w-full group relative flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 ${view === 'settings'
+                ? `${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-100 text-black'}`
+                : `${t.textSec} hover:bg-white/5`}`}
+        >
+            {view === 'settings' && (
+                <div className={`absolute left-0 w-1.5 h-8 rounded-r-full ${activeColor.bg} shadow-[0_0_15px_rgba(59,130,246,0.5)]`} />
+            )}
+            <Settings size={22} strokeWidth={view === 'settings' ? 2.5 : 2} className={`transition-all duration-300 ${view === 'settings' ? activeColor.text + ' scale-110' : 'group-hover:scale-110'}`} />
+            <span className={`hidden lg:block font-black text-sm tracking-tight transition-all ${view === 'settings' ? 'translate-x-1' : ''}`}>Ajustes</span>
+        </button>
     );
 
     return (
@@ -64,6 +65,23 @@ const Sidebar = ({ view, setView, travelMode, setTravelMode, onBudget }) => {
                 >
                     {privacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
                     <span className="hidden lg:block text-xs font-black uppercase tracking-widest">{privacyMode ? 'Privado: ON' : 'Oculto: OFF'}</span>
+                </button>
+
+                {/* TOGGLE MODO SOCIAL */}
+                <button
+                    onClick={handleSocialToggle}
+                    aria-pressed={isSocial}
+                    className={`w-full group relative flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 ${isSocial
+                        ? `${theme === 'dark' ? 'bg-[#D4AF37]/10 text-[#E8C547]' : 'bg-[#F8E8B8]/70 text-[#8B6914]'}`
+                        : `${t.textSec} hover:bg-white/5`}`}
+                >
+                    <Users size={22} strokeWidth={isSocial ? 2.5 : 2} className={`transition-all duration-300 ${isSocial ? 'text-[#D4AF37] scale-110 drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]' : 'group-hover:scale-110'}`} />
+                    <span className="hidden lg:flex flex-col items-start min-w-0 transition-all">
+                        <span className={`font-black text-sm tracking-tight ${isSocial ? 'translate-x-1' : ''}`}>{isSocial ? 'Modo Social' : 'Social'}</span>
+                        {isSocial && activeHousehold && (
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 truncate max-w-[140px]">{activeHousehold.name}</span>
+                        )}
+                    </span>
                 </button>
 
                 {navItems.filter(item => item.id !== 'settings').map(item => {

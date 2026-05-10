@@ -6,7 +6,7 @@ import {
     Calendar as CalendarIcon, Repeat, Tag, Layers, ChevronLeft,
     ChevronRight, Search, Filter, Download, AlertCircle, CalendarDays,
     CalendarRange, Clock, X, LayoutGrid, List, Sun, Moon, Settings,
-    Target, Wallet, ArrowRight, Save, Coins, Plane, User, LogOut,
+    Wallet, ArrowRight, Save, Coins, Plane, User, LogOut,
     BarChart2, Droplet, Hexagon, Handshake, CheckCircle2, XCircle, Palette,
     Check, Minus, PiggyBank, Timer, Users,
     ShoppingCart, Car, Home, Heart, ShoppingBag, Gift, Coffee, Box, ShieldCheck, Sparkles,
@@ -30,18 +30,18 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 const DashboardView = React.lazy(() => import('./components/views/DashboardView'));
 const TransactionListView = React.lazy(() => import('./components/views/TransactionListView'));
 const FixedExpensesView = React.lazy(() => import('./components/views/FixedExpensesView'));
-const AnalysisView = React.lazy(() => import('./components/views/AnalysisView'));
-const ForecastingView = React.lazy(() => import('./components/views/ForecastingView'));
 const GoalsView = React.lazy(() => import('./components/views/GoalsView'));
 const DebtsView = React.lazy(() => import('./components/views/DebtsView'));
 const SettingsView = React.lazy(() => import('./components/views/SettingsView'));
-const JointView = React.lazy(() => import('./components/views/JointView'));
 
 import TransactionModal from './components/modals/TransactionModal';
 import AutomationModal from './components/modals/AutomationModal';
 import SharedExpenseModal from './components/modals/SharedExpenseModal';
+import SharedDetailModal from './components/modals/SharedDetailModal';
 import ImportModal from './components/modals/ImportModal';
-import BudgetModal from './components/modals/BudgetModal';
+import JoinGroupModal from './components/modals/JoinGroupModal';
+import HouseholdGateModal from './components/modals/HouseholdGateModal';
+import JoinHouseholdModal from './components/modals/JoinHouseholdModal';
 import { parseWithGemini } from './services/aiService';
 import { ToastContainer } from './components/common/Toast';
 import { ProgressBar, CircularProgress } from './components/common/Progress';
@@ -183,8 +183,6 @@ export default function App() {
             if (key === 'n') { e.preventDefault(); setIsModalOpen(true); }
             if (key === 'd') setView('dashboard');
             if (key === 'l' || key === 'm') setView('list');
-            if (key === 'a') setView('analysis');
-            if (key === 'p') setView('forecasting');
             if (key === 's') setView('settings');
             if (key === 'escape') {
                 setIsModalOpen(false);
@@ -209,7 +207,6 @@ export default function App() {
         setIsModalOpen(tab === 'tx');
         setIsAutomationModalOpen(tab === 'auto');
         setIsSharedModalOpen(tab === 'shared');
-        setIsBudgetModalOpen(tab === 'budget');
     };
     const handleConvertToAuto = () => {
         setAutoPrefill({
@@ -227,8 +224,53 @@ export default function App() {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importText, setImportText] = useState('');
     const [pendingImports, setPendingImports] = useState([]);
-    const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+    const [sharedPrefill, setSharedPrefill] = useState(null);
+    const [sharedDetailTxId, setSharedDetailTxId] = useState(null);
     const [pendingMagicTx, setPendingMagicTx] = useState(null);
+    const [joinGroupToken, setJoinGroupToken] = useState(null);
+    const [joinHouseholdToken, setJoinHouseholdToken] = useState(null);
+    const [householdGateOpen, setHouseholdGateOpen] = useState(false);
+
+    useEffect(() => {
+        const parseHash = () => {
+            const hash = window.location.hash || '';
+            const hh = hash.match(/#joinhh\/([A-Za-z0-9_-]+)/);
+            if (hh && hh[1]) { setJoinHouseholdToken(hh[1]); return; }
+            const g = hash.match(/#join\/([A-Za-z0-9_-]+)/);
+            if (g && g[1]) setJoinGroupToken(g[1]);
+        };
+        parseHash();
+        window.addEventListener('hashchange', parseHash);
+        return () => window.removeEventListener('hashchange', parseHash);
+    }, []);
+
+    const closeJoinGroup = (accepted) => {
+        setJoinGroupToken(null);
+        if (window.location.hash.startsWith('#join/')) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        if (accepted) setView('debts');
+    };
+
+    const closeJoinHousehold = (accepted) => {
+        setJoinHouseholdToken(null);
+        if (window.location.hash.startsWith('#joinhh/')) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        if (accepted) setView('dashboard');
+    };
+
+    const handleShareTx = (tx) => {
+        setSharedPrefill({
+            total: tx.amountVal,
+            category: tx.category,
+            subCategory: tx.subCategory || '',
+            note: tx.note || '',
+            date: tx.date,
+            originalTxId: tx.id,
+        });
+        switchAddTab('shared');
+    };
     const [isMagicLoading, setIsMagicLoading] = useState(false);
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -357,8 +399,6 @@ export default function App() {
             const searchParts = term.split(/\s+/);
             const searchableText = `${tx.note || ''} ${tx.category || ''} ${tx.subCategory || ''}`.toLowerCase();
             const matchesSearch = !term || searchParts.every(part => searchableText.includes(part));
-
-            if (view === 'joint') return matchesDate && matchesSearch;
 
             if (view === 'list') {
                 const matchesCategory = filterCategory === 'Todas' || tx.category === filterCategory;
@@ -505,14 +545,12 @@ export default function App() {
         return breakdown;
     }, [fixedExpenses]);
 
-    const [analysisDate, setAnalysisDate] = useState(new Date());
-    const [analysisType, setAnalysisType] = useState('month'); // 'month' | 'year'
     const [expandedAnalysisCategory, setExpandedAnalysisCategory] = useState(null);
 
     // Reset expanded category on navigation change
     useEffect(() => {
         setExpandedAnalysisCategory(null);
-    }, [view, analysisDate, analysisType]);
+    }, [view]);
 
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
@@ -582,7 +620,7 @@ export default function App() {
             originalCurrency: currency,
             type, category, subCategory, date, note, tags,
             periodicity: editingId ? (editingMeta?.periodicity || 'puntual') : 'puntual',
-            is_joint: editingId ? !!editingMeta?.is_joint : view === 'joint'
+            is_joint: editingId ? !!editingMeta?.is_joint : false
         };
 
         if (editingId) {
@@ -960,7 +998,7 @@ export default function App() {
                     setTravelMode={setTravelMode}
                     travelConfig={travelConfig}
                     setTravelConfig={setTravelConfig}
-                    onBudget={() => setIsBudgetModalOpen(true)}
+                    onOpenHouseholdGate={() => setHouseholdGateOpen(true)}
                 />
             </div>
 
@@ -973,7 +1011,7 @@ export default function App() {
                 t={t}
                 isScrolled={isScrolled}
                 onAdd={openNewModal}
-                onBudget={() => setIsBudgetModalOpen(true)}
+                onOpenHouseholdGate={() => setHouseholdGateOpen(true)}
             />
 
             <main className="md:ml-20 lg:ml-72 transition-all duration-500 min-h-screen">
@@ -998,7 +1036,7 @@ export default function App() {
                         <header className="flex justify-center mb-3">
                             <div className="relative inline-flex items-center px-4">
                                 <h2 className="relative text-2xl md:text-3xl font-black tracking-tight">
-                                    {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'joint' ? 'Cuenta Conjunta' : view === 'settings' ? 'Configuración' : 'Gestión'}
+                                    {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'settings' ? 'Configuración' : view === 'fixed' ? 'Gastos Fijos' : 'Gestión'}
                                 </h2>
                             </div>
                         </header>
@@ -1034,7 +1072,6 @@ export default function App() {
                                 savingsRate={savingsRate}
                                 emergencyFundMonths={emergencyFundMonths}
                                 filteredTransactions={filteredTransactions}
-                                setIsBudgetModalOpen={setIsBudgetModalOpen}
                                 selectedChartYear={selectedChartYear}
                                 setSelectedChartYear={setSelectedChartYear}
                                 onMagicParse={handleMagicParse}
@@ -1065,6 +1102,8 @@ export default function App() {
                                 openNewModal={openNewModal}
                                 filteredTransactions={filteredTransactions}
                                 handleEdit={handleEdit}
+                                onShareTx={handleShareTx}
+                                onSharedDetail={(tx) => setSharedDetailTxId(tx.id)}
                                 setConfirmModal={setConfirmModal}
                             />
                         )}
@@ -1090,43 +1129,7 @@ export default function App() {
 
                         {view === 'debts' && <DebtsView />}
 
-                        {view === 'analysis' && (
-                            <AnalysisView
-                                analysisType={analysisType}
-                                setAnalysisType={setAnalysisType}
-                                analysisDate={analysisDate}
-                                setAnalysisDate={setAnalysisDate}
-                                personalTransactions={personalTransactions}
-                            />
-                        )}
-                        {view === 'forecasting' && (
-                            <ForecastingView 
-                                transactions={personalTransactions}
-                                netWorth={netWorth}
-                                savingsRate={savingsRate}
-                            />
-                        )}
-
                         {view === 'settings' && <SettingsView />}
-
-                        {view === 'joint' && (
-                            <JointView
-                                jointStats={jointStats}
-                                filteredJointTransactions={filteredJointTransactions}
-                                handleNavigate={handleNavigate}
-                                dateMode={dateMode}
-                                setDateMode={setDateMode}
-                                getDateLabel={getDateLabel}
-                                isDateMenuOpen={isDateMenuOpen}
-                                setIsDateMenuOpen={setIsDateMenuOpen}
-                                setDateRange={setDateRange}
-                                dateRange={dateRange}
-                                handleEdit={handleEdit}
-                                expandedAnalysisCategory={expandedAnalysisCategory}
-                                setExpandedAnalysisCategory={setExpandedAnalysisCategory}
-                                getDynamicFontSize={getDynamicFontSize}
-                            />
-                        )}
                     </React.Suspense>
                 </ErrorBoundary>
                 </>
@@ -1185,6 +1188,34 @@ export default function App() {
                     isOpen={isSharedModalOpen}
                     onClose={() => setIsSharedModalOpen(false)}
                     onSwitchTab={switchAddTab}
+                    prefill={sharedPrefill}
+                    onPrefillConsumed={() => setSharedPrefill(null)}
+                />
+
+                <SharedDetailModal
+                    isOpen={!!sharedDetailTxId}
+                    txId={sharedDetailTxId}
+                    onClose={() => setSharedDetailTxId(null)}
+                />
+
+                {joinGroupToken && (
+                    <JoinGroupModal
+                        token={joinGroupToken}
+                        onClose={closeJoinGroup}
+                    />
+                )}
+
+                {joinHouseholdToken && (
+                    <JoinHouseholdModal
+                        token={joinHouseholdToken}
+                        onClose={closeJoinHousehold}
+                    />
+                )}
+
+                <HouseholdGateModal
+                    open={householdGateOpen}
+                    onClose={() => setHouseholdGateOpen(false)}
+                    onCreated={() => setView('dashboard')}
                 />
 
                 <ImportModal
@@ -1208,12 +1239,6 @@ export default function App() {
                         await addTransaction({ ...tx, is_joint: false });
                         setPendingImports(pendingImports.filter(i => i.id !== item.id));
                     }}
-                />
-
-                <BudgetModal
-                    isOpen={isBudgetModalOpen}
-                    onClose={() => setIsBudgetModalOpen(false)}
-                    onSwitchTab={switchAddTab}
                 />
 
                 {/* MODAL DE CONFIRMACIÓN (REUSABLE) */}

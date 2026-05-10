@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { DEFAULT_CATEGORIES } from '../constants/theme';
 import { supabase } from '../lib/supabaseClient';
+import { sanitizeTransaction, sanitizeGoal, sanitizeDebt, sanitizeName } from '../utils/sanitize';
 
 const FinanceContext = createContext();
 
@@ -15,6 +16,15 @@ const persistProfileField = async (userId, field, value) => {
         .from('profiles')
         .upsert({ id: userId, [field]: value }, { onConflict: 'id' });
     if (error) console.error(`persistProfileField ${field} error`, error);
+};
+
+const persistHouseholdField = async (householdId, field, value) => {
+    if (!householdId) return;
+    const { error } = await supabase
+        .from('households')
+        .update({ [field]: value })
+        .eq('id', householdId);
+    if (error) console.error(`persistHouseholdField ${field} error`, error);
 };
 
 // --- Mapeo camelCase (código) ↔ snake_case (DB) para transactions ---
@@ -45,16 +55,50 @@ const txFromDb = (row) => {
     return out;
 };
 
+const newBudgetId = () => `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+const migrateBudgets = (raw) => {
+    if (!raw || typeof raw !== 'object') return {};
+    const out = {};
+    Object.entries(raw).forEach(([key, val]) => {
+        if (typeof val === 'number') {
+            const [cat, sub] = String(key).split('::');
+            out[newBudgetId()] = { cat: cat || '', sub: sub || '', limit: val, period: 'month', count: 1, note: '' };
+        } else if (val && typeof val === 'object') {
+            out[key] = {
+                cat: val.cat || '',
+                sub: val.sub || '',
+                limit: Number(val.limit) || 0,
+                period: ['day', 'week', 'month', 'year'].includes(val.period) ? val.period : 'month',
+                count: Math.max(1, Number(val.count) || 1),
+                note: val.note || '',
+            };
+        }
+    });
+    return out;
+};
+
 export const FinanceProvider = ({ children }) => {
-    const { user } = useAuth();
+    const { user, isSocial, activeHouseholdId, setActiveHouseholdId, setMode } = useAuth();
 
     const [transactions, setTransactions] = useState([]);
     const [jointTransactions, setJointTransactions] = useState([]);
     const [goals, setGoals] = useState([]);
     const [debts, setDebts] = useState([]);
+    const [expenseGroups, setExpenseGroups] = useState([]);
+    const [households, setHouseholds] = useState([]);
+    // true cuando la DB no tiene aún las columnas/tablas del modo Social.
+    // En ese caso los inserts omiten `household_id` para no fallar.
+    const [legacySchema, setLegacySchema] = useState(false);
     const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
     const [globalTags, setGlobalTags] = useState([]);
     const [automationItems, setAutomationItems] = useState([]);
+
+    // Helper de persistencia por scope activo (personal -> profiles, social -> household).
+    const persistScopedField = (field, value) => {
+        if (isSocial && activeHouseholdId) return persistHouseholdField(activeHouseholdId, field, value);
+        return persistProfileField(user?.id, field, value);
+    };
 
     // --- ESTADO SINCRONIZADO EN SUPABASE (profiles) ---
     const [budgets, _setBudgets] = useState({});
@@ -62,12 +106,12 @@ export const FinanceProvider = ({ children }) => {
     const [quickButtons, _setQuickButtons] = useState(DEFAULT_QUICK_BUTTONS);
     const [categoryColors, _setCategoryColors] = useState({});
     const [savingsWidgets, _setSavingsWidgets] = useState([]);
-    const [dashboardWidgets, _setDashboardWidgets] = useState({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
+    const [dashboardWidgets, _setDashboardWidgets] = useState({ comparativa: true, salud: true, historical: true, pie: true, fixedInfo: true, savings: false, debts: false, nextExpense: false, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
 
     const setBudgets = (val) => {
         _setBudgets(prev => {
             const next = typeof val === 'function' ? val(prev) : val;
-            persistProfileField(user?.id, 'budgets', next);
+            persistScopedField('budgets', next);
             return next;
         });
     };
@@ -75,20 +119,20 @@ export const FinanceProvider = ({ children }) => {
     const setRecurringRules = (rulesOrFn) => {
         _setRecurringRules(prev => {
             const next = typeof rulesOrFn === 'function' ? rulesOrFn(prev) : rulesOrFn;
-            persistProfileField(user?.id, 'recurring_rules', next);
+            persistScopedField('recurring_rules', next);
             return next;
         });
     };
 
     const updateQuickButtons = (newQB) => {
         _setQuickButtons(newQB);
-        persistProfileField(user?.id, 'quick_buttons', newQB);
+        persistScopedField('quick_buttons', newQB);
     };
 
     const setCategoryColors = (val) => {
         _setCategoryColors(prev => {
             const next = typeof val === 'function' ? val(prev) : val;
-            persistProfileField(user?.id, 'category_colors', next);
+            persistScopedField('category_colors', next);
             return next;
         });
     };
@@ -96,7 +140,7 @@ export const FinanceProvider = ({ children }) => {
     const setSavingsWidgets = (val) => {
         _setSavingsWidgets(prev => {
             const next = typeof val === 'function' ? val(prev) : val;
-            persistProfileField(user?.id, 'savings_widgets', next);
+            persistScopedField('savings_widgets', next);
             return next;
         });
     };
@@ -104,22 +148,23 @@ export const FinanceProvider = ({ children }) => {
     const setDashboardWidgets = (val) => {
         _setDashboardWidgets(prev => {
             const next = typeof val === 'function' ? val(prev) : val;
-            persistProfileField(user?.id, 'dashboard_widgets', next);
+            persistScopedField('dashboard_widgets', next);
             return next;
         });
     };
 
     // Savings widget helpers
-    const addSavingsWidget = ({ name, target, linkedRuleId = null, targetDate = null }) => {
+    const addSavingsWidget = ({ name, target, linkedRuleId = null, targetDate = null, kind = 'savings' }) => {
         const item = {
             id: crypto.randomUUID(),
-            name: name?.trim() || 'Objetivo',
+            name: name?.trim() || (kind === 'debt' ? 'Deuda' : 'Objetivo'),
             target: Number(target) || 0,
             current: 0,
             linked_rule_id: linkedRuleId,
             target_date: targetDate || null,
             completed_at: null,
             created_at: new Date().toISOString(),
+            kind,
         };
         setSavingsWidgets(prev => [...prev, item]);
     };
@@ -137,11 +182,34 @@ export const FinanceProvider = ({ children }) => {
             return { ...w, current: next, completed_at: completed ? new Date().toISOString() : w.completed_at };
         }));
     };
+    const expandSavingsWidget = (id, delta) => {
+        setSavingsWidgets(prev => prev.map(w => {
+            if (w.id !== id) return w;
+            const nextTarget = Math.max(0, Number(w.target || 0) + Number(delta));
+            const stillCompleted = nextTarget > 0 && Number(w.current || 0) >= nextTarget;
+            return { ...w, target: nextTarget, completed_at: stillCompleted ? w.completed_at : null };
+        }));
+    };
     const completeSavingsWidget = (id) => {
         setSavingsWidgets(prev => prev.map(w => w.id === id ? { ...w, completed_at: w.completed_at || new Date().toISOString() } : w));
     };
     const reopenSavingsWidget = (id) => {
         setSavingsWidgets(prev => prev.map(w => w.id === id ? { ...w, completed_at: null } : w));
+    };
+    const linkSavingsRule = (savingsId, ruleId) => {
+        if (!savingsId || !ruleId) return;
+        setSavingsWidgets(prev => prev.map(w => {
+            if (w.id !== savingsId) return w;
+            const current = Array.isArray(w.linked_rule_ids)
+                ? [...w.linked_rule_ids]
+                : (w.linked_rule_id ? [w.linked_rule_id] : []);
+            const idx = current.indexOf(ruleId);
+            if (idx >= 0) current.splice(idx, 1);
+            else current.push(ruleId);
+            const next = { ...w, linked_rule_ids: current };
+            if (Object.prototype.hasOwnProperty.call(next, 'linked_rule_id')) delete next.linked_rule_id;
+            return next;
+        }));
     };
 
     const calcNextRun = (fromDate, every, unit) => {
@@ -160,13 +228,22 @@ export const FinanceProvider = ({ children }) => {
 
     const periodFor = (unit) => unit === 'month' ? 'mensual' : unit === 'year' ? 'anual' : 'semanal';
 
-    const makeAutoTx = (cur) => ({
+    const tagsForRule = (ruleId, savingsList) => {
+        const tags = ['__auto__', `__rule_${ruleId}__`];
+        (savingsList || []).forEach(s => {
+            const ids = Array.isArray(s.linked_rule_ids) ? s.linked_rule_ids : (s.linked_rule_id ? [s.linked_rule_id] : []);
+            if (ids.includes(ruleId)) tags.push(`__savings_${s.id}__`);
+        });
+        return tags;
+    };
+
+    const makeAutoTx = (cur, savingsList) => ({
         amountVal: cur.amount,
         type: cur.type,
         category: cur.category,
         subCategory: cur.subCategory || '',
         note: cur.name || cur.category,
-        tags: ['__auto__'],
+        tags: tagsForRule(cur.id, savingsList),
         periodicity: periodFor(cur.unit),
         date: cur.nextRun,
         is_joint: false,
@@ -179,7 +256,7 @@ export const FinanceProvider = ({ children }) => {
         if (withId.active && withId.nextRun <= today) {
             let cur = { ...withId };
             while (cur.nextRun <= today) {
-                const result = await addTransaction(makeAutoTx(cur));
+                const result = await addTransaction(makeAutoTx(cur, savingsWidgets));
                 if (!result) console.error('[Auto] Insert falló para fecha', cur.nextRun);
                 cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
             }
@@ -216,7 +293,7 @@ export const FinanceProvider = ({ children }) => {
         if (!rule) return;
         let cur = { ...rule, nextRun: fromDate };
         while (cur.nextRun <= today) {
-            const result = await addTransaction(makeAutoTx(cur));
+            const result = await addTransaction(makeAutoTx(cur, savingsWidgets));
             if (!result) console.error('[Auto] Reactivate insert falló para fecha', cur.nextRun);
             cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
         }
@@ -235,7 +312,7 @@ export const FinanceProvider = ({ children }) => {
             for (const rule of due) {
                 let cur = { ...rule };
                 while (cur.nextRun <= today) {
-                    await addTransaction({ amountVal: cur.amount, type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || cur.category, tags: ['__auto__'], periodicity: periodForLocal(cur.unit), date: cur.nextRun, is_joint: false });
+                    await addTransaction({ amountVal: cur.amount, type: cur.type, category: cur.category, subCategory: cur.subCategory || '', note: cur.name || cur.category, tags: tagsForRule(cur.id, savingsWidgets), periodicity: periodForLocal(cur.unit), date: cur.nextRun, is_joint: false });
                     cur = { ...cur, lastRun: cur.nextRun, nextRun: calcNextRun(cur.nextRun, cur.every, cur.unit) };
                 }
                 const idx = updated.findIndex(r => r.id === rule.id);
@@ -246,83 +323,170 @@ export const FinanceProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDataLoaded]);
 
-    // 1. CARGA INICIAL
+    // 1. CARGA INICIAL — depende de user + scope (personal vs social household)
     useEffect(() => {
         if (user) {
             loadInitialData();
+            loadHouseholds();
         } else {
             resetData();
         }
-    }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, isSocial, activeHouseholdId]);
+
+    const loadHouseholds = async () => {
+        if (!user?.id) return;
+        const { data, error } = await supabase
+            .from('households')
+            .select('*')
+            .or(`owner_id.eq.${user.id},member_user_ids.cs.{${user.id}}`)
+            .order('created_at', { ascending: false });
+        if (error) {
+            // Tabla no existe (migración no aplicada): silencioso, modo legacy.
+            const code = error.code;
+            const msg = error.message || '';
+            const tableMissing = code === 'PGRST205' || code === '42P01' || msg.includes('does not exist') || msg.includes('relation');
+            if (!tableMissing) console.warn('households load error', error);
+            if (tableMissing) setLegacySchema(true);
+            setHouseholds([]);
+            return;
+        }
+        setHouseholds(data || []);
+        if (activeHouseholdId && !(data || []).some(h => h.id === activeHouseholdId)) {
+            setActiveHouseholdId(null);
+            setMode('personal');
+        }
+    };
 
     const loadInitialData = async () => {
         setIsDataLoaded(false);
+        const scopeIsSocial = isSocial && !!activeHouseholdId;
+
+        // Detector de errores de schema desincronizado (columna/tabla inexistente):
+        // permite operar contra una DB sin las migraciones nuevas aplicadas.
+        const isSchemaMiss = (err) => {
+            if (!err) return false;
+            const code = err.code || '';
+            const msg = err.message || '';
+            return code === '42703' || code === '42P01' || code === 'PGRST205'
+                || msg.includes('does not exist') || msg.includes('column') || msg.includes('relation');
+        };
+
+        // Helper: query con filtro household_id; si la columna no existe, reintenta sin él.
+        const fetchScoped = async (table, baseSelect, orderCol, ascending) => {
+            const build = (withScope) => {
+                const q = supabase.from(table).select(baseSelect).order(orderCol, { ascending });
+                if (!withScope) return q.eq('user_id', user.id);
+                if (scopeIsSocial) return q.eq('household_id', activeHouseholdId);
+                return q.eq('user_id', user.id).is('household_id', null);
+            };
+            const first = await build(true);
+            if (!first.error) return first;
+            if (!isSchemaMiss(first.error)) return first;
+            setLegacySchema(true);
+            // Schema viejo: si pedíamos social no hay datos, si era personal cargamos legacy completo.
+            if (scopeIsSocial) return { data: [], error: null };
+            return await build(false);
+        };
+
         try {
-            const [transRes, goalsRes, debtsRes, profileRes] = await Promise.all([
-                supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-                supabase.from('goals').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-                supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('profiles').select('categories, global_tags, recurring_rules, budgets, quick_buttons, category_colors, savings_widgets, dashboard_widgets').eq('id', user.id).maybeSingle()
+            const [transRes, goalsRes, debtsRes, groupsRes, profileRes] = await Promise.all([
+                fetchScoped('transactions', '*', 'date', false),
+                fetchScoped('goals', '*', 'created_at', true),
+                fetchScoped('debts', '*', 'created_at', false),
+                (async () => {
+                    const tryNew = await supabase.from('expense_groups').select('*')
+                        .or(`user_id.eq.${user.id},shared_user_ids.cs.{${user.id}}`)
+                        .order('created_at', { ascending: false });
+                    if (!tryNew.error) return tryNew;
+                    if (!isSchemaMiss(tryNew.error)) return tryNew;
+                    return await supabase.from('expense_groups').select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false });
+                })(),
+                (async () => {
+                    if (!scopeIsSocial) {
+                        return await supabase.from('profiles').select('categories, global_tags, recurring_rules, budgets, quick_buttons, category_colors, savings_widgets, dashboard_widgets').eq('id', user.id).maybeSingle();
+                    }
+                    return await supabase.from('households').select('categories, global_tags, recurring_rules, budgets, quick_buttons, category_colors, savings_widgets, dashboard_widgets').eq('id', activeHouseholdId).maybeSingle();
+                })(),
             ]);
 
             if (transRes.data) {
                 const mapped = transRes.data.map(txFromDb);
                 setTransactions(mapped.filter(t => !t.is_joint));
                 setJointTransactions(mapped.filter(t => t.is_joint));
+            } else {
+                setTransactions([]); setJointTransactions([]);
             }
             if (goalsRes.data) setGoals(goalsRes.data);
+            else setGoals([]);
             if (debtsRes.data) setDebts(debtsRes.data);
-
-            // Migración localStorage -> Supabase (una vez)
-            const lsRules = (() => { try { return JSON.parse(localStorage.getItem(`alcash_rules_${user.id}`) || 'null'); } catch { return null; } })();
-            const lsBudgets = (() => { try { return JSON.parse(localStorage.getItem(`alcash_budgets_${user.id}`) || 'null'); } catch { return null; } })();
-            const lsQB = (() => { try { return JSON.parse(localStorage.getItem(`alcash_qb_${user.id}`) || 'null'); } catch { return null; } })();
+            else setDebts([]);
+            if (groupsRes.data) setExpenseGroups(groupsRes.data);
+            else if (groupsRes.error && !isSchemaMiss(groupsRes.error)) {
+                console.warn('expense_groups load error', groupsRes.error);
+            }
 
             const profile = profileRes.data || {};
             const remoteRules = Array.isArray(profile.recurring_rules) ? profile.recurring_rules : [];
             const remoteBudgets = profile.budgets && typeof profile.budgets === 'object' ? profile.budgets : {};
             const remoteQB = Array.isArray(profile.quick_buttons) ? profile.quick_buttons : [];
-
-            const finalRules = remoteRules.length ? remoteRules : (Array.isArray(lsRules) ? lsRules : []);
-            const finalBudgets = Object.keys(remoteBudgets).length ? remoteBudgets : (lsBudgets && typeof lsBudgets === 'object' ? lsBudgets : {});
-            const finalQB = remoteQB.length ? remoteQB : (Array.isArray(lsQB) && lsQB.length ? lsQB : DEFAULT_QUICK_BUTTONS);
-
-            _setRecurringRules(finalRules);
-            _setBudgets(finalBudgets);
-            _setQuickButtons(finalQB);
-
             const remoteColors = profile.category_colors && typeof profile.category_colors === 'object' ? profile.category_colors : {};
             const remoteSavings = Array.isArray(profile.savings_widgets) ? profile.savings_widgets : [];
-            const remoteWidgets = profile.dashboard_widgets && typeof profile.dashboard_widgets === 'object' ? profile.dashboard_widgets : null;
-            _setCategoryColors(remoteColors);
-            _setSavingsWidgets(remoteSavings);
-            if (remoteWidgets) _setDashboardWidgets(prev => ({ ...prev, ...remoteWidgets }));
+            const remoteWidgets = profile.dashboard_widgets && typeof profile.dashboard_widgets === 'object' ? profile.dashboard_widgets : {};
+            const remoteCats = profile.categories && typeof profile.categories === 'object' ? profile.categories : {};
+            const remoteTags = Array.isArray(profile.global_tags) ? profile.global_tags : [];
 
-            // Si Supabase estaba vacío y migramos desde localStorage → persistir y limpiar LS
-            const migrations = [];
-            if (!remoteRules.length && Array.isArray(lsRules) && lsRules.length) {
-                migrations.push(persistProfileField(user.id, 'recurring_rules', finalRules));
-                try { localStorage.removeItem(`alcash_rules_${user.id}`); } catch {}
-            }
-            if (!Object.keys(remoteBudgets).length && lsBudgets && typeof lsBudgets === 'object' && Object.keys(lsBudgets).length) {
-                migrations.push(persistProfileField(user.id, 'budgets', finalBudgets));
-                try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
-            }
-            if (!remoteQB.length && Array.isArray(lsQB) && lsQB.length) {
-                migrations.push(persistProfileField(user.id, 'quick_buttons', finalQB));
-                try { localStorage.removeItem(`alcash_qb_${user.id}`); } catch {}
-            }
-            if (migrations.length) await Promise.all(migrations);
+            // localStorage migration solo aplica al scope personal (legacy). Social arranca limpio.
+            if (!scopeIsSocial) {
+                const lsRules = (() => { try { return JSON.parse(localStorage.getItem(`alcash_rules_${user.id}`) || 'null'); } catch { return null; } })();
+                const lsBudgets = (() => { try { return JSON.parse(localStorage.getItem(`alcash_budgets_${user.id}`) || 'null'); } catch { return null; } })();
+                const lsQB = (() => { try { return JSON.parse(localStorage.getItem(`alcash_qb_${user.id}`) || 'null'); } catch { return null; } })();
 
-            if (profileRes.data) {
-                if (profileRes.data.categories) {
-                    const cats = profileRes.data.categories;
-                    const hasExpense = cats.expense && Object.keys(cats.expense).length > 0;
-                    const hasIncome = cats.income && Object.keys(cats.income).length > 0;
-                    if (hasExpense || hasIncome) setCategories(cats);
+                const finalRules = remoteRules.length ? remoteRules : (Array.isArray(lsRules) ? lsRules : []);
+                const rawBudgetsSrc = Object.keys(remoteBudgets).length ? remoteBudgets : (lsBudgets && typeof lsBudgets === 'object' ? lsBudgets : {});
+                const finalBudgets = migrateBudgets(rawBudgetsSrc);
+                const budgetsShapeChanged = JSON.stringify(rawBudgetsSrc) !== JSON.stringify(finalBudgets);
+                const finalQB = remoteQB.length ? remoteQB : (Array.isArray(lsQB) && lsQB.length ? lsQB : DEFAULT_QUICK_BUTTONS);
+
+                _setRecurringRules(finalRules);
+                _setBudgets(finalBudgets);
+                _setQuickButtons(finalQB);
+                _setCategoryColors(remoteColors);
+                _setSavingsWidgets(remoteSavings);
+                _setDashboardWidgets(prev => ({ ...prev, ...remoteWidgets }));
+
+                const migrations = [];
+                if (!remoteRules.length && Array.isArray(lsRules) && lsRules.length) {
+                    migrations.push(persistProfileField(user.id, 'recurring_rules', finalRules));
+                    try { localStorage.removeItem(`alcash_rules_${user.id}`); } catch {}
                 }
-                if (profileRes.data.global_tags) setGlobalTags(profileRes.data.global_tags);
+                if (!Object.keys(remoteBudgets).length && lsBudgets && typeof lsBudgets === 'object' && Object.keys(lsBudgets).length) {
+                    migrations.push(persistProfileField(user.id, 'budgets', finalBudgets));
+                    try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
+                } else if (budgetsShapeChanged && Object.keys(finalBudgets).length) {
+                    migrations.push(persistProfileField(user.id, 'budgets', finalBudgets));
+                }
+                if (!remoteQB.length && Array.isArray(lsQB) && lsQB.length) {
+                    migrations.push(persistProfileField(user.id, 'quick_buttons', finalQB));
+                    try { localStorage.removeItem(`alcash_qb_${user.id}`); } catch {}
+                }
+                if (migrations.length) await Promise.all(migrations);
+            } else {
+                // Social: cargar exactamente lo que hay en el household, sin tocar LS.
+                _setRecurringRules(remoteRules);
+                _setBudgets(migrateBudgets(remoteBudgets));
+                _setQuickButtons(remoteQB.length ? remoteQB : DEFAULT_QUICK_BUTTONS);
+                _setCategoryColors(remoteColors);
+                _setSavingsWidgets(remoteSavings);
+                _setDashboardWidgets({ comparativa: true, salud: true, historical: true, pie: true, fixedInfo: true, savings: false, debts: false, nextExpense: false, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false, ...remoteWidgets });
             }
+
+            const hasExpense = remoteCats.expense && Object.keys(remoteCats.expense).length > 0;
+            const hasIncome  = remoteCats.income  && Object.keys(remoteCats.income).length  > 0;
+            setCategories(hasExpense || hasIncome ? remoteCats : DEFAULT_CATEGORIES);
+            setGlobalTags(remoteTags);
 
             setIsDataLoaded(true);
         } catch (err) {
@@ -336,6 +500,8 @@ export const FinanceProvider = ({ children }) => {
         setJointTransactions([]);
         setGoals([]);
         setDebts([]);
+        setExpenseGroups([]);
+        setHouseholds([]);
         setCategories(DEFAULT_CATEGORIES);
         setGlobalTags([]);
         _setBudgets({});
@@ -343,14 +509,25 @@ export const FinanceProvider = ({ children }) => {
         _setQuickButtons(DEFAULT_QUICK_BUTTONS);
         _setCategoryColors({});
         _setSavingsWidgets([]);
-        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
+        _setDashboardWidgets({ savings: false, debts: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
         setIsDataLoaded(false);
     };
 
     // ---- Transactions ----
+    const scopedHouseholdId = () => (isSocial && activeHouseholdId) ? activeHouseholdId : null;
+    // Strip household_id si el schema aún no lo soporta.
+    const withScope = (payload) => {
+        if (legacySchema) {
+            const { household_id, ...rest } = payload;
+            return rest;
+        }
+        return { ...payload, household_id: scopedHouseholdId() };
+    };
+
     const addTransaction = async (newTrans) => {
         setSaveStatus('saving');
-        const transRecord = txToDb({ ...newTrans, user_id: user.id });
+        const clean = sanitizeTransaction(newTrans);
+        const transRecord = txToDb(withScope({ ...clean, user_id: user.id }));
         const { data, error } = await supabase.from('transactions').insert([transRecord]).select();
         if (!error && data) {
             const mapped = txFromDb(data[0]);
@@ -366,7 +543,8 @@ export const FinanceProvider = ({ children }) => {
 
     const updateTransaction = async (id, updates) => {
         setSaveStatus('saving');
-        const { data, error } = await supabase.from('transactions').update(txToDb(updates)).eq('id', id).select();
+        const cleanUpdates = sanitizeTransaction(updates);
+        const { data, error } = await supabase.from('transactions').update(txToDb(cleanUpdates)).eq('id', id).select();
         if (!error && data) {
             const mapped = txFromDb(data[0]);
             setTransactions(prev => prev.map(t => t.id === id ? mapped : t));
@@ -395,14 +573,16 @@ export const FinanceProvider = ({ children }) => {
 
     // ---- Goals ----
     const addGoal = async (goal) => {
-        const { data, error } = await supabase.from('goals').insert([{ ...goal, user_id: user.id }]).select();
+        const clean = sanitizeGoal(goal);
+        const { data, error } = await supabase.from('goals').insert([withScope({ ...clean, user_id: user.id })]).select();
         if (!error && data) setGoals(prev => [...prev, data[0]]);
         else console.error('addGoal error', error);
         return data?.[0] ?? null;
     };
 
     const updateGoal = async (id, updates) => {
-        const { data, error } = await supabase.from('goals').update(updates).eq('id', id).select();
+        const clean = sanitizeGoal(updates);
+        const { data, error } = await supabase.from('goals').update(clean).eq('id', id).select();
         if (!error && data) setGoals(prev => prev.map(g => g.id === id ? data[0] : g));
         else console.error('updateGoal error', error);
     };
@@ -415,7 +595,8 @@ export const FinanceProvider = ({ children }) => {
 
     // ---- Debts ----
     const addDebt = async (debt) => {
-        const payload = { ...debt, user_id: user.id };
+        const clean = sanitizeDebt(debt);
+        const payload = withScope({ ...clean, user_id: user.id });
         delete payload.id;
         delete payload.date;
         const { data, error } = await supabase.from('debts').insert([payload]).select();
@@ -425,7 +606,8 @@ export const FinanceProvider = ({ children }) => {
     };
 
     const updateDebt = async (id, updates) => {
-        const { data, error } = await supabase.from('debts').update(updates).eq('id', id).select();
+        const clean = sanitizeDebt(updates);
+        const { data, error } = await supabase.from('debts').update(clean).eq('id', id).select();
         if (!error && data) setDebts(prev => prev.map(d => d.id === id ? data[0] : d));
         else console.error('updateDebt error', error);
     };
@@ -436,16 +618,210 @@ export const FinanceProvider = ({ children }) => {
         else console.error('deleteDebt error', error);
     };
 
-    // ---- Profile / settings ----
+    // ---- Expense groups (liquidación grupal) ----
+    const addExpenseGroup = async (group) => {
+        const payload = {
+            user_id: user.id,
+            name: (group?.name || '').trim().slice(0, 120) || 'Grupo',
+            members: Array.isArray(group?.members) ? group.members : [],
+            entries: Array.isArray(group?.entries) ? group.entries : [],
+        };
+        const { data, error } = await supabase.from('expense_groups').insert([payload]).select();
+        if (!error && data) setExpenseGroups(prev => [data[0], ...prev]);
+        else console.error('addExpenseGroup error', error);
+        return data?.[0] ?? null;
+    };
+
+    const updateExpenseGroup = async (id, updates) => {
+        const clean = { ...updates };
+        if ('name' in clean) clean.name = String(clean.name || '').trim().slice(0, 120);
+        const { data, error } = await supabase.from('expense_groups').update(clean).eq('id', id).select();
+        if (!error && data) setExpenseGroups(prev => prev.map(g => g.id === id ? data[0] : g));
+        else console.error('updateExpenseGroup error', error);
+        return data?.[0] ?? null;
+    };
+
+    const deleteExpenseGroup = async (id) => {
+        const { error } = await supabase.from('expense_groups').delete().eq('id', id);
+        if (!error) setExpenseGroups(prev => prev.filter(g => g.id !== id));
+        else console.error('deleteExpenseGroup error', error);
+    };
+
+    const addGroupEntry = async (groupId, entry) => {
+        const group = expenseGroups.find(g => g.id === groupId);
+        if (!group) return null;
+        const next = [...(group.entries || []), entry];
+        return await updateExpenseGroup(groupId, { entries: next });
+    };
+
+    const deleteGroupEntry = async (groupId, entryId) => {
+        const group = expenseGroups.find(g => g.id === groupId);
+        if (!group) return null;
+        const next = (group.entries || []).filter(e => e.id !== entryId);
+        return await updateExpenseGroup(groupId, { entries: next });
+    };
+
+    // ---- Group invites (link sharing tipo Tricount) ----
+    const generateGroupInviteToken = async (groupId) => {
+        const group = expenseGroups.find(g => g.id === groupId);
+        if (!group) return null;
+        if (group.invite_token) return group.invite_token;
+        const random = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID().replace(/-/g, '')
+            : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const token = random.slice(0, 24);
+        const { data, error } = await supabase
+            .from('expense_groups')
+            .update({ invite_token: token })
+            .eq('id', groupId)
+            .select();
+        if (error) { console.error('generateGroupInviteToken error', error); return null; }
+        if (data && data[0]) setExpenseGroups(prev => prev.map(g => g.id === groupId ? data[0] : g));
+        return token;
+    };
+
+    const getGroupByToken = async (token) => {
+        const { data, error } = await supabase.rpc('get_group_by_token', { p_token: token });
+        if (error) { console.error('getGroupByToken error', error); return null; }
+        return Array.isArray(data) ? data[0] || null : data;
+    };
+
+    // ---- Households (modo Social) ----
+    const refreshHouseholds = async () => {
+        if (!user?.id) return null;
+        const { data, error } = await supabase
+            .from('households')
+            .select('*')
+            .or(`owner_id.eq.${user.id},member_user_ids.cs.{${user.id}}`)
+            .order('created_at', { ascending: false });
+        if (error) { console.error('refreshHouseholds error', error); return null; }
+        setHouseholds(data || []);
+        return data || [];
+    };
+
+    const createHousehold = async (name, ownerMemberName) => {
+        const { data, error } = await supabase.rpc('create_household', {
+            p_name: (name || '').trim(),
+            p_owner_member_name: (ownerMemberName || '').trim() || 'Yo',
+        });
+        if (error) { console.error('createHousehold error', error); throw error; }
+        await refreshHouseholds();
+        return data;
+    };
+
+    const addHouseholdMemberSlot = async (householdId, memberName) => {
+        const { error } = await supabase.rpc('add_household_member_slot', {
+            p_household_id: householdId,
+            p_member_name: (memberName || '').trim(),
+        });
+        if (error) { console.error('addHouseholdMemberSlot error', error); throw error; }
+        await refreshHouseholds();
+        return true;
+    };
+
+    const ensureHouseholdInviteToken = async (householdId) => {
+        const { data, error } = await supabase.rpc('ensure_household_invite_token', { p_household_id: householdId });
+        if (error) { console.error('ensureHouseholdInviteToken error', error); return null; }
+        await refreshHouseholds();
+        return data;
+    };
+
+    const getHouseholdByToken = async (token) => {
+        const { data, error } = await supabase.rpc('get_household_by_token', { p_token: token });
+        if (error) { console.error('getHouseholdByToken error', error); return null; }
+        return Array.isArray(data) ? data[0] || null : data;
+    };
+
+    const acceptHouseholdInvite = async (token, memberId) => {
+        const { data, error } = await supabase.rpc('accept_household_invite', {
+            p_token: token,
+            p_member_id: memberId,
+        });
+        if (error) { console.error('acceptHouseholdInvite error', error); throw error; }
+        await refreshHouseholds();
+        return data;
+    };
+
+    const leaveHousehold = async (householdId) => {
+        const { error } = await supabase.rpc('leave_household', { p_household_id: householdId });
+        if (error) { console.error('leaveHousehold error', error); throw error; }
+        if (activeHouseholdId === householdId) {
+            setActiveHouseholdId(null);
+            setMode('personal');
+        }
+        await refreshHouseholds();
+    };
+
+    const deleteHousehold = async (householdId) => {
+        console.log('[deleteHousehold] start', { householdId });
+        // Intento 1: RPC security-definer (evita falsos negativos de RLS).
+        const rpcRes = await supabase.rpc('delete_household', { p_household_id: householdId });
+        console.log('[deleteHousehold] rpc result', rpcRes);
+        if (rpcRes.error) {
+            const code = rpcRes.error.code || '';
+            const isMissingFn = code === 'PGRST202' || code === '42883' || (rpcRes.error.message || '').includes('does not exist');
+            if (!isMissingFn) {
+                console.error('[deleteHousehold] RPC error (not missing fn)', rpcRes.error);
+                throw rpcRes.error;
+            }
+            console.warn('[deleteHousehold] RPC missing → fallback DELETE');
+            // Fallback: delete directo + select para detectar RLS deny silencioso.
+            const { data, error } = await supabase.from('households').delete().eq('id', householdId).select();
+            console.log('[deleteHousehold] fallback result', { data, error });
+            if (error) { console.error('[deleteHousehold] fallback error', error); throw error; }
+            if (!data || data.length === 0) {
+                throw new Error('No tienes permisos para borrar este hogar (¿eres el dueño?). La RPC delete_household no está instalada — ejecuta la migración.');
+            }
+        }
+        if (activeHouseholdId === householdId) {
+            setActiveHouseholdId(null);
+            setMode('personal');
+        }
+        await refreshHouseholds();
+        console.log('[deleteHousehold] done, refreshed');
+    };
+
+    const updateHousehold = async (householdId, updates) => {
+        const clean = { ...updates };
+        if ('name' in clean) clean.name = String(clean.name || '').trim().slice(0, 80);
+        const { data, error } = await supabase.from('households').update(clean).eq('id', householdId).select();
+        if (error) { console.error('updateHousehold error', error); return null; }
+        if (data && data[0]) setHouseholds(prev => prev.map(h => h.id === householdId ? data[0] : h));
+        return data?.[0] ?? null;
+    };
+
+    const acceptGroupInvite = async (token, memberId) => {
+        const { data, error } = await supabase.rpc('accept_group_invite', {
+            p_token: token,
+            p_member_id: memberId,
+        });
+        if (error) { console.error('acceptGroupInvite error', error); throw error; }
+        // Recargar grupos para incluir el grupo recién compartido
+        const { data: refreshed } = await supabase
+            .from('expense_groups')
+            .select('*')
+            .or(`user_id.eq.${user.id},shared_user_ids.cs.{${user.id}}`)
+            .order('created_at', { ascending: false });
+        if (refreshed) setExpenseGroups(refreshed);
+        return data;
+    };
+
+    // ---- Profile / settings (routed por scope) ----
     const updateCategories = async (newCats) => {
         setCategories(newCats);
-        const { error } = await supabase.from('profiles').update({ categories: newCats }).eq('id', user.id);
-        if (error) console.error('updateCategories error', error);
+        if (isSocial && activeHouseholdId) {
+            const { error } = await supabase.from('households').update({ categories: newCats }).eq('id', activeHouseholdId);
+            if (error) console.error('updateCategories (household) error', error);
+        } else {
+            const { error } = await supabase.from('profiles').update({ categories: newCats }).eq('id', user.id);
+            if (error) console.error('updateCategories error', error);
+        }
     };
 
     const addCustomCategory = async (type, name) => {
-        if (!name) return;
-        await updateCategories({ ...categories, [type]: { ...categories[type], [name]: [] } });
+        const clean = sanitizeName(name, 80);
+        if (!clean) return;
+        await updateCategories({ ...categories, [type]: { ...categories[type], [clean]: [] } });
     };
 
     const deleteCustomCategory = async (type, catName) => {
@@ -468,8 +844,9 @@ export const FinanceProvider = ({ children }) => {
     };
 
     const addSubCategory = async (type, cat, sub) => {
-        if (!sub) return;
-        const newSection = { ...categories[type], [cat]: [...(categories[type][cat] || []), sub] };
+        const clean = sanitizeName(sub, 80);
+        if (!clean) return;
+        const newSection = { ...categories[type], [cat]: [...(categories[type][cat] || []), clean] };
         await updateCategories({ ...categories, [type]: newSection });
     };
 
@@ -487,13 +864,11 @@ export const FinanceProvider = ({ children }) => {
             newSection[k === oldName ? trimmed : k] = categories[type][k];
         });
         const newCats = { ...categories, [type]: newSection };
-        // 2. DB: actualizar transactions del usuario que coincidan
-        const { error: txErr } = await supabase
-            .from('transactions')
-            .update({ category: trimmed })
-            .eq('user_id', user.id)
-            .eq('type', type)
-            .eq('category', oldName);
+        // 2. DB: actualizar transactions del scope activo
+        const renameQ = supabase.from('transactions').update({ category: trimmed });
+        if (isSocial && activeHouseholdId) renameQ.eq('household_id', activeHouseholdId);
+        else renameQ.eq('user_id', user.id).is('household_id', null);
+        const { error: txErr } = await renameQ.eq('type', type).eq('category', oldName);
         if (txErr) {
             console.error('renameCategory tx error', txErr);
             return;
@@ -514,12 +889,17 @@ export const FinanceProvider = ({ children }) => {
             (b.type === type && b.category === oldName) ? { ...b, category: trimmed } : b
         );
         updateQuickButtons(newQB);
-        // 6. budgets (si están keyed por categoría — para gastos)
-        if (type === 'expense' && budgets && Object.prototype.hasOwnProperty.call(budgets, oldName)) {
+        // 6. budgets (entradas con cat == oldName)
+        if (type === 'expense' && budgets) {
+            let changed = false;
             const newBudgets = { ...budgets };
-            newBudgets[trimmed] = newBudgets[oldName];
-            delete newBudgets[oldName];
-            setBudgets(newBudgets);
+            Object.entries(newBudgets).forEach(([id, b]) => {
+                if (b && b.cat === oldName) {
+                    newBudgets[id] = { ...b, cat: trimmed };
+                    changed = true;
+                }
+            });
+            if (changed) setBudgets(newBudgets);
         }
         // 7. categorías
         await updateCategories(newCats);
@@ -537,14 +917,11 @@ export const FinanceProvider = ({ children }) => {
         const newSubs = subs.map(s => s === oldSub ? trimmed : s);
         const newSection = { ...categories[type], [cat]: newSubs };
         const newCats = { ...categories, [type]: newSection };
-        // 2. DB
-        const { error: txErr } = await supabase
-            .from('transactions')
-            .update({ sub_category: trimmed })
-            .eq('user_id', user.id)
-            .eq('type', type)
-            .eq('category', cat)
-            .eq('sub_category', oldSub);
+        // 2. DB (scope activo)
+        const renameSubQ = supabase.from('transactions').update({ sub_category: trimmed });
+        if (isSocial && activeHouseholdId) renameSubQ.eq('household_id', activeHouseholdId);
+        else renameSubQ.eq('user_id', user.id).is('household_id', null);
+        const { error: txErr } = await renameSubQ.eq('type', type).eq('category', cat).eq('sub_category', oldSub);
         if (txErr) {
             console.error('renameSubCategory tx error', txErr);
             return;
@@ -565,7 +942,19 @@ export const FinanceProvider = ({ children }) => {
             (b.type === type && b.category === cat && b.subCategory === oldSub) ? { ...b, subCategory: trimmed } : b
         );
         updateQuickButtons(newQB);
-        // 6. categorías
+        // 6. budgets
+        if (type === 'expense' && budgets) {
+            let changed = false;
+            const newBudgets = { ...budgets };
+            Object.entries(newBudgets).forEach(([id, b]) => {
+                if (b && b.cat === cat && b.sub === oldSub) {
+                    newBudgets[id] = { ...b, sub: trimmed };
+                    changed = true;
+                }
+            });
+            if (changed) setBudgets(newBudgets);
+        }
+        // 7. categorías
         await updateCategories(newCats);
     };
 
@@ -574,13 +963,14 @@ export const FinanceProvider = ({ children }) => {
             supabase.from('transactions').delete().eq('user_id', user.id),
             supabase.from('goals').delete().eq('user_id', user.id),
             supabase.from('debts').delete().eq('user_id', user.id),
+            supabase.from('expense_groups').delete().eq('user_id', user.id),
             supabase.from('profiles').update({
                 recurring_rules: [],
                 budgets: {},
                 quick_buttons: DEFAULT_QUICK_BUTTONS,
                 category_colors: {},
                 savings_widgets: [],
-                dashboard_widgets: { savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false },
+                dashboard_widgets: { comparativa: true, salud: true, historical: true, pie: true, fixedInfo: true, savings: false, debts: false, nextExpense: false, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false },
             }).eq('id', user.id),
         ]);
         try { localStorage.removeItem(`alcash_budgets_${user.id}`); } catch {}
@@ -590,18 +980,24 @@ export const FinanceProvider = ({ children }) => {
         setJointTransactions([]);
         setGoals([]);
         setDebts([]);
+        setExpenseGroups([]);
         _setBudgets({});
         _setRecurringRules([]);
         _setQuickButtons(DEFAULT_QUICK_BUTTONS);
         _setCategoryColors({});
         _setSavingsWidgets([]);
-        _setDashboardWidgets({ savings: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
+        _setDashboardWidgets({ savings: false, debts: false, fixedInfo: true, nextExpense: true, proyeccion: false, saludGauge: false, radarHabitos: false, lineComparativa: false });
     };
 
     const updateGlobalTags = async (newTags) => {
         setGlobalTags(newTags);
-        const { error } = await supabase.from('profiles').update({ global_tags: newTags }).eq('id', user.id);
-        if (error) console.error('updateGlobalTags error', error);
+        if (isSocial && activeHouseholdId) {
+            const { error } = await supabase.from('households').update({ global_tags: newTags }).eq('id', activeHouseholdId);
+            if (error) console.error('updateGlobalTags (household) error', error);
+        } else {
+            const { error } = await supabase.from('profiles').update({ global_tags: newTags }).eq('id', user.id);
+            if (error) console.error('updateGlobalTags error', error);
+        }
     };
 
     return (
@@ -616,6 +1012,11 @@ export const FinanceProvider = ({ children }) => {
             addTransaction, updateTransaction, deleteTransaction,
             addGoal, updateGoal, deleteGoal,
             addDebt, updateDebt, deleteDebt,
+            expenseGroups, addExpenseGroup, updateExpenseGroup, deleteExpenseGroup, addGroupEntry, deleteGroupEntry,
+            generateGroupInviteToken, getGroupByToken, acceptGroupInvite,
+            households, refreshHouseholds, createHousehold, addHouseholdMemberSlot,
+            ensureHouseholdInviteToken, getHouseholdByToken, acceptHouseholdInvite,
+            leaveHousehold, deleteHousehold, updateHousehold,
             updateCategories, updateGlobalTags,
             addCustomCategory, deleteCustomCategory, moveCategory, addSubCategory,
             renameCategory, renameSubCategory,
@@ -626,7 +1027,7 @@ export const FinanceProvider = ({ children }) => {
             travelMode, setTravelMode,
             travelConfig, setTravelConfig,
             categoryColors, setCategoryColors,
-            savingsWidgets, addSavingsWidget, updateSavingsWidget, deleteSavingsWidget, adjustSavingsWidget, completeSavingsWidget, reopenSavingsWidget,
+            savingsWidgets, addSavingsWidget, updateSavingsWidget, deleteSavingsWidget, adjustSavingsWidget, expandSavingsWidget, completeSavingsWidget, reopenSavingsWidget, linkSavingsRule,
             dashboardWidgets, setDashboardWidgets,
             resetAllData
         }}>

@@ -7,8 +7,9 @@ import EmptyState from '../common/EmptyState';
 import {
     ChevronLeft, ChevronRight, Search, Filter,
     Layers, Calendar as CalendarIcon, Activity, Box,
-    Pencil, Trash2, Tag, CheckSquare, Square, Zap, Bell
+    Pencil, Trash2, Tag, CheckSquare, Square, Zap, Bell, Users
 } from 'lucide-react';
+import { isSharedTag } from '../../utils/sharedExpense';
 
 const TransactionListView = ({
     dateMode,
@@ -32,6 +33,8 @@ const TransactionListView = ({
     openNewModal,
     filteredTransactions,
     handleEdit,
+    onShareTx,
+    onSharedDetail,
     setConfirmModal
 }) => {
     const { theme, t, activeColor } = useAuth();
@@ -96,7 +99,7 @@ const TransactionListView = ({
         setSelectedIds([]);
     };
 
-    const ACTIONS_WIDTH = 144;
+    const ACTIONS_WIDTH = 192;
     const LONG_PRESS_MS = 480;
 
     const SwipeRow = ({ tx }) => {
@@ -173,10 +176,13 @@ const TransactionListView = ({
             }
         };
 
+        const isShared = Array.isArray(tx.tags) && tx.tags.some(isSharedTag);
+
         const onClick = (e) => {
             if (suppressClickRef.current) { e.preventDefault(); e.stopPropagation(); return; }
-            if (selectionMode) toggleSelect(tx.id);
-            else if (isOpen) closeRow();
+            if (selectionMode) { toggleSelect(tx.id); return; }
+            if (isOpen) { closeRow(); return; }
+            if (isShared && onSharedDetail) onSharedDetail(tx);
         };
 
         const isSelected = selectedIds.includes(tx.id);
@@ -189,6 +195,13 @@ const TransactionListView = ({
             <div className={`relative rounded-[24px] overflow-hidden border ${auraCls}`}>
                 {/* Drawer (acciones detrás) */}
                 <div className="absolute inset-y-0 right-0 flex items-stretch" style={{ width: ACTIONS_WIDTH }}>
+                    <button
+                        onClick={() => { onShareTx?.(tx); closeRow(); }}
+                        className="flex-1 flex items-center justify-center bg-purple-500/20 text-purple-400"
+                        title="Fraccionar entre personas"
+                    >
+                        <Users size={18} />
+                    </button>
                     <button
                         onClick={() => { toggleReminder(tx); closeRow(); }}
                         className={`flex-1 flex items-center justify-center ${tx.tags?.includes('__reminder__') ? 'bg-cyan-500/30 text-cyan-300' : 'bg-cyan-500/15 text-cyan-400'}`}
@@ -407,8 +420,14 @@ const TransactionListView = ({
                                 </tr>
                             </thead>
                             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-gray-50'}`}>
-                                {filteredTransactions.map((tx, idx) => (
-                                    <tr key={tx.id} className={`group transition-all duration-300 animate-in fade-in slide-in-from-left-4 delay-${Math.min(idx * 50, 500)} ${selectedIds.includes(tx.id) ? 'bg-blue-600/5' : tx.tags?.includes('__auto__') ? 'bg-yellow-500/[0.04] hover:bg-yellow-500/[0.08]' : 'hover:bg-white/[0.02]'}`}>
+                                {filteredTransactions.map((tx, idx) => {
+                                    const rowIsShared = Array.isArray(tx.tags) && tx.tags.some(isSharedTag);
+                                    const onRowClick = (e) => {
+                                        if (e.target.closest('button')) return;
+                                        if (rowIsShared && onSharedDetail) onSharedDetail(tx);
+                                    };
+                                    return (
+                                    <tr key={tx.id} onClick={onRowClick} className={`group transition-all duration-300 animate-in fade-in slide-in-from-left-4 delay-${Math.min(idx * 50, 500)} ${rowIsShared ? 'cursor-pointer' : ''} ${selectedIds.includes(tx.id) ? 'bg-blue-600/5' : tx.tags?.includes('__auto__') ? 'bg-yellow-500/[0.04] hover:bg-yellow-500/[0.08]' : 'hover:bg-white/[0.02]'}`}>
                                         <td className="p-8 w-10">
                                             <div className="flex flex-col gap-1">
                                                 <button onClick={() => toggleSelect(tx.id)} className="p-2 rounded-xl hover:bg-white/5 transition-all">
@@ -456,12 +475,14 @@ const TransactionListView = ({
                                         </td>
                                         <td className="p-8">
                                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                <button onClick={() => onShareTx?.(tx)} title="Fraccionar entre personas" className="p-2.5 rounded-xl bg-white/5 hover:bg-purple-500/10 hover:text-purple-500 transition-all"><Users size={16} /></button>
                                                 <button onClick={() => handleEdit(tx)} className="p-2.5 rounded-xl bg-white/5 hover:bg-blue-500/10 hover:text-blue-500 transition-all"><Pencil size={16} /></button>
                                                 <button onClick={() => setConfirmModal({ open: true, title: 'Eliminar', message: '¿Borrar este registro?', onConfirm: () => deleteTransaction(tx.id, tx.is_joint) })} className="p-2.5 rounded-xl bg-white/5 hover:bg-red-500/10 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
