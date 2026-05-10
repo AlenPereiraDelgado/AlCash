@@ -6,7 +6,7 @@ import {
     Repeat, ShieldCheck, Plus
 } from 'lucide-react';
 
-const Navbar = ({ view, setView, isScrolled, onAdd, onOpenHouseholdGate }) => {
+const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
     const { activeColor, theme, t, setMode, isSocial, activeHouseholdId, setActiveHouseholdId } = useAuth();
     const { households } = useFinance();
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -47,9 +47,9 @@ const Navbar = ({ view, setView, isScrolled, onAdd, onOpenHouseholdGate }) => {
     };
 
     return (
-        <div className={`md:hidden fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'opacity-90' : 'opacity-100'}`}>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
             {/* BARRA PRINCIPAL */}
-            <div className={`relative flex items-end justify-around py-2 px-2 pb-6 rounded-t-[32px] border-t shadow-[0_-10px_40px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${theme === 'dark' ? 'bg-black/80 border-white/5' : 'bg-white/95 border-gray-100'}`}>
+            <div className={`relative flex items-end justify-around py-2 px-2 pb-6 rounded-t-[32px] border-t shadow-[0_-10px_40px_rgba(0,0,0,0.3)] ${theme === 'dark' ? 'bg-[#0E0E11] border-white/5' : 'bg-white border-gray-100'}`}>
                 {leftNav.map(nav => (
                     <button
                         key={nav.id}

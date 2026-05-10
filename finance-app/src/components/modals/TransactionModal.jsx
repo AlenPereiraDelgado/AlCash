@@ -37,10 +37,20 @@ const TransactionModal = ({
     if (!isOpen) return null;
 
     const handleQuickSelect = (btn, index) => {
+        if (selectedQuick === index) {
+            setSelectedQuick(null);
+            setCategory('');
+            setSubCategory('');
+            if (btn.note) setNote('');
+            if (btn.amount) setAmount('');
+            return;
+        }
         setSelectedQuick(index);
         setType(btn.type);
         setCategory(btn.category);
         setSubCategory(btn.subCategory);
+        if (btn.note) setNote(btn.note);
+        if (btn.amount) setAmount(String(btn.amount));
     };
 
     return (

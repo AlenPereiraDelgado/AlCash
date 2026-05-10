@@ -33,3 +33,7 @@ finance_db.xlsx.bak
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/

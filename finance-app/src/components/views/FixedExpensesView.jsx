@@ -20,15 +20,14 @@ const FixedExpensesView = ({
     return (
         <div className="space-y-8 animate-in slide-in-from-right">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className={`p-10 rounded-[40px] border flex flex-col justify-between shadow-2xl relative overflow-hidden ${t.card}`}>
+                <div className={`p-8 rounded-[40px] border flex flex-col justify-between shadow-2xl relative overflow-hidden ${t.card}`}>
                     <div className="relative z-10">
-                        <h3 className="text-3xl font-black tracking-tighter mb-2">Prorrateo Mensual</h3>
-                        <p className={`font-medium max-w-sm ${t.textSec}`}>Carga estimada para cubrir gastos fijos anuales, bianuales y mensuales.</p>
+                        <h3 className="text-lg font-bold">Prorrateo Mensual</h3>
+                        <p className={`text-xs font-medium mt-1 ${t.textSec}`}>Reserva estimada para cubrir mensuales + parte proporcional de anuales, bianuales y semanales.</p>
                     </div>
-                    <div className="text-right relative z-10 mt-8">
+                    <div className="text-right relative z-10 mt-6">
                         <span className={`font-black ${activeColor.text} ${getDynamicFontSize(prorrateoMensual.total)}`}>{prorrateoMensual.total.toFixed(2)}€</span>
-                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] mt-2 ${t.textSec}`} title="Suma mensualizada de tus gastos recurrentes: mensuales íntegros + 1/12 de los anuales + 1/6 de los bianuales + 4.33× los semanales. Es lo que deberías reservar cada mes.">Recurrencia Estimada</p>
-                        <p className={`text-[10px] font-medium mt-1 ${t.textSec} max-w-xs ml-auto`}>Lo que deberías reservar al mes para cubrir todos tus gastos recurrentes (mensuales + parte proporcional de anuales/bianuales/semanales).</p>
+                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] mt-2 ${t.textSec}`} title="Suma mensualizada de tus gastos recurrentes: mensuales íntegros + 1/12 de los anuales + 1/6 de los bianuales + 4.33× los semanales.">Recurrencia Estimada</p>
 
                         <div className="mt-8 space-y-4">
                             <div className="flex justify-between items-end">
@@ -150,14 +149,14 @@ const FixedExpensesView = ({
                             })}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                             {monthlyFixedBreakdown.map((m, i) => {
                                 const hasSpecial = m.specials.length > 0;
                                 const monthName = new Date(2024, i, 1).toLocaleString('es-ES', { month: 'short' }).toUpperCase();
                                 return (
-                                    <div key={i} className={`p-4 rounded-2xl border flex flex-col justify-between h-28 ${hasSpecial ? 'bg-red-500/10 border-red-500/50' : `${t.card} border-transparent`}`}>
-                                        <div className="flex justify-between items-start"><span className={`text-[10px] font-black tracking-widest ${t.textSec}`}>{monthName}</span>{hasSpecial && <div className="w-2 h-2 rounded-full bg-red-500" />}</div>
-                                        <div><span className="text-sm font-black">{m.total.toFixed(0)}€</span>{hasSpecial && <div className="text-[9px] text-red-500 mt-1 truncate font-medium">{m.specials[0].category}</div>}</div>
+                                    <div key={i} className={`p-2.5 rounded-xl border flex flex-col justify-between h-16 ${hasSpecial ? 'bg-red-500/10 border-red-500/50' : `${t.card} border-transparent`}`}>
+                                        <div className="flex justify-between items-start"><span className={`text-[9px] font-black tracking-widest ${t.textSec}`}>{monthName}</span>{hasSpecial && <div className="w-1.5 h-1.5 rounded-full bg-red-500" />}</div>
+                                        <span className="text-xs font-black">{m.total.toFixed(0)}€</span>
                                     </div>
                                 );
                             })}

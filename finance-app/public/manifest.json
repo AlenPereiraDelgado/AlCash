@@ -3,10 +3,22 @@
   "name": "AlCash - Finanzas Inteligentes",
   "icons": [
     {
+      "src": "alcash-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
       "src": "alcash-favicon.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "alcash-favicon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "./",

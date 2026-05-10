@@ -7,7 +7,7 @@ import { sanitizeTransaction, sanitizeGoal, sanitizeDebt, sanitizeName } from '.
 const FinanceContext = createContext();
 
 const DEFAULT_QUICK_BUTTONS = Array.from({ length: 6 }, (_, i) => ({
-    id: i + 1, emoji: '', label: '', type: 'expense', category: '', subCategory: ''
+    id: i + 1, emoji: '', label: '', type: 'expense', category: '', subCategory: '', note: '', amount: ''
 }));
 
 const persistProfileField = async (userId, field, value) => {
@@ -642,6 +642,17 @@ export const FinanceProvider = ({ children }) => {
     };
 
     const deleteExpenseGroup = async (id) => {
+        // Borrar el grupo NO debe borrar los movimientos personales que generó.
+        // Quitamos solo el tag __groupRef:<id>:* para desvincular: el gasto
+        // queda registrado como "Compartido" normal en el listado.
+        const refPrefix = `__groupRef:${id}:`;
+        const linked = (transactions || []).filter(tx =>
+            Array.isArray(tx.tags) && tx.tags.some(tag => typeof tag === 'string' && tag.startsWith(refPrefix))
+        );
+        for (const tx of linked) {
+            const cleanTags = tx.tags.filter(tag => !(typeof tag === 'string' && tag.startsWith(refPrefix)));
+            await updateTransaction(tx.id, { tags: cleanTags });
+        }
         const { error } = await supabase.from('expense_groups').delete().eq('id', id);
         if (!error) setExpenseGroups(prev => prev.filter(g => g.id !== id));
         else console.error('deleteExpenseGroup error', error);

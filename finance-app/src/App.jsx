@@ -42,7 +42,7 @@ import ImportModal from './components/modals/ImportModal';
 import JoinGroupModal from './components/modals/JoinGroupModal';
 import HouseholdGateModal from './components/modals/HouseholdGateModal';
 import JoinHouseholdModal from './components/modals/JoinHouseholdModal';
-import { parseWithGemini } from './services/aiService';
+import { parseExpense, fileToCompressedDataUrl } from './services/aiService';
 import { ToastContainer } from './components/common/Toast';
 import { ProgressBar, CircularProgress } from './components/common/Progress';
 import CommandPalette from './components/common/CommandPalette';
@@ -78,7 +78,7 @@ export default function App() {
         activeColor, t, authError, setAuthError, authInfo, setAuthInfo,
         isRegistering, setIsRegistering,
         login, register, logout, requestPasswordReset, updatePassword,
-        isLoading: isAuthLoading, geminiKey
+        isLoading: isAuthLoading,
     } = useAuth();
 
     const [forgotMode, setForgotMode] = useState(false);
@@ -222,7 +222,6 @@ export default function App() {
         resetForm();
     };
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [importText, setImportText] = useState('');
     const [pendingImports, setPendingImports] = useState([]);
     const [sharedPrefill, setSharedPrefill] = useState(null);
     const [sharedDetailTxId, setSharedDetailTxId] = useState(null);
@@ -731,140 +730,52 @@ export default function App() {
         return 'Otros';
     };
 
-    const runSmartAnalysis = (text) => {
-        if (!text || text.trim().length < 5) {
-            showToast("El texto parece estar vacío o ser demasiado corto", 'error');
-            return;
-        }
-
-        const lines = text.split('\n');
-        const detected = [];
-        const monthNames = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
-        
-        lines.forEach(line => {
-            const cleanLine = line.trim();
-            if (cleanLine.length < 5) return;
-            
-            // 1. Detect Amount (Handle cases like -1.234,56 or 1234.56 or even 45,20-)
-            let amountVal = null;
-            let type = 'expense';
-            
-            const amountMatch = cleanLine.match(/(-?\d+([.,]\d{3})*[.,]\d{2})|(\d+[.,]\d{2}-?)/g);
-            if (amountMatch) {
-                // Get the last match usually represents the transaction amount in bank rows
-                let rawAmount = amountMatch[amountMatch.length - 1];
-                
-                // Check if sign is at the end (some PDFs do this: 45,20-)
-                if (rawAmount.endsWith('-')) {
-                    rawAmount = '-' + rawAmount.slice(0, -1);
-                }
-                
-                amountVal = parseFloat(rawAmount.replace(/\./g, '').replace(',', '.'));
-                if (amountVal > 0 && !cleanLine.includes(' -') && !rawAmount.startsWith('-')) {
-                    type = 'income';
-                }
-                amountVal = Math.abs(amountVal);
-            }
-
-            if (!amountVal || isNaN(amountVal)) return;
-
-            // 2. Detect Date
-            let dateStr = new Date().toISOString().split('T')[0];
-            
-            // Standard numeric formats: DD/MM/YYYY, DD.MM.YY
-            const numericDateMatch = cleanLine.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-            if (numericDateMatch) {
-                const [full, d, m, y] = numericDateMatch;
-                const year = y.length === 2 ? `20${y}` : y;
-                dateStr = `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-            } else {
-                // Alpha formats: 12 ENE, 15 MAY 2024
-                const alphaDateMatch = cleanLine.match(/(\d{1,2})\s+([A-Z]{3})/i);
-                if (alphaDateMatch) {
-                    const [full, d, mName] = alphaDateMatch;
-                    const mIdx = monthNames.findIndex(m => mName.toUpperCase().includes(m)) + 1;
-                    if (mIdx > 0) {
-                        dateStr = `${new Date().getFullYear()}-${mIdx.toString().padStart(2, '0')}-${d.padStart(2, '0')}`;
-                    }
-                }
-            }
-
-            // 3. Extract Note (Strip date and amount)
-            let note = cleanLine
-                .replace(/\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/g, '')
-                .replace(amountMatch[amountMatch.length - 1], '')
-                .replace(/[€$]/g, '')
-                .replace(/\s\s+/g, ' ')
-                .trim();
-            
-            if (note.length < 3) note = "Movimiento Detectado";
-            else note = note.charAt(0).toUpperCase() + note.slice(1).toLowerCase();
-
-            detected.push({
-                id: crypto.randomUUID(),
-                date: dateStr,
-                amountVal: amountVal,
-                type: type,
-                category: guessCategory(note),
-                subCategory: '',
-                note: note,
-                status: 'pending'
-            });
-        });
-        
-        if (detected.length > 0) {
-            setPendingImports(prev => [...prev, ...detected]);
-            showToast(`He detectado ${detected.length} movimientos posibles.`, 'success');
-        } else {
-            showToast("No he podido identificar movimientos. Prueba a copiar una tabla completa del banco.", 'error');
-        }
-    };
-
     const handleMagicParse = async (text) => {
         setIsMagicLoading(true);
-        
         try {
-            if (geminiKey) {
-                // MODO IA REAL (Gemini)
-                const parsed = await parseWithGemini(text, categories, geminiKey);
-                setPendingMagicTx({
-                    ...parsed,
-                    id: crypto.randomUUID(),
-                    subCategory: ''
-                });
-            } else {
-                throw new Error("USE_LOCAL");
+            const { items, remaining, isAdmin } = await parseExpense({ text, categories });
+            if (items.length === 0) {
+                showToast('No detecté ningún movimiento. Reformula la frase.', 'error');
+                return;
             }
-        } catch (error) {
-            // MODO LOCAL (Fallback si no hay API Key o falla)
-            const cleanText = text.toLowerCase();
-            let amountVal = 0;
-            let type = 'expense';
-            let date = new Date().toISOString().split('T')[0];
-            let note = text;
-
-            const amountMatches = cleanText.match(/\d+([.,]\d{1,2})?/g);
-            if (amountMatches) amountVal = parseFloat(amountMatches[0].replace(',', '.'));
-
-            if (cleanText.includes('ayer')) {
-                const d = new Date(); d.setDate(d.getDate() - 1);
-                date = d.toISOString().split('T')[0];
-            }
-
-            if (cleanText.includes('nomina') || cleanText.includes('ingreso')) type = 'income';
-
-            note = text.replace(/\d+([.,]\d{1,2})?/g, '').replace(/€|euros/gi, '').replace(/ayer|hoy/gi, '').trim();
-            if (note.length < 2) note = "Gasto detectado";
-            
+            const first = items[0];
             setPendingMagicTx({
                 id: crypto.randomUUID(),
-                amountVal,
-                date,
-                type,
-                category: guessCategory(note),
-                note: note.charAt(0).toUpperCase() + note.slice(1),
-                subCategory: ''
+                type: first.type || 'expense',
+                amountVal: Number(first.amountVal) || 0,
+                date: first.date || new Date().toISOString().split('T')[0],
+                category: first.category || guessCategory(first.note || text),
+                subCategory: first.subCategory || '',
+                note: first.note || '',
             });
+            // Si hay más movimientos en la misma frase, mándalos al stepper
+            if (items.length > 1) {
+                const extras = items.slice(1).map(it => ({
+                    id: crypto.randomUUID(),
+                    type: it.type || 'expense',
+                    amountVal: Number(it.amountVal) || 0,
+                    date: it.date || new Date().toISOString().split('T')[0],
+                    category: it.category || 'Otros',
+                    subCategory: it.subCategory || '',
+                    note: it.note || '',
+                    status: 'pending',
+                }));
+                setPendingImports(prev => [...prev, ...extras]);
+                setIsImportModalOpen(true);
+            }
+            if (!isAdmin && typeof remaining === 'number') {
+                showToast(`Movimiento detectado · ${remaining} usos IA restantes este mes.`, 'success');
+            }
+        } catch (err) {
+            const map = {
+                LIMIT_REACHED: 'Has agotado tus 2 usos de IA este mes.',
+                UNAUTHORIZED: 'Sesión caducada. Inicia sesión otra vez.',
+                EMAIL_NOT_ALLOWED: 'Tu email no tiene acceso.',
+                RATE_LIMITED: 'Demasiadas peticiones. Espera un momento.',
+                EMPTY_INPUT: 'Escribe algo o sube una imagen.',
+                AI_PROVIDER_ERROR: 'La IA falló. Reintenta.',
+            };
+            showToast(map[err.message] || 'Error al analizar. Reintenta.', 'error');
         } finally {
             setIsMagicLoading(false);
         }
@@ -877,14 +788,47 @@ export default function App() {
         showToast("¡Movimiento añadido mágicamente!", 'success');
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            runSmartAnalysis(evt.target.result);
-        };
-        reader.readAsText(file);
+    const [aiQuota, setAiQuota] = useState(null); // { remaining, isAdmin, limit }
+
+    const handleFileUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (files.length === 0) return;
+        setIsMagicLoading(true);
+        try {
+            const images = await Promise.all(files.map(fileToCompressedDataUrl));
+            const { items, remaining, isAdmin, limit } = await parseExpense({ images, categories });
+            setAiQuota({ remaining, isAdmin, limit });
+            if (items.length === 0) {
+                showToast('No detecté movimientos en las imágenes.', 'error');
+                return;
+            }
+            const detected = items.map(it => ({
+                id: crypto.randomUUID(),
+                type: it.type || 'expense',
+                amountVal: Number(it.amountVal) || 0,
+                date: it.date || new Date().toISOString().split('T')[0],
+                category: it.category || 'Otros',
+                subCategory: it.subCategory || '',
+                note: it.note || '',
+                status: 'pending',
+            }));
+            setPendingImports(prev => [...prev, ...detected]);
+            const tag = isAdmin ? '' : ` · ${remaining} usos IA restantes`;
+            showToast(`${detected.length} movimientos detectados${tag}.`, 'success');
+        } catch (err) {
+            const map = {
+                LIMIT_REACHED: 'Has agotado tus 2 usos de IA este mes.',
+                UNAUTHORIZED: 'Sesión caducada. Inicia sesión otra vez.',
+                EMAIL_NOT_ALLOWED: 'Tu email no tiene acceso.',
+                RATE_LIMITED: 'Demasiadas peticiones. Espera un momento.',
+                IMAGE_TOO_LARGE: 'Imagen demasiado grande tras compresión.',
+                AI_PROVIDER_ERROR: 'La IA falló. Reintenta.',
+            };
+            showToast(map[err.message] || 'Error analizando imágenes.', 'error');
+        } finally {
+            setIsMagicLoading(false);
+        }
     };
 
     // Pantalla de carga (En el sitio correcto tras los hooks)
@@ -1221,12 +1165,11 @@ export default function App() {
                 <ImportModal
                     isOpen={isImportModalOpen}
                     onClose={() => setIsImportModalOpen(false)}
-                    importText={importText}
-                    setImportText={setImportText}
                     pendingImports={pendingImports}
                     setPendingImports={setPendingImports}
                     onHandleFileUpload={handleFileUpload}
-                    onRunSmartAnalysis={runSmartAnalysis}
+                    isLoading={isMagicLoading}
+                    aiQuota={aiQuota}
                     onConfirmAll={async () => {
                         const newTxs = pendingImports.map(({ status, id, ...item }) => ({ ...item, is_joint: false }));
                         await Promise.all(newTxs.map(tx => addTransaction(tx)));

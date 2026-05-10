@@ -1,176 +1,143 @@
 # AlCash · Guía de Seguridad
 
-Este documento recoge la postura de seguridad de la app y los pasos manuales que deben aplicarse en el panel de Supabase / Google Cloud para complementar los cambios de código.
+Postura de seguridad de la app y pasos manuales en Supabase / Anthropic Console que complementan los cambios de código.
 
-## 1. Whitelist de emails permitidos
+## 1. Registro abierto
 
-**Implementado en código** — migración `20260509000000_security_hardening.sql`:
+Migración `20260512000000_open_signup.sql` quita el trigger `on_auth_user_email_check`. Cualquier email puede registrarse — RLS sigue garantizando que cada usuario solo ve sus datos.
 
-- Tabla `public.allowed_emails` (RLS deny-all desde el cliente).
-- Trigger `on_auth_user_email_check` que rechaza cualquier `INSERT` en `auth.users` con un email que no esté en la tabla.
-- Email inicial cargado: `alenpdelgado@gmail.com`.
-
-### Aplicar la migración
-
-```bash
-# Desde finance-app/
-supabase db push
-```
-
-### Añadir más emails (cuando haga falta)
-
-En el SQL editor de Supabase Dashboard:
+La tabla `allowed_emails` y la función `enforce_email_whitelist` se conservan: para reactivar la whitelist basta con recrear el trigger:
 
 ```sql
-insert into public.allowed_emails (email, note)
-values ('otra@persona.com', 'colaborador')
-on conflict (email) do nothing;
+create trigger on_auth_user_email_check
+    before insert on auth.users
+    for each row execute function public.enforce_email_whitelist();
 ```
+
+Defensas activas contra abuso:
+
+- Email confirmation obligatorio (Supabase Auth → "Confirm email" ON).
+- Rate limits en Auth Dashboard (sign-up 5/h, sign-in 30/h, reset 5/h).
+- Edge function `parse-expense` con cuota mensual (2 usos/mes/usuario, admin ilimitado).
+- RLS deny-by-default en todas las tablas.
 
 ## 2. Google OAuth restringido
 
-El whitelist anterior funciona para email/password. Para activar Google OAuth y restringirlo al mismo email:
-
-1. **Supabase Dashboard → Authentication → Providers → Google**
-   - `Enabled: ON`
-   - Pegar Client ID y Client Secret de Google Cloud Console
-2. **Google Cloud Console → APIs & Services → OAuth consent screen**
-   - User Type: **External** (o Internal si tienes Workspace).
-   - **Test users**: añadir `alenpdelgado@gmail.com`.
-   - Mantener la app en estado **Testing** → solo los test users pueden autenticar.
-3. El trigger `enforce_email_whitelist` ya rechaza cualquier email distinto incluso si la pantalla de Google deja entrar a otro usuario por error.
+1. **Supabase Dashboard → Authentication → Providers → Google**: Enabled ON, pegar Client ID + Secret de Google Cloud Console.
+2. **Google Cloud Console → APIs & Services → OAuth consent screen**: User Type **External**, añadir test users, mantener app en **Testing**.
+3. El trigger `enforce_email_whitelist` rechaza emails fuera de la whitelist incluso si Google deja entrar a otro usuario.
 
 ## 3. Row Level Security (RLS)
 
-**Implementado** en la migración (idempotente, deny-by-default):
+Activa y deny-by-default en todas las tablas:
 
-- `profiles`, `transactions`, `goals`, `debts` tienen RLS activado.
-- Cada policy filtra por `auth.uid() = user_id` (o `id` en profiles).
-- `allowed_emails` rechaza todo acceso desde el cliente.
+- `profiles`, `transactions`, `goals`, `debts` → policy `auth.uid() = user_id` (o `id` en profiles).
+- `households`, `expense_groups` → acceso solo a miembros / shared users.
+- `ai_usage` → user solo lee suyo, escribe solo service_role.
+- `allowed_emails` → deny-all desde cliente.
 
-Verificación en Dashboard → Database → Tables → cada tabla → "RLS enabled" en verde.
+Verifica en Dashboard → Database → Tables → cada tabla → "RLS enabled" en verde.
 
 ## 4. CORS
 
-Supabase REST/Auth/Realtime acepta cualquier origen por defecto cuando se usa la `anon key` (porque la `anon key` es pública). La defensa real es **RLS + JWT**, no CORS.
+Supabase REST/Auth usa la `anon key` pública. La defensa real es **RLS + JWT**.
 
-Sin embargo, sí se puede restringir CORS de la edge function `gemini-proxy`:
+Edge function `parse-expense` sí restringe CORS:
 
 ```bash
-# Lista blanca de orígenes (separados por coma)
-supabase secrets set ALLOWED_ORIGINS=https://alcash.tu-dominio.app,http://localhost:5173
+supabase secrets set ALLOWED_ORIGINS=https://alenpereiradelgado.github.io,http://localhost:5173
 ```
 
-La función rechaza orígenes no listados con `Access-Control-Allow-Origin: null`.
+Orígenes no listados → `Access-Control-Allow-Origin: null`.
 
-Para Auth (URLs de redirect tras login):
-
+Auth (redirects):
 - **Dashboard → Authentication → URL Configuration**
-- `Site URL`: `https://alcash.tu-dominio.app`
-- `Redirect URLs`: `https://alcash.tu-dominio.app/**, http://localhost:5173/**`
+- `Site URL` y `Redirect URLs` con tu dominio de producción.
 
 ## 5. Rate limiting
 
-### Auth (signin / signup / password reset)
+### Auth
 
 - **Dashboard → Authentication → Rate Limits**
-- Recomendado para uso personal:
   - Sign in: 30 / hora
   - Sign up: 5 / hora
   - Password reset: 5 / hora
-  - Token refresh: 1800 / hora
 
-### Edge function `gemini-proxy`
+### Edge function `parse-expense`
 
-- Rate limit in-memory por `user_id`: **60 requests / 60s**.
-- Configurable en `supabase/functions/gemini-proxy/index.ts` (constantes `RATE_WINDOW_MS` y `RATE_MAX`).
+- Rate limit in-memory por `user_id`: **60 req / 60s**.
+- Cuota mensual: **2 usos / mes / usuario** (admin ilimitado).
+- Configurable en `supabase/functions/parse-expense/index.ts` (`RATE_WINDOW_MS`, `RATE_MAX`, `MONTHLY_LIMIT`).
 
-### REST API (PostgREST)
+### REST API
 
-Supabase no expone configuración de rate limit por usuario para REST. La defensa real es:
+Supabase no expone rate limit por usuario para REST. Defensa: RLS + CHECK constraints (longitud máxima en payloads).
 
-1. RLS: incluso con muchas requests, sólo ven sus datos.
-2. Constraints `CHECK` (longitud máxima de texto) — payloads basura rechazados.
+## 6. Variables de entorno
 
-## 6. Variables de entorno (credenciales)
-
-### Cliente (frontend, `.env`)
+### Cliente (`.env`)
 
 ```
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
 
-La `anon key` está diseñada para ser pública; queda bundleada y se ve en DevTools. La seguridad es RLS.
-
-**Eliminar del .env del cliente:**
-
-```
-# VITE_GEMINI_API_KEY=...   ← BORRAR tras desplegar la edge function
-```
+Solo claves públicas. La publishable key es pública por diseño; la seguridad es RLS.
 
 ### Servidor (Supabase Secrets)
 
 ```bash
-supabase secrets set GEMINI_API_KEY=AIzaSy...
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase secrets set ALLOWED_ORIGINS=https://...,http://localhost:5173
+supabase secrets set ADMIN_EMAIL=alenpdelgado@gmail.com
 ```
 
-### Rotar la Gemini key
+### Rotar la Anthropic key
 
-Si la key actual ha estado expuesta en el bundle del frontend, **rotarla**:
-
-1. Google Cloud Console → APIs & Services → Credentials → revocar la antigua.
-2. Crear una nueva, restringida a la API "Generative Language API" y al referer `tu-dominio.app/*` (defensa adicional).
-3. `supabase secrets set GEMINI_API_KEY=<nueva>`.
+1. Anthropic Console → Settings → API Keys → Revoke la actual.
+2. Create new key.
+3. `supabase secrets set ANTHROPIC_API_KEY=<nueva>`.
 
 ## 7. Sanitización de inputs
 
 **Implementado** — `src/utils/sanitize.js`:
 
-- Strip de caracteres de control y zero-width.
+- Strip caracteres de control y zero-width.
 - Trim + normalización NFC.
 - Límites de longitud (notas 500, nombres 80, emails 254).
-- Validación numérica y de formato fecha YYYY-MM-DD.
+- Validación numérica y formato fecha YYYY-MM-DD.
 
-Aplicado en todos los `addTransaction`, `updateTransaction`, `addGoal`, `updateGoal`, `addDebt`, `updateDebt`, `addCustomCategory`, `addSubCategory`.
+Aplicado en `addTransaction`, `updateTransaction`, `addGoal`, `updateGoal`, `addDebt`, `updateDebt`, `addCustomCategory`, `addSubCategory`.
 
-Defensa adicional en SQL: `CHECK` constraints en `transactions.note`, `goals.name`, `debts.person/note`.
+Defensa SQL: `CHECK` constraints en `transactions.note`, `goals.name`, `debts.person/note`.
 
-**SQL injection**: PostgREST usa consultas parametrizadas — no es posible inyectar SQL desde el cliente.
+**SQL injection**: PostgREST usa consultas parametrizadas → no inyectable desde cliente.
 
-## 8. Despliegue de la edge function Gemini
+## 8. Despliegue de la edge function `parse-expense`
 
 ```bash
 cd finance-app
 
-# 1. Login (sólo la primera vez)
 supabase login
-
-# 2. Link del proyecto
 supabase link --project-ref zsmstebjtervywbtfzbj
-
-# 3. Configurar secretos
-supabase secrets set GEMINI_API_KEY=AIzaSy... \
-                    ALLOWED_ORIGINS=http://localhost:5173,https://alcash.tu-dominio.app
-
-# 4. Desplegar
-supabase functions deploy gemini-proxy
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set ALLOWED_ORIGINS=https://alenpereiradelgado.github.io,http://localhost:5173
+supabase secrets set ADMIN_EMAIL=alenpdelgado@gmail.com
+supabase functions deploy parse-expense
 ```
 
-Después borrar `VITE_GEMINI_API_KEY` del `.env` y rebuild.
+Modelo: Claude Haiku 4.5 con visión. Cuota mensual hard-coded a 2 (`MONTHLY_LIMIT`).
 
 ## 9. Checklist final
 
 - [x] RLS activa en todas las tablas
-- [x] Whitelist de emails operativa (trigger SQL)
+- [x] Registro abierto (whitelist desactivada — `20260512000000_open_signup.sql`)
 - [x] Sanitización de inputs en cliente
 - [x] CHECK constraints en SQL
-- [x] Edge function proxy para Gemini (código)
-- [ ] Migración aplicada en producción (`supabase db push`)
-- [ ] Edge function desplegada (`supabase functions deploy gemini-proxy`)
-- [ ] `VITE_GEMINI_API_KEY` borrada del `.env`
-- [ ] Gemini API key antigua rotada en Google Cloud
-- [ ] Google OAuth provider habilitado y restringido a test users
-- [ ] Rate limits configurados en Auth Dashboard
-- [ ] Site URL + Redirect URLs configurados en Auth Dashboard
+- [x] Edge function `parse-expense` desplegada
+- [x] Anthropic key solo en Supabase Secrets (nunca en bundle)
+- [x] CORS restringido en edge function
+- [x] Site URL + Redirect URLs configurados en Auth Dashboard
+- [ ] "Confirm email" activado en Auth → Providers → Email
+- [ ] Rate limits configurados en Auth → Rate Limits (5 / 30 / 5)
+- [ ] (Opcional) Google OAuth provider habilitado

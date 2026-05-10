@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { ACCENT_COLORS } from '../constants/theme';
 import { supabase } from '../lib/supabaseClient';
 
@@ -13,7 +13,19 @@ const getDisplayName = (user) => {
 export const AuthProvider = ({ children }) => {
     const [session, setSession] = useState(null);
     const [user, setUser] = useState(null);
-    const [theme, setTheme] = useState(() => localStorage.getItem('alcash_theme') || 'dark');
+    const [themeMode, setThemeMode] = useState(() => localStorage.getItem('alcash_theme') || 'dark');
+    const [autoTick, setAutoTick] = useState(0);
+    useEffect(() => {
+        if (themeMode !== 'auto') return;
+        const id = setInterval(() => setAutoTick(v => v + 1), 60_000);
+        return () => clearInterval(id);
+    }, [themeMode]);
+    const theme = useMemo(() => {
+        if (themeMode !== 'auto') return themeMode;
+        const h = new Date().getHours();
+        return (h >= 7 && h < 19) ? 'light' : 'dark';
+    }, [themeMode, autoTick]);
+    const setTheme = setThemeMode;
     const [accent, setAccent] = useState(() => localStorage.getItem('alcash_accent') || 'blue');
     const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem('alcash_privacy') === 'true');
     const [mode, _setMode] = useState(() => localStorage.getItem('alcash_mode') || 'personal');
@@ -22,7 +34,6 @@ export const AuthProvider = ({ children }) => {
     const [authInfo, setAuthInfo] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [geminiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
 
     // Modo social fuerza color dorado; el accent personal queda guardado y se restaura.
     const effectiveAccent = (mode === 'social' && activeHouseholdId) ? 'gold' : accent;
@@ -74,7 +85,7 @@ export const AuthProvider = ({ children }) => {
 
             if (error) throw error;
 
-            if (data?.settings?.theme) setTheme(data.settings.theme);
+            if (data?.settings?.theme) setThemeMode(data.settings.theme);
             if (data?.settings?.accent) setAccent(data.settings.accent);
         } catch (err) {
             console.error("Error al cargar perfil:", err);
@@ -85,11 +96,11 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (user) {
             supabase.from('profiles')
-                .update({ settings: { theme, accent } })
+                .update({ settings: { theme: themeMode, accent } })
                 .eq('id', user.id)
                 .then();
         }
-    }, [theme, accent, user]);
+    }, [themeMode, accent, user]);
 
     const THEMES = {
         dark: {
@@ -118,11 +129,11 @@ export const AuthProvider = ({ children }) => {
     const t = THEMES[theme];
 
     useEffect(() => {
-        localStorage.setItem('alcash_theme', theme);
+        localStorage.setItem('alcash_theme', themeMode);
         localStorage.setItem('alcash_accent', accent);
         localStorage.setItem('alcash_privacy', privacyMode);
         document.body.setAttribute('data-theme', theme);
-    }, [theme, accent, privacyMode]);
+    }, [themeMode, theme, accent, privacyMode]);
 
     const login = async (email, password) => {
         setAuthError('');
@@ -201,7 +212,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{
             currentUser: getDisplayName(user),
             user, session, isLoading,
-            theme, setTheme, accent, setAccent,
+            theme, themeMode, setTheme, setThemeMode, accent, setAccent,
             privacyMode, setPrivacyMode,
             mode, setMode,
             activeHouseholdId, setActiveHouseholdId,
@@ -212,7 +223,6 @@ export const AuthProvider = ({ children }) => {
             isRegistering, setIsRegistering,
             login, register, logout,
             requestPasswordReset, updatePassword,
-            geminiKey
         }}>
             {children}
         </AuthContext.Provider>
