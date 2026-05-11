@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     // Body validation
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') return json({ error: 'BAD_REQUEST' }, 400, cors);
-    const text: string | undefined = typeof body.text === 'string' ? body.text.slice(0, 4000) : undefined;
+    const text: string | undefined = typeof body.text === 'string' ? body.text.slice(0, 60_000) : undefined;
     const images: string[] = Array.isArray(body.images) ? body.images.slice(0, 6) : [];
     const categories: CategoriesShape = body.categories && typeof body.categories === 'object'
         ? body.categories
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
             model: ANTHROPIC_MODEL,
-            max_tokens: 1024,
+            max_tokens: 4096,
             system: buildSystemPrompt(categories),
             tools: [TOOL],
             tool_choice: { type: 'tool', name: TOOL.name },

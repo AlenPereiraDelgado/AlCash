@@ -16,6 +16,25 @@ import { supabase } from '../lib/supabaseClient';
 const MAX_IMAGE_DIM = 1280;     // px lado mayor
 const JPEG_QUALITY  = 0.7;
 
+/** Extrae texto plano de un PDF (todas las páginas concatenadas). */
+export const pdfFileToText = async (file) => {
+    const pdfjs = await import('pdfjs-dist');
+    const workerMod = await import('pdfjs-dist/build/pdf.worker.mjs?url');
+    pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
+    const buf = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buf }).promise;
+    const pages = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const tc = await page.getTextContent();
+        pages.push(tc.items.map(it => it.str).join(' '));
+    }
+    return pages.join('\n');
+};
+
+export const isPdfFile = (file) =>
+    file?.type === 'application/pdf' || /\.pdf$/i.test(file?.name || '');
+
 /** Comprime un File a data URL JPEG ≤ MAX_IMAGE_DIM y JPEG_QUALITY. */
 export const fileToCompressedDataUrl = (file) =>
     new Promise((resolve, reject) => {

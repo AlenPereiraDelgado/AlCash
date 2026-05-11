@@ -42,7 +42,7 @@ import ImportModal from './components/modals/ImportModal';
 import JoinGroupModal from './components/modals/JoinGroupModal';
 import HouseholdGateModal from './components/modals/HouseholdGateModal';
 import JoinHouseholdModal from './components/modals/JoinHouseholdModal';
-import { parseExpense, fileToCompressedDataUrl } from './services/aiService';
+import { parseExpense, fileToCompressedDataUrl, pdfFileToText, isPdfFile } from './services/aiService';
 import { ToastContainer } from './components/common/Toast';
 import { ProgressBar, CircularProgress } from './components/common/Progress';
 import CommandPalette from './components/common/CommandPalette';
@@ -796,11 +796,21 @@ export default function App() {
         if (files.length === 0) return;
         setIsMagicLoading(true);
         try {
-            const images = await Promise.all(files.map(fileToCompressedDataUrl));
-            const { items, remaining, isAdmin, limit } = await parseExpense({ images, categories });
+            const pdfs = files.filter(isPdfFile);
+            const imgs = files.filter(f => !isPdfFile(f));
+            const [images, pdfTexts] = await Promise.all([
+                Promise.all(imgs.map(fileToCompressedDataUrl)),
+                Promise.all(pdfs.map(pdfFileToText)),
+            ]);
+            const text = pdfTexts.join('\n\n').trim() || undefined;
+            if (images.length === 0 && !text) {
+                showToast('No pude leer los archivos.', 'error');
+                return;
+            }
+            const { items, remaining, isAdmin, limit } = await parseExpense({ text, images, categories });
             setAiQuota({ remaining, isAdmin, limit });
             if (items.length === 0) {
-                showToast('No detecté movimientos en las imágenes.', 'error');
+                showToast('No detecté movimientos.', 'error');
                 return;
             }
             const detected = items.map(it => ({
@@ -822,10 +832,10 @@ export default function App() {
                 UNAUTHORIZED: 'Sesión caducada. Inicia sesión otra vez.',
                 EMAIL_NOT_ALLOWED: 'Tu email no tiene acceso.',
                 RATE_LIMITED: 'Demasiadas peticiones. Espera un momento.',
-                IMAGE_TOO_LARGE: 'Imagen demasiado grande tras compresión.',
+                IMAGE_TOO_LARGE: 'Archivo demasiado grande.',
                 AI_PROVIDER_ERROR: 'La IA falló. Reintenta.',
             };
-            showToast(map[err.message] || 'Error analizando imágenes.', 'error');
+            showToast(map[err.message] || 'Error analizando archivos.', 'error');
         } finally {
             setIsMagicLoading(false);
         }

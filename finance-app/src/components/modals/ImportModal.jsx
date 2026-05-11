@@ -70,7 +70,7 @@ const ImportModal = ({
                         <input
                             type="file"
                             multiple
-                            accept="image/*"
+                            accept="image/*,application/pdf,.pdf"
                             onChange={onHandleFileUpload}
                             className="absolute inset-0 opacity-0 cursor-pointer"
                             disabled={isLoading}
@@ -80,9 +80,9 @@ const ImportModal = ({
                                 {isLoading ? <Loader2 size={26} className="animate-spin" /> : <ImagePlus size={26} />}
                             </div>
                             <div>
-                                <p className="font-black text-base">{isLoading ? 'Analizando con IA…' : 'Subir capturas o fotos'}</p>
+                                <p className="font-black text-base">{isLoading ? 'Analizando con IA…' : 'Subir capturas, fotos o PDF'}</p>
                                 <p className={`text-[11px] font-bold mt-0.5 ${t.textSec}`}>
-                                    {isLoading ? 'Extrayendo importes y comercios…' : 'Toca para abrir galería · puedes subir varias a la vez'}
+                                    {isLoading ? 'Extrayendo importes y comercios…' : 'Capturas / tickets / extractos bancarios en PDF · varios a la vez'}
                                 </p>
                             </div>
                         </div>
@@ -241,15 +241,20 @@ const ImportModal = ({
                                     </div>
                                 ))}
                             </div>
-                            <button
-                                onClick={onConfirmAll}
-                                className={`w-full py-4 rounded-3xl font-black text-base ${activeColor.bg} text-white shadow-2xl hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2`}
-                            >
-                                <CheckCircle2 size={20} /> Aceptar todos
-                            </button>
                         </div>
                     )}
                 </div>
+
+                {total > 0 && (
+                    <div className={`p-4 border-t shrink-0 ${theme === 'dark' ? 'border-white/5 bg-[#0E0E11]/80' : 'border-gray-100 bg-white/80'} backdrop-blur`}>
+                        <button
+                            onClick={onConfirmAll}
+                            className={`w-full py-4 rounded-3xl font-black text-base ${activeColor.bg} text-white shadow-2xl hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2`}
+                        >
+                            <CheckCircle2 size={20} /> Validar todo · {total}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
