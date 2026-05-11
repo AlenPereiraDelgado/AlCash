@@ -75,9 +75,19 @@ const FixedExpensesView = ({
                                     return false;
                                 });
 
+                                const currentYear = new Date().getFullYear();
                                 const remindersOnDay = reminderTxs.filter(tx => {
                                     if (!tx.date) return false;
                                     const d = parseLocalDate(tx.date);
+                                    const freqTag = (tx.tags || []).find(t => t.startsWith('__rem_freq:'));
+                                    const freq = freqTag ? freqTag.replace('__rem_freq:', '').replace('__', '') : 'year';
+                                    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                                    if (day > daysInMonth) return false;
+                                    if (freq === 'week') {
+                                        const cellDate = new Date(currentYear, currentMonth, day);
+                                        return cellDate.getDay() === d.getDay();
+                                    }
+                                    if (freq === 'month') return d.getDate() === day;
                                     return d.getMonth() === currentMonth && d.getDate() === day;
                                 });
 
@@ -133,14 +143,19 @@ const FixedExpensesView = ({
                                                             <span className="text-gray-300 font-mono">{Number(e.amountVal).toFixed(2)}€</span>
                                                         </div>
                                                     ))}
-                                                    {remindersOnDay.map((r, idx) => (
+                                                    {remindersOnDay.map((r, idx) => {
+                                                        const fTag = (r.tags || []).find(t => t.startsWith('__rem_freq:'));
+                                                        const f = fTag ? fTag.replace('__rem_freq:', '').replace('__', '') : 'year';
+                                                        const fLabel = f === 'week' ? 'Aviso semanal' : f === 'month' ? 'Aviso mensual' : 'Aviso anual';
+                                                        return (
                                                         <div key={`r-${idx}`} className="text-[10px] border-b border-white/10 pb-1 last:border-0 last:pb-0">
-                                                            <span className="flex items-center gap-1 font-bold text-cyan-400"><Bell size={9} />Aviso anual</span>
+                                                            <span className="flex items-center gap-1 font-bold text-cyan-400"><Bell size={9} />{fLabel}</span>
                                                             <span className="font-bold text-white block truncate">{r.note || r.subCategory || r.category}</span>
                                                             <span className="text-gray-400 block truncate">{r.category}{r.subCategory ? ` · ${r.subCategory}` : ''}</span>
                                                             <span className="text-gray-300 font-mono">~{Number(r.amountVal).toFixed(2)}€</span>
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}

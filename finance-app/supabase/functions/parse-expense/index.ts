@@ -6,10 +6,9 @@
 //
 //  Seguridad / límites:
 //   1. Requiere JWT válido de Supabase.
-//   2. Verifica whitelist `allowed_emails`.
-//   3. Límite mensual: 2 usos / mes / usuario. Excepción: admin.
-//   4. Rate limiting in-memory (60 req / 60s) anti-abuso.
-//   5. CORS restringido.
+//   2. Límite mensual: 2 usos / mes / usuario. Excepción: admin.
+//   3. Rate limiting in-memory (60 req / 60s) anti-abuso.
+//   4. CORS restringido.
 //
 //  Despliegue:
 //    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
@@ -147,14 +146,6 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user?.email) return json({ error: 'UNAUTHORIZED' }, 401, cors);
-
-    // Whitelist
-    const { data: allowed } = await userClient
-        .from('allowed_emails')
-        .select('email')
-        .ilike('email', user.email)
-        .maybeSingle();
-    if (!allowed) return json({ error: 'EMAIL_NOT_ALLOWED' }, 403, cors);
 
     if (rateLimited(user.id)) return json({ error: 'RATE_LIMITED' }, 429, cors);
 

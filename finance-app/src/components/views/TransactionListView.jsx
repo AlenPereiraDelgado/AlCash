@@ -64,11 +64,27 @@ const TransactionListView = ({
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
+    const [reminderPickerTx, setReminderPickerTx] = useState(null);
+
     const toggleReminder = (tx) => {
         const tags = Array.isArray(tx.tags) ? tx.tags : [];
         const has = tags.includes('__reminder__');
-        const newTags = has ? tags.filter(t => t !== '__reminder__') : [...tags, '__reminder__'];
+        if (has) {
+            const newTags = tags.filter(t => t !== '__reminder__' && !t.startsWith('__rem_freq:'));
+            updateTransaction(tx.id, { tags: newTags });
+        } else {
+            setReminderPickerTx(tx);
+        }
+    };
+
+    const setReminderFreq = (freq) => {
+        const tx = reminderPickerTx;
+        if (!tx) return;
+        const tags = Array.isArray(tx.tags) ? tx.tags : [];
+        const cleaned = tags.filter(t => t !== '__reminder__' && !t.startsWith('__rem_freq:'));
+        const newTags = [...cleaned, '__reminder__', `__rem_freq:${freq}__`];
         updateTransaction(tx.id, { tags: newTags });
+        setReminderPickerTx(null);
     };
 
     const toggleSelectAll = () => {
@@ -205,7 +221,7 @@ const TransactionListView = ({
                     <button
                         onClick={() => { toggleReminder(tx); closeRow(); }}
                         className={`flex-1 flex items-center justify-center ${tx.tags?.includes('__reminder__') ? 'bg-cyan-500/30 text-cyan-300' : 'bg-cyan-500/15 text-cyan-400'}`}
-                        title="Aviso anual"
+                        title="Aviso recurrente"
                     >
                         <Bell size={18} />
                     </button>
@@ -433,7 +449,7 @@ const TransactionListView = ({
                                                 <button onClick={() => toggleSelect(tx.id)} className="p-2 rounded-xl hover:bg-white/5 transition-all">
                                                     {selectedIds.includes(tx.id) ? <CheckSquare size={18} className="text-blue-500" /> : <Square size={18} className="opacity-20 group-hover:opacity-100" />}
                                                 </button>
-                                                <button onClick={() => toggleReminder(tx)} title="Marcar como aviso anual" className="p-2 rounded-xl hover:bg-white/5 transition-all">
+                                                <button onClick={() => toggleReminder(tx)} title="Marcar como aviso recurrente" className="p-2 rounded-xl hover:bg-white/5 transition-all">
                                                     <Bell size={16} className={tx.tags?.includes('__reminder__') ? 'text-cyan-400 fill-cyan-400/30' : 'opacity-20 group-hover:opacity-100'} />
                                                 </button>
                                             </div>
@@ -453,7 +469,7 @@ const TransactionListView = ({
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs font-bold opacity-60">{tx.category}</span>
                                                 {tx.tags?.includes('__auto__') && <span className="flex items-center gap-1 text-[9px] w-fit px-2 py-0.5 rounded-lg bg-yellow-500/15 text-yellow-400 font-black"><Zap size={9} />Auto</span>}
-                                                {tx.tags?.includes('__reminder__') && <span className="flex items-center gap-1 text-[9px] w-fit px-2 py-0.5 rounded-lg bg-cyan-500/15 text-cyan-400 font-black"><Bell size={9} />Aviso anual</span>}
+                                                {tx.tags?.includes('__reminder__') && <span className="flex items-center gap-1 text-[9px] w-fit px-2 py-0.5 rounded-lg bg-cyan-500/15 text-cyan-400 font-black"><Bell size={9} />Aviso</span>}
                                                 {tx.originalCurrency !== 'EUR' && <span className="text-[9px] w-fit px-2 py-0.5 rounded-lg bg-yellow-500/10 text-yellow-500 font-black">{tx.originalCurrency}</span>}
                                             </div>
                                         </td>
@@ -494,6 +510,53 @@ const TransactionListView = ({
                         ))}
                     </div>
                 </>
+            )}
+
+            {reminderPickerTx && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in"
+                    onClick={() => setReminderPickerTx(null)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className={`w-full max-w-sm rounded-[32px] border p-6 shadow-2xl animate-in slide-in-from-bottom-4 ${theme === 'dark' ? 'bg-[#0E0E11] border-white/5' : 'bg-white border-gray-100'}`}
+                    >
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 flex items-center justify-center text-cyan-400">
+                                <Bell size={20} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-base font-black truncate">Frecuencia del aviso</h3>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest ${t.textSec}`}>¿Cada cuánto avisarte?</p>
+                            </div>
+                        </div>
+                        <p className={`text-xs mb-5 ${t.textSec}`}>
+                            <span className="font-bold truncate">{reminderPickerTx.note || reminderPickerTx.subCategory || reminderPickerTx.category}</span>
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { key: 'week', label: 'Semanal', hint: 'Mismo día sem.' },
+                                { key: 'month', label: 'Mensual', hint: 'Mismo día mes' },
+                                { key: 'year', label: 'Anual', hint: 'Mismo día año' },
+                            ].map(opt => (
+                                <button
+                                    key={opt.key}
+                                    onClick={() => setReminderFreq(opt.key)}
+                                    className={`p-3 rounded-2xl border transition-all hover:bg-cyan-500/10 hover:border-cyan-500/40 active:scale-95 ${theme === 'dark' ? 'bg-white/[0.03] border-white/5' : 'bg-gray-50 border-gray-100'}`}
+                                >
+                                    <span className="block text-xs font-black uppercase tracking-tight">{opt.label}</span>
+                                    <span className={`block text-[9px] mt-1 ${t.textSec}`}>{opt.hint}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setReminderPickerTx(null)}
+                            className={`mt-4 w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-widest ${t.textSec} ${t.hover}`}
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );
