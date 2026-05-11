@@ -818,12 +818,19 @@ export default function App() {
                 textLen: text?.length ?? 0,
                 textHead: text ? text.slice(0, 400) : null,
             });
-            const { items, remaining, isAdmin, limit, debug } = await parseExpense({ text, images, categories });
+            const { items, remaining, isAdmin, limit, truncated, debug } = await parseExpense({ text, images, categories });
             setAiQuota({ remaining, isAdmin, limit });
             if (items.length === 0) {
-                const info = debug ? ` · ${debug.textLen} chars · ${debug.stopReason || '?'} · [${(debug.blocks || []).join(',') || 'sin bloques'}]` : '';
-                showToast(`No detecté movimientos${info}.`, 'error');
+                if (truncated) {
+                    showToast('CSV demasiado largo — IA cortó la respuesta. Divide en archivos más pequeños.', 'error');
+                } else {
+                    const info = debug ? ` · ${debug.textLen} chars · ${debug.stopReason || '?'} · [${(debug.blocks || []).join(',') || 'sin bloques'}]` : '';
+                    showToast(`No detecté movimientos${info}.`, 'error');
+                }
                 return;
+            }
+            if (truncated) {
+                showToast('Aviso: IA cortó la respuesta. Faltan movimientos al final del archivo.', 'error');
             }
             const detected = items.map(it => ({
                 id: crypto.randomUUID(),

@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
             model: ANTHROPIC_MODEL,
-            max_tokens: 4096,
+            max_tokens: 16384,
             system: buildSystemPrompt(categories),
             tools: [TOOL],
             tool_choice: { type: 'tool', name: TOOL.name },
@@ -236,12 +236,15 @@ Deno.serve(async (req) => {
     // Extraer tool_use
     const block = (raw?.content ?? []).find((b: { type: string }) => b.type === 'tool_use');
     const items = Array.isArray(block?.input?.items) ? block.input.items : [];
+    const stopReason: string | null = raw?.stop_reason ?? null;
+    const truncated = stopReason === 'max_tokens';
     console.log('parse-expense result', {
         textLen: text?.length ?? 0,
         imageCount: images.length,
-        stopReason: raw?.stop_reason,
+        stopReason,
         contentBlocks: (raw?.content ?? []).map((b: { type: string }) => b.type),
         itemCount: items.length,
+        usage: raw?.usage,
         textHead: text ? text.slice(0, 400) : null,
     });
 
@@ -266,11 +269,13 @@ Deno.serve(async (req) => {
         remaining,
         isAdmin,
         limit: MONTHLY_LIMIT,
+        truncated,
         debug: {
             textLen: text?.length ?? 0,
             imageCount: images.length,
-            stopReason: raw?.stop_reason ?? null,
+            stopReason,
             blocks: (raw?.content ?? []).map((b: { type: string }) => b.type),
+            usage: raw?.usage ?? null,
         },
     }, 200, cors);
 });

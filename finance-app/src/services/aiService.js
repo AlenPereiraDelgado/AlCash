@@ -106,6 +106,7 @@ export const parseExpense = async ({ text, images, categories }) => {
         remaining: typeof data.remaining === 'number' ? data.remaining : null,
         isAdmin: !!data.isAdmin,
         limit: typeof data.limit === 'number' ? data.limit : null,
+        truncated: !!data.truncated,
         debug: data.debug || null,
     };
 };
