@@ -810,6 +810,14 @@ export default function App() {
                 showToast('No pude leer los archivos.', 'error');
                 return;
             }
+            // eslint-disable-next-line no-console
+            console.info('[AI upload] files', {
+                images: imgs.length,
+                pdfs: pdfs.length,
+                csvs: csvs.length,
+                textLen: text?.length ?? 0,
+                textHead: text ? text.slice(0, 400) : null,
+            });
             const { items, remaining, isAdmin, limit } = await parseExpense({ text, images, categories });
             setAiQuota({ remaining, isAdmin, limit });
             if (items.length === 0) {

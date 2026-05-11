@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     // Body validation
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') return json({ error: 'BAD_REQUEST' }, 400, cors);
-    const text: string | undefined = typeof body.text === 'string' ? body.text.slice(0, 60_000) : undefined;
+    const text: string | undefined = typeof body.text === 'string' ? body.text.slice(0, 180_000) : undefined;
     const images: string[] = Array.isArray(body.images) ? body.images.slice(0, 6) : [];
     const categories: CategoriesShape = body.categories && typeof body.categories === 'object'
         ? body.categories
@@ -229,12 +229,21 @@ Deno.serve(async (req) => {
 
     const raw = await upstream.json();
     if (!upstream.ok) {
+        console.error('Anthropic upstream error', upstream.status, raw);
         return json({ error: 'AI_PROVIDER_ERROR', status: upstream.status, detail: raw?.error?.message ?? null }, 502, cors);
     }
 
     // Extraer tool_use
     const block = (raw?.content ?? []).find((b: { type: string }) => b.type === 'tool_use');
     const items = Array.isArray(block?.input?.items) ? block.input.items : [];
+    console.log('parse-expense result', {
+        textLen: text?.length ?? 0,
+        imageCount: images.length,
+        stopReason: raw?.stop_reason,
+        contentBlocks: (raw?.content ?? []).map((b: { type: string }) => b.type),
+        itemCount: items.length,
+        textHead: text ? text.slice(0, 400) : null,
+    });
 
     // Incrementar contador (no admin) — atómico via upsert + rpc-like fallback
     let remaining: number | null = null;
