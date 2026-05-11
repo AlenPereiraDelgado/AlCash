@@ -70,7 +70,7 @@ const ImportModal = ({
                         <input
                             type="file"
                             multiple
-                            accept="image/*,application/pdf,.pdf"
+                            accept="image/*,application/pdf,.pdf,text/csv,.csv"
                             onChange={onHandleFileUpload}
                             className="absolute inset-0 opacity-0 cursor-pointer"
                             disabled={isLoading}
@@ -80,9 +80,9 @@ const ImportModal = ({
                                 {isLoading ? <Loader2 size={26} className="animate-spin" /> : <ImagePlus size={26} />}
                             </div>
                             <div>
-                                <p className="font-black text-base">{isLoading ? 'Analizando con IA…' : 'Subir capturas, fotos o PDF'}</p>
+                                <p className="font-black text-base">{isLoading ? 'Analizando con IA…' : 'Subir capturas, fotos, PDF o CSV'}</p>
                                 <p className={`text-[11px] font-bold mt-0.5 ${t.textSec}`}>
-                                    {isLoading ? 'Extrayendo importes y comercios…' : 'Capturas / tickets / extractos bancarios en PDF · varios a la vez'}
+                                    {isLoading ? 'Extrayendo importes y comercios…' : 'Capturas / tickets / extractos en PDF o CSV · varios a la vez'}
                                 </p>
                             </div>
                         </div>

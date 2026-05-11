@@ -35,6 +35,20 @@ export const pdfFileToText = async (file) => {
 export const isPdfFile = (file) =>
     file?.type === 'application/pdf' || /\.pdf$/i.test(file?.name || '');
 
+export const isCsvFile = (file) =>
+    file?.type === 'text/csv'
+    || file?.type === 'application/vnd.ms-excel'
+    || /\.csv$/i.test(file?.name || '');
+
+/** Lee un CSV como texto plano (UTF-8). */
+export const csvFileToText = (file) =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('READ_ERROR'));
+        reader.onload = (e) => resolve(String(e.target.result || ''));
+        reader.readAsText(file, 'utf-8');
+    });
+
 /** Comprime un File a data URL JPEG ≤ MAX_IMAGE_DIM y JPEG_QUALITY. */
 export const fileToCompressedDataUrl = (file) =>
     new Promise((resolve, reject) => {

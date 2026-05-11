@@ -42,7 +42,7 @@ import ImportModal from './components/modals/ImportModal';
 import JoinGroupModal from './components/modals/JoinGroupModal';
 import HouseholdGateModal from './components/modals/HouseholdGateModal';
 import JoinHouseholdModal from './components/modals/JoinHouseholdModal';
-import { parseExpense, fileToCompressedDataUrl, pdfFileToText, isPdfFile } from './services/aiService';
+import { parseExpense, fileToCompressedDataUrl, pdfFileToText, isPdfFile, csvFileToText, isCsvFile } from './services/aiService';
 import { ToastContainer } from './components/common/Toast';
 import { ProgressBar, CircularProgress } from './components/common/Progress';
 import CommandPalette from './components/common/CommandPalette';
@@ -797,12 +797,15 @@ export default function App() {
         setIsMagicLoading(true);
         try {
             const pdfs = files.filter(isPdfFile);
-            const imgs = files.filter(f => !isPdfFile(f));
-            const [images, pdfTexts] = await Promise.all([
+            const csvs = files.filter(f => !isPdfFile(f) && isCsvFile(f));
+            const imgs = files.filter(f => !isPdfFile(f) && !isCsvFile(f));
+            const [images, pdfTexts, csvTexts] = await Promise.all([
                 Promise.all(imgs.map(fileToCompressedDataUrl)),
                 Promise.all(pdfs.map(pdfFileToText)),
+                Promise.all(csvs.map(csvFileToText)),
             ]);
-            const text = pdfTexts.join('\n\n').trim() || undefined;
+            const labeledCsv = csvTexts.map((c, i) => `[CSV ${csvs[i].name}]\n${c}`);
+            const text = [...pdfTexts, ...labeledCsv].join('\n\n').trim() || undefined;
             if (images.length === 0 && !text) {
                 showToast('No pude leer los archivos.', 'error');
                 return;
