@@ -1705,6 +1705,7 @@ const LineComparativaCard = ({ chartData, chartCategoryData, selectedChartYear, 
     const startX = useRef(null);
     const startY = useRef(null);
     const lockedAxis = useRef(null);
+    const didSwipe = useRef(false);
     const ref = useRef(null);
     const [visible, setVisible] = useState(false);
     const [selectedCats, setSelectedCats] = useState(() => {
@@ -1748,7 +1749,7 @@ const LineComparativaCard = ({ chartData, chartCategoryData, selectedChartYear, 
         }, 200);
     };
 
-    const onTouchStart = (e) => { startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY; lockedAxis.current = null; setIsDragging(true); };
+    const onTouchStart = (e) => { startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY; lockedAxis.current = null; didSwipe.current = false; setIsDragging(true); };
     const onTouchMove = (e) => {
         if (startX.current == null) return;
         const dx = e.touches[0].clientX - startX.current;
@@ -1763,6 +1764,7 @@ const LineComparativaCard = ({ chartData, chartCategoryData, selectedChartYear, 
         startX.current = null;
         setIsDragging(false);
         setDragX(0);
+        if (lockedAxis.current === 'x') didSwipe.current = true;
         if (Math.abs(dx) > 60) animateTo(dx < 0 ? 1 : -1);
     };
 
@@ -1930,7 +1932,11 @@ const LineComparativaCard = ({ chartData, chartCategoryData, selectedChartYear, 
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
-                onClick={() => { if (mode === 1) setShowSelector(true); }}
+                onClick={() => {
+                    if (didSwipe.current) { didSwipe.current = false; return; }
+                    if (transitioning) return;
+                    if (mode === 1) setShowSelector(true);
+                }}
                 style={{ touchAction: 'pan-y', cursor: mode === 1 ? 'pointer' : 'default' }}
             >
                 <div
