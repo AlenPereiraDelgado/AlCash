@@ -12,13 +12,19 @@ const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
     useEffect(() => {
-        const handleResize = () => {
-            if (window.visualViewport) {
-                setIsKeyboardOpen(window.visualViewport.height < window.innerHeight * 0.85);
-            }
+        const isTypingTarget = (el) => {
+            if (!el) return false;
+            const tag = el.tagName;
+            return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
         };
-        window.visualViewport?.addEventListener('resize', handleResize);
-        return () => window.visualViewport?.removeEventListener('resize', handleResize);
+        const onFocusIn = (e) => { if (isTypingTarget(e.target)) setIsKeyboardOpen(true); };
+        const onFocusOut = () => setIsKeyboardOpen(false);
+        document.addEventListener('focusin', onFocusIn);
+        document.addEventListener('focusout', onFocusOut);
+        return () => {
+            document.removeEventListener('focusin', onFocusIn);
+            document.removeEventListener('focusout', onFocusOut);
+        };
     }, []);
 
     if (isKeyboardOpen) return null;

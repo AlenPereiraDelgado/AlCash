@@ -234,71 +234,150 @@ const SettingsView = () => {
         debts: { owed: 350, owe: 180 },
     };
 
+    const Shell = ({ title, pills, children }) => (
+        <div className={`p-4 md:p-5 rounded-[32px] border ${t.card}`}>
+            <div className="flex items-center gap-2 mb-3 flex-nowrap">
+                <h3 className="text-xs font-black tracking-tight uppercase whitespace-nowrap truncate">{title}</h3>
+                {pills && <div className="ml-auto flex items-center gap-1">{pills}</div>}
+            </div>
+            {children}
+        </div>
+    );
+    const Pill = ({ children, active }) => (
+        <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-1 rounded border ${active ? `${activeColor.bg} text-white border-transparent` : theme === 'dark' ? 'bg-white/[0.04] border-white/5 opacity-70' : 'bg-white border-gray-200 opacity-70'}`}>
+            {children}
+        </span>
+    );
+
     const renderWidgetPreview = (key) => {
-        if (key === 'comparativa' || key === 'lineComparativa') {
+        if (key === 'comparativa') {
             const max = Math.max(...MOCK.income, ...MOCK.expense);
             const totalInc = MOCK.income.reduce((s, v) => s + v, 0);
             const totalExp = MOCK.expense.reduce((s, v) => s + v, 0);
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
+                <Shell title="Comparativa" pills={<><Pill active>2026</Pill><Pill>Mensual</Pill></>}>
                     <div className="flex items-baseline justify-between mb-3">
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Últimos 6 meses</span>
-                        <div className="flex gap-3 text-[10px] font-black">
-                            <span className="text-emerald-500">+{fmtEur(totalInc)}</span>
-                            <span className="text-rose-500">-{fmtEur(totalExp)}</span>
+                        <div className="flex gap-3 text-[11px] font-black">
+                            <span className="text-emerald-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />+{fmtEur(totalInc)}</span>
+                            <span className="text-rose-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" />-{fmtEur(totalExp)}</span>
                         </div>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${t.textSec}`}>6 meses</span>
                     </div>
-                    <div className="flex items-end justify-between gap-2 h-36">
+                    <div className="flex items-end justify-between gap-2 h-40">
                         {MOCK.months.map((m, i) => (
                             <div key={m} className="flex-1 flex flex-col items-center gap-1.5">
-                                <div className="w-full flex items-end justify-center gap-1 h-28">
-                                    <div className="w-2/5 rounded-t-md bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-sm" style={{ height: `${(MOCK.income[i] / max) * 100}%` }} />
-                                    <div className="w-2/5 rounded-t-md bg-gradient-to-t from-rose-600 to-rose-400 shadow-sm" style={{ height: `${(MOCK.expense[i] / max) * 100}%` }} />
+                                <div className="w-full flex items-end justify-center gap-1 h-32">
+                                    <div className="w-2/5 rounded-t-md bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-[0_-2px_8px_rgba(16,185,129,0.3)]" style={{ height: `${(MOCK.income[i] / max) * 100}%` }} />
+                                    <div className="w-2/5 rounded-t-md bg-gradient-to-t from-rose-600 to-rose-400 shadow-[0_-2px_8px_rgba(244,63,94,0.3)]" style={{ height: `${(MOCK.expense[i] / max) * 100}%` }} />
                                 </div>
                                 <span className={`text-[9px] font-black uppercase ${t.textSec}`}>{m}</span>
                             </div>
                         ))}
                     </div>
-                </div>
+                </Shell>
             );
         }
-        if (key === 'pie' || key === 'radarHabitos') {
+        if (key === 'lineComparativa') {
+            const max = Math.max(...MOCK.income, ...MOCK.expense);
+            const points = (arr) => arr.map((v, i) => `${(i / (arr.length - 1)) * 100},${100 - (v / max) * 90}`).join(' ');
+            return (
+                <Shell title="Tendencias" pills={<Pill active>2026</Pill>}>
+                    <div className="flex items-baseline justify-between mb-3">
+                        <div className="flex gap-3 text-[11px] font-black">
+                            <span className="text-emerald-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />Ingresos</span>
+                            <span className="text-rose-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" />Gastos</span>
+                        </div>
+                    </div>
+                    <div className="relative h-40">
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+                            <defs>
+                                <linearGradient id="lineIncFill" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                                </linearGradient>
+                                <linearGradient id="lineExpFill" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.4" />
+                                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+                                </linearGradient>
+                            </defs>
+                            <polygon fill="url(#lineIncFill)" points={`0,100 ${points(MOCK.income)} 100,100`} />
+                            <polyline fill="none" stroke="#10b981" strokeWidth="1.5" points={points(MOCK.income)} vectorEffect="non-scaling-stroke" />
+                            <polygon fill="url(#lineExpFill)" points={`0,100 ${points(MOCK.expense)} 100,100`} />
+                            <polyline fill="none" stroke="#f43f5e" strokeWidth="1.5" points={points(MOCK.expense)} vectorEffect="non-scaling-stroke" />
+                        </svg>
+                    </div>
+                    <div className="flex justify-between mt-1 px-0.5">
+                        {MOCK.months.map(m => <span key={m} className={`text-[9px] font-black uppercase ${t.textSec}`}>{m}</span>)}
+                    </div>
+                </Shell>
+            );
+        }
+        if (key === 'pie') {
             const total = MOCK.cats.reduce((s, c) => s + c.amount, 0);
             let cumulative = 0;
             const R = 38, C = 2 * Math.PI * R;
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
+                <Shell title="Reparto" pills={<><Pill active>Mes</Pill><Pill>Año</Pill></>}>
                     <div className="flex items-center gap-4">
-                        <div className="relative shrink-0" style={{ width: 100, height: 100 }}>
-                            <svg width="100" height="100" viewBox="0 0 100 100" className="-rotate-90">
+                        <div className="relative shrink-0" style={{ width: 112, height: 112 }}>
+                            <svg width="112" height="112" viewBox="0 0 100 100" className="-rotate-90">
                                 <circle cx="50" cy="50" r={R} fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.05)' : '#e5e7eb'} strokeWidth="14" />
                                 {MOCK.cats.map(c => {
                                     const pct = c.amount / total;
                                     const dash = pct * C;
-                                    const seg = <circle key={c.name} cx="50" cy="50" r={R} fill="none" stroke={c.color} strokeWidth="14" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-cumulative} />;
+                                    const seg = <circle key={c.name} cx="50" cy="50" r={R} fill="none" stroke={c.color} strokeWidth="14" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-cumulative} strokeLinecap="butt" />;
                                     cumulative += dash;
                                     return seg;
                                 })}
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
                                 <span className="text-[9px] font-black uppercase opacity-50">Total</span>
-                                <span className="text-sm font-black">{fmtEur(total)}</span>
+                                <span className="text-sm font-black tabular-nums">{fmtEur(total)}</span>
                             </div>
                         </div>
-                        <div className="flex-1 space-y-1 min-w-0">
+                        <div className="flex-1 space-y-1.5 min-w-0">
                             {MOCK.cats.map(c => {
                                 const pct = (c.amount / total) * 100;
                                 return (
                                     <div key={c.name} className="flex items-center gap-2 text-[10px]">
-                                        <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: c.color }} />
+                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c.color, boxShadow: `0 0 8px ${c.color}55` }} />
                                         <span className="font-bold truncate flex-1">{c.name}</span>
-                                        <span className={`font-black ${t.textSec}`}>{pct.toFixed(0)}%</span>
+                                        <span className={`font-black tabular-nums ${t.textSec}`}>{pct.toFixed(0)}%</span>
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
-                </div>
+                </Shell>
+            );
+        }
+        if (key === 'radarHabitos') {
+            const cx = 75, cy = 75, R = 55;
+            const angles = MOCK.cats.map((_, i) => (i / MOCK.cats.length) * Math.PI * 2 - Math.PI / 2);
+            const maxAmt = Math.max(...MOCK.cats.map(c => c.amount));
+            const pts = MOCK.cats.map((c, i) => {
+                const r = (c.amount / maxAmt) * R;
+                return `${cx + Math.cos(angles[i]) * r},${cy + Math.sin(angles[i]) * r}`;
+            }).join(' ');
+            return (
+                <Shell title="Hábitos">
+                    <div className="flex items-center justify-center">
+                        <svg width="150" height="150" viewBox="0 0 150 150">
+                            {[0.33, 0.66, 1].map(s => (
+                                <circle key={s} cx={cx} cy={cy} r={R * s} fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#e5e7eb'} strokeWidth="1" />
+                            ))}
+                            {angles.map((a, i) => (
+                                <line key={i} x1={cx} y1={cy} x2={cx + Math.cos(a) * R} y2={cy + Math.sin(a) * R} stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#e5e7eb'} strokeWidth="1" />
+                            ))}
+                            <polygon points={pts} fill={activeColor.hex || '#3D5AFE'} fillOpacity="0.25" stroke={activeColor.hex || '#3D5AFE'} strokeWidth="2" />
+                            {MOCK.cats.map((c, i) => {
+                                const lx = cx + Math.cos(angles[i]) * (R + 12);
+                                const ly = cy + Math.sin(angles[i]) * (R + 12);
+                                return <text key={c.name} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="8" fontWeight="900" fill={theme === 'dark' ? '#fff' : '#000'}>{c.name.slice(0, 6)}</text>;
+                            })}
+                        </svg>
+                    </div>
+                </Shell>
             );
         }
         if (key === 'historical') {
@@ -307,127 +386,176 @@ const SettingsView = () => {
             const diff = thisMonth - avg;
             const max = Math.max(...MOCK.expense);
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} space-y-3`}>
-                    <div>
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Promedio 6 meses</p>
-                        <p className={`text-2xl font-black ${activeColor.text}`}>{fmtEur(avg)}</p>
+                <Shell title="Promedio">
+                    <div className="flex items-baseline justify-between mb-3">
+                        <div>
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Promedio 6 meses</p>
+                            <p className={`text-2xl font-black tabular-nums ${activeColor.text}`}>{fmtEur(avg)}</p>
+                        </div>
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-full ${diff > 0 ? 'bg-rose-500/15 text-rose-500' : 'bg-emerald-500/15 text-emerald-500'}`}>
+                            {diff > 0 ? '↑' : '↓'} {fmtEur(Math.abs(diff))}
+                        </span>
                     </div>
-                    <div className="flex items-end gap-1 h-12">
+                    <div className="flex items-end gap-1 h-16 mb-2">
                         {MOCK.expense.map((v, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center justify-end">
-                                <div className={`w-full rounded-t-sm ${i === MOCK.expense.length - 1 ? (diff > 0 ? 'bg-rose-500' : 'bg-emerald-500') : (theme === 'dark' ? 'bg-white/20' : 'bg-gray-300')}`} style={{ height: `${(v / max) * 100}%` }} />
+                            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1">
+                                <div className={`w-full rounded-t-md ${i === MOCK.expense.length - 1 ? (diff > 0 ? 'bg-rose-500' : 'bg-emerald-500') : (theme === 'dark' ? 'bg-white/15' : 'bg-gray-300')}`} style={{ height: `${(v / max) * 100}%` }} />
+                                <span className={`text-[9px] font-black ${t.textSec}`}>{MOCK.months[i]}</span>
                             </div>
                         ))}
                     </div>
-                    <div className="flex items-baseline justify-between pt-1 border-t border-white/5">
+                    <div className="flex items-baseline justify-between pt-2 border-t border-white/5">
                         <span className={`text-[10px] font-black uppercase ${t.textSec}`}>Este mes</span>
-                        <span className={`text-sm font-black ${diff > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{fmtEur(thisMonth)} ({diff > 0 ? '+' : ''}{fmtEur(diff)})</span>
+                        <span className={`text-sm font-black tabular-nums ${diff > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{fmtEur(thisMonth)}</span>
                     </div>
-                </div>
+                </Shell>
             );
         }
-        if (key === 'fixedInfo' || key === 'nextExpense') {
-            const list = key === 'nextExpense' ? MOCK.fixed.slice(0, 1) : MOCK.fixed;
-            const totalMonthly = MOCK.fixed.filter(r => r.type !== 'income').reduce((s, r) => s + r.amount, 0);
+        if (key === 'fixedInfo') {
+            const totalExp = MOCK.fixed.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+            const totalInc = MOCK.fixed.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0);
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} space-y-2.5`}>
-                    {key === 'fixedInfo' && (
-                        <div className="flex items-baseline justify-between pb-2 border-b border-white/5">
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Fijo mensual</span>
-                            <span className={`text-xl font-black ${activeColor.text}`}>{fmtEur(totalMonthly)}</span>
+                <Shell title="Gastos fijos" pills={<Pill active>Mensual</Pill>}>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className={`p-2.5 rounded-xl ${theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'} border border-emerald-500/20`}>
+                            <p className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Ingresos</p>
+                            <p className="text-base font-black text-emerald-500 tabular-nums">{fmtEur(totalInc)}</p>
                         </div>
-                    )}
-                    {list.map(r => (
-                        <div key={r.name} className={`flex items-center justify-between p-2.5 rounded-xl ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-white'}`}>
-                            <div className="min-w-0 flex-1 flex items-center gap-2.5">
-                                <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${r.type === 'income' ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
-                                    <span className={`text-xs font-black ${r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{r.type === 'income' ? '+' : '−'}</span>
+                        <div className={`p-2.5 rounded-xl ${theme === 'dark' ? 'bg-rose-500/10' : 'bg-rose-50'} border border-rose-500/20`}>
+                            <p className="text-[9px] font-black uppercase text-rose-500 tracking-widest">Gastos</p>
+                            <p className="text-base font-black text-rose-500 tabular-nums">{fmtEur(totalExp)}</p>
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        {MOCK.fixed.map(r => (
+                            <div key={r.name} className={`flex items-center justify-between p-2 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
+                                <div className="min-w-0 flex-1 flex items-center gap-2.5">
+                                    <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${r.type === 'income' ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
+                                        <span className={`text-xs font-black ${r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{r.type === 'income' ? '+' : '−'}</span>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-black truncate">{r.name}</p>
+                                        <p className={`text-[9px] font-bold ${t.textSec}`}>{r.date}</p>
+                                    </div>
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs font-black truncate">{r.name}</p>
-                                    <p className={`text-[10px] font-bold ${t.textSec}`}>{r.date}</p>
-                                </div>
+                                <span className={`text-xs font-black tabular-nums shrink-0 ${r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{fmtEur(r.amount)}</span>
                             </div>
-                            <span className={`text-sm font-black shrink-0 ${r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{fmtEur(r.amount)}</span>
+                        ))}
+                    </div>
+                </Shell>
+            );
+        }
+        if (key === 'nextExpense') {
+            const next = MOCK.fixed.filter(r => r.type === 'expense')[0];
+            return (
+                <Shell title="Próximos">
+                    <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} flex items-center gap-4`}>
+                        <div className="shrink-0 w-14 h-14 rounded-2xl bg-rose-500/15 flex items-center justify-center">
+                            <span className="text-2xl font-black text-rose-500">−</span>
                         </div>
-                    ))}
-                </div>
+                        <div className="min-w-0 flex-1">
+                            <p className={`text-[9px] font-black uppercase tracking-widest ${t.textSec} mb-0.5`}>Próximo cargo</p>
+                            <p className="text-base font-black truncate">{next.name}</p>
+                            <p className={`text-[10px] font-bold ${t.textSec}`}>{next.date} · En 4 días</p>
+                        </div>
+                        <span className="text-xl font-black text-rose-500 tabular-nums shrink-0">{fmtEur(next.amount)}</span>
+                    </div>
+                </Shell>
             );
         }
         if (key === 'salud' || key === 'saludGauge') {
             const inc = MOCK.income.reduce((s, v) => s + v, 0);
             const exp = MOCK.expense.reduce((s, v) => s + v, 0);
             const ratio = Math.max(0, Math.min(100, ((inc - exp) / inc) * 100));
-            const R = 42, C = 2 * Math.PI * R;
+            const R = 46, C = 2 * Math.PI * R;
             const dash = (ratio / 100) * C;
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} flex items-center gap-4`}>
-                    <div className="relative shrink-0" style={{ width: 110, height: 110 }}>
-                        <svg width="110" height="110" viewBox="0 0 110 110" className="-rotate-90">
-                            <circle cx="55" cy="55" r={R} fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#e5e7eb'} strokeWidth="10" />
-                            <circle cx="55" cy="55" r={R} fill="none" stroke="currentColor" className={activeColor.text} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${C - dash}`} />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className={`text-3xl font-black ${activeColor.text} leading-none`}>{ratio.toFixed(0)}</span>
-                            <span className="text-[9px] font-black uppercase opacity-50 mt-0.5">/ 100</span>
+                <Shell title="Salud Financiera" pills={<Pill active>Completo</Pill>}>
+                    <div className="flex items-center gap-4 mb-3">
+                        <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
+                            <svg width="120" height="120" viewBox="0 0 120 120" className="-rotate-90">
+                                <circle cx="60" cy="60" r={R} fill="none" stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#e5e7eb'} strokeWidth="10" />
+                                <circle cx="60" cy="60" r={R} fill="none" stroke="currentColor" className={activeColor.text} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${C - dash}`} style={{ filter: `drop-shadow(0 0 6px ${activeColor.hex || '#3D5AFE'}80)` }} />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className={`text-4xl font-black ${activeColor.text} leading-none tabular-nums`}>{ratio.toFixed(0)}</span>
+                                <span className="text-[9px] font-black uppercase opacity-50 mt-1 tracking-widest">/ 100</span>
+                            </div>
+                        </div>
+                        <div className="flex-1 space-y-1.5 min-w-0">
+                            <div className="flex items-baseline justify-between">
+                                <span className={`text-[10px] font-black uppercase ${t.textSec}`}>Tasa ahorro</span>
+                                <span className={`text-xs font-black ${activeColor.text} tabular-nums`}>{ratio.toFixed(0)}%</span>
+                            </div>
+                            <div className="flex items-baseline justify-between">
+                                <span className={`text-[10px] font-black uppercase ${t.textSec}`}>Reserva</span>
+                                <span className="text-xs font-black tabular-nums">3.2 meses</span>
+                            </div>
+                            <div className="flex items-baseline justify-between">
+                                <span className={`text-[10px] font-black uppercase ${t.textSec}`}>Volatilidad</span>
+                                <span className="text-xs font-black text-emerald-500">Baja</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="flex-1 space-y-2 min-w-0">
-                        <div>
-                            <p className={`text-[10px] font-black uppercase ${t.textSec}`}>Ingresos</p>
-                            <p className="text-sm font-black text-emerald-500">{fmtEur(inc)}</p>
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5">
+                        <div className="text-center">
+                            <p className={`text-[9px] font-black uppercase ${t.textSec}`}>Ingresos</p>
+                            <p className="text-xs font-black text-emerald-500 tabular-nums">{fmtEur(inc)}</p>
                         </div>
-                        <div>
-                            <p className={`text-[10px] font-black uppercase ${t.textSec}`}>Gastos</p>
-                            <p className="text-sm font-black text-rose-500">{fmtEur(exp)}</p>
+                        <div className="text-center">
+                            <p className={`text-[9px] font-black uppercase ${t.textSec}`}>Gastos</p>
+                            <p className="text-xs font-black text-rose-500 tabular-nums">{fmtEur(exp)}</p>
                         </div>
-                        <div>
-                            <p className={`text-[10px] font-black uppercase ${t.textSec}`}>Ahorro</p>
-                            <p className={`text-sm font-black ${activeColor.text}`}>{fmtEur(inc - exp)}</p>
+                        <div className="text-center">
+                            <p className={`text-[9px] font-black uppercase ${t.textSec}`}>Ahorro</p>
+                            <p className={`text-xs font-black ${activeColor.text} tabular-nums`}>{fmtEur(inc - exp)}</p>
                         </div>
                     </div>
-                </div>
+                </Shell>
             );
         }
         if (key === 'savings') {
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} space-y-3`}>
-                    {MOCK.goals.map(g => {
-                        const pct = Math.min(100, (g.current / g.target) * 100);
-                        return (
-                            <div key={g.name} className="space-y-1">
-                                <div className="flex justify-between text-[11px] font-bold">
-                                    <span className="truncate">{g.name}</span>
-                                    <span className={t.textSec}>{fmtEur(g.current)} / {fmtEur(g.target)}</span>
+                <Shell title="Metas de ahorro" pills={<Pill active>{MOCK.goals.length}</Pill>}>
+                    <div className="space-y-3">
+                        {MOCK.goals.map(g => {
+                            const pct = Math.min(100, (g.current / g.target) * 100);
+                            return (
+                                <div key={g.name} className={`p-2.5 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
+                                    <div className="flex justify-between text-[11px] font-bold mb-1.5">
+                                        <span className="truncate flex items-center gap-1.5"><Target size={11} className={activeColor.text} /> {g.name}</span>
+                                        <span className={`tabular-nums ${t.textSec}`}>{fmtEur(g.current)} / {fmtEur(g.target)}</span>
+                                    </div>
+                                    <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>
+                                        <div className={`h-full rounded-full ${activeColor.bg}`} style={{ width: `${pct}%`, boxShadow: `0 0 6px ${activeColor.hex || '#3D5AFE'}80` }} />
+                                    </div>
+                                    <p className={`text-[9px] font-black uppercase mt-1 ${activeColor.text}`}>{pct.toFixed(0)}% completado</p>
                                 </div>
-                                <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>
-                                    <div className={`h-full rounded-full ${activeColor.bg}`} style={{ width: `${pct}%` }} />
-                                </div>
-                                <p className={`text-[9px] font-black uppercase ${t.textSec}`}>{pct.toFixed(0)}% completado</p>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                </Shell>
             );
         }
         if (key === 'debts') {
+            const net = MOCK.debts.owed - MOCK.debts.owe;
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} space-y-3`}>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <Shell title="Deudas">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
                             <p className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">Te deben</p>
-                            <p className="text-2xl font-black text-emerald-500 mt-1">{fmtEur(MOCK.debts.owed)}</p>
+                            <p className="text-2xl font-black text-emerald-500 mt-1 tabular-nums">{fmtEur(MOCK.debts.owed)}</p>
                         </div>
-                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                        <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
                             <p className="text-[10px] font-black uppercase text-rose-500 tracking-widest">Debes</p>
-                            <p className="text-2xl font-black text-rose-500 mt-1">{fmtEur(MOCK.debts.owe)}</p>
+                            <p className="text-2xl font-black text-rose-500 mt-1 tabular-nums">{fmtEur(MOCK.debts.owe)}</p>
                         </div>
                     </div>
-                    <div className="flex items-baseline justify-between pt-2 border-t border-white/5">
-                        <span className={`text-[10px] font-black uppercase ${t.textSec}`}>Saldo neto</span>
-                        <span className={`text-base font-black ${MOCK.debts.owed - MOCK.debts.owe >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{fmtEur(MOCK.debts.owed - MOCK.debts.owe)}</span>
+                    <div className={`flex items-baseline justify-between p-2.5 rounded-xl ${net >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${t.textSec}`}>Saldo neto</span>
+                        <span className={`text-base font-black tabular-nums ${net >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{net >= 0 ? '+' : ''}{fmtEur(net)}</span>
                     </div>
-                </div>
+                </Shell>
             );
         }
         if (key === 'proyeccion') {
@@ -435,43 +563,50 @@ const SettingsView = () => {
             const avgExp = MOCK.expense.reduce((s, v) => s + v, 0) / MOCK.expense.length;
             const monthly = avgInc - avgExp;
             const rows = [
-                { label: '1 mes', value: monthly, big: false },
-                { label: '3 meses', value: monthly * 3, big: false },
-                { label: '6 meses', value: monthly * 6, big: false },
-                { label: '12 meses', value: monthly * 12, big: true },
+                { label: '1 mes', value: monthly },
+                { label: '3 meses', value: monthly * 3 },
+                { label: '6 meses', value: monthly * 6 },
             ];
+            const big = monthly * 12;
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} space-y-2`}>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec} mb-2`}>Proyección lineal</p>
-                    {rows.map(r => (
-                        <div key={r.label} className={`flex items-baseline justify-between ${r.big ? 'pt-2 border-t border-white/5' : ''}`}>
-                            <span className={`text-[11px] font-black uppercase ${t.textSec}`}>{r.label}</span>
-                            <span className={`${r.big ? 'text-2xl' : 'text-base'} font-black ${r.value >= 0 ? activeColor.text : 'text-rose-500'}`}>{fmtEur(r.value)}</span>
-                        </div>
-                    ))}
-                </div>
+                <Shell title="Proyección" pills={<Pill active>Lineal</Pill>}>
+                    <div className={`p-3 rounded-2xl mb-3 ${big >= 0 ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-rose-500/10 border border-rose-500/20'}`}>
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textSec} mb-1`}>En 12 meses</p>
+                        <p className={`text-3xl font-black tabular-nums ${big >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{big >= 0 ? '+' : ''}{fmtEur(big)}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                        {rows.map(r => (
+                            <div key={r.label} className={`p-2 rounded-xl text-center ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
+                                <p className={`text-[9px] font-black uppercase ${t.textSec}`}>{r.label}</p>
+                                <p className={`text-xs font-black tabular-nums ${r.value >= 0 ? activeColor.text : 'text-rose-500'}`}>{r.value >= 0 ? '+' : ''}{fmtEur(r.value)}</p>
+                            </div>
+                        ))}
+                    </div>
+                </Shell>
             );
         }
         if (key === 'budgets') {
             return (
-                <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} space-y-3`}>
-                    {MOCK.budgets.map(b => {
-                        const pct = Math.min(100, (b.spent / b.limit) * 100);
-                        const over = b.spent > b.limit;
-                        return (
-                            <div key={b.label} className="space-y-1">
-                                <div className="flex justify-between text-[11px] font-bold">
-                                    <span className="truncate">{b.label}</span>
-                                    <span className={over ? 'text-rose-500 font-black' : t.textSec}>{fmtEur(b.spent)} / {fmtEur(b.limit)}</span>
+                <Shell title="Presupuestos" pills={<Pill active>Mes</Pill>}>
+                    <div className="space-y-3">
+                        {MOCK.budgets.map(b => {
+                            const pct = Math.min(100, (b.spent / b.limit) * 100);
+                            const over = b.spent > b.limit;
+                            return (
+                                <div key={b.label} className={`p-2.5 rounded-xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'}`}>
+                                    <div className="flex justify-between text-[11px] font-bold mb-1.5">
+                                        <span className="truncate">{b.label}</span>
+                                        <span className={`tabular-nums ${over ? 'text-rose-500 font-black' : t.textSec}`}>{fmtEur(b.spent)} / {fmtEur(b.limit)}</span>
+                                    </div>
+                                    <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>
+                                        <div className={`h-full rounded-full ${over ? 'bg-rose-500' : activeColor.bg}`} style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <p className={`text-[9px] font-black uppercase mt-1 ${over ? 'text-rose-500' : t.textSec}`}>{over ? `Excedido +${fmtEur(b.spent - b.limit)}` : `${(100 - pct).toFixed(0)}% disponible`}</p>
                                 </div>
-                                <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>
-                                    <div className={`h-full rounded-full ${over ? 'bg-rose-500' : activeColor.bg}`} style={{ width: `${pct}%` }} />
-                                </div>
-                                <p className={`text-[9px] font-black uppercase ${over ? 'text-rose-500' : t.textSec}`}>{over ? `Excedido +${fmtEur(b.spent - b.limit)}` : `${(100 - pct).toFixed(0)}% disponible`}</p>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                </Shell>
             );
         }
         return <p className={`text-xs font-bold ${t.textSec}`}>Sin vista previa.</p>;
