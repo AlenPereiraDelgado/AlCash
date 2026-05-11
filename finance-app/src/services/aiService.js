@@ -40,14 +40,21 @@ export const isCsvFile = (file) =>
     || file?.type === 'application/vnd.ms-excel'
     || /\.csv$/i.test(file?.name || '');
 
-/** Lee un CSV como texto plano (UTF-8). */
-export const csvFileToText = (file) =>
-    new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('READ_ERROR'));
-        reader.onload = (e) => resolve(String(e.target.result || ''));
-        reader.readAsText(file, 'utf-8');
-    });
+/** Lee un CSV como texto. Intenta UTF-8; si detecta mojibake cae a Windows-1252
+ *  (típico en extractos de bancos españoles). */
+export const csvFileToText = async (file) => {
+    const buf = await file.arrayBuffer();
+    const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+    // U+FFFD = byte inválido en UTF-8 → re-decodifica como Windows-1252.
+    if (utf8.includes('\uFFFD')) {
+        try {
+            return new TextDecoder('windows-1252').decode(buf);
+        } catch {
+            return new TextDecoder('iso-8859-1').decode(buf);
+        }
+    }
+    return utf8;
+};
 
 /** Comprime un File a data URL JPEG ≤ MAX_IMAGE_DIM y JPEG_QUALITY. */
 export const fileToCompressedDataUrl = (file) =>

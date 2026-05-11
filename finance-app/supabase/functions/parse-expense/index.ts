@@ -80,7 +80,7 @@ const buildSystemPrompt = (categories: CategoriesShape) => {
     const subsMap: Record<string, string[]> = {};
     for (const [c, subs] of Object.entries(categories.expense || {})) subsMap[c] = subs;
     for (const [c, subs] of Object.entries(categories.income || {})) subsMap[c] = subs;
-    return `Eres un parser financiero para la app AlCash. Extrae movimientos a partir del input del usuario (texto y/o imagen de notificación bancaria, ticket o extracto).
+    return `Eres un parser financiero para la app AlCash. Extrae movimientos a partir del input (texto, CSV/extracto bancario, PDF o imagen de notificación bancaria/ticket).
 
 HOY: ${today}
 
@@ -89,14 +89,15 @@ CATEGORÍAS DE INGRESO: ${incomeList}
 SUBCATEGORÍAS POR CATEGORÍA: ${JSON.stringify(subsMap)}
 
 REGLAS:
-- type: "expense" o "income".
-- amountVal: número en euros sin signo.
-- date: YYYY-MM-DD. Si la entrada no menciona fecha, usa HOY.
-- category: OBLIGATORIO escoger una de las listadas arriba para el type correspondiente. La que mejor encaje.
+- type: "expense" si el importe es salida (negativo, cargo, débito); "income" si es entrada (positivo, abono, crédito).
+- amountVal: número en euros SIN signo. Convierte coma decimal a punto (12,34 → 12.34). Quita separadores de miles (1.234,56 → 1234.56).
+- date: YYYY-MM-DD. En CSV/extractos respeta la fecha de la operación. Acepta DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD. Si falta, usa HOY.
+- category: OBLIGATORIO escoger una de las listadas arriba para el type correspondiente. La que mejor encaje según el concepto.
 - subCategory: solo si es OBVIO. Si dudas, omite.
-- note: breve y limpio (comercio o motivo). Omite si no aporta nada nuevo.
-- Si la imagen contiene varios cargos, devuelve uno por cargo.
-- Si no detectas movimiento financiero, items: [].
+- note: comercio / contrapartida / concepto limpio (sin códigos ni referencias largas). Omite si redundante con la categoría.
+- CSV / extracto: cada fila de operación = un item. Ignora cabeceras, totales, saldos y filas vacías. Separador suele ser ";" o ",". Decimal "," o ".".
+- Si el input es una sola entrada, devuelve un solo item; si son varias, todas.
+- Si no detectas ningún movimiento real, items: [].
 - NO inventes datos. NO razones en voz alta.`;
 };
 
