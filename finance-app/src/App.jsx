@@ -818,10 +818,11 @@ export default function App() {
                 textLen: text?.length ?? 0,
                 textHead: text ? text.slice(0, 400) : null,
             });
-            const { items, remaining, isAdmin, limit } = await parseExpense({ text, images, categories });
+            const { items, remaining, isAdmin, limit, debug } = await parseExpense({ text, images, categories });
             setAiQuota({ remaining, isAdmin, limit });
             if (items.length === 0) {
-                showToast('No detecté movimientos.', 'error');
+                const info = debug ? ` · ${debug.textLen} chars · ${debug.stopReason || '?'} · [${(debug.blocks || []).join(',') || 'sin bloques'}]` : '';
+                showToast(`No detecté movimientos${info}.`, 'error');
                 return;
             }
             const detected = items.map(it => ({

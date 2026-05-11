@@ -261,5 +261,16 @@ Deno.serve(async (req) => {
         remaining = Math.max(0, MONTHLY_LIMIT - newCount);
     }
 
-    return json({ items, remaining, isAdmin, limit: MONTHLY_LIMIT }, 200, cors);
+    return json({
+        items,
+        remaining,
+        isAdmin,
+        limit: MONTHLY_LIMIT,
+        debug: {
+            textLen: text?.length ?? 0,
+            imageCount: images.length,
+            stopReason: raw?.stop_reason ?? null,
+            blocks: (raw?.content ?? []).map((b: { type: string }) => b.type),
+        },
+    }, 200, cors);
 });
