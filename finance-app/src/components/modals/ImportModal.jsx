@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFinance } from '../../contexts/FinanceContext';
 import { X, Sparkles, ImagePlus, TrendingUp, TrendingDown, Repeat, Trash2, Check, CheckCircle2, Loader2 } from 'lucide-react';
@@ -14,11 +15,13 @@ const ImportModal = ({
     aiQuota,
 }) => {
     const { theme, t, activeColor, user } = useAuth();
-    const { categories } = useFinance();
+    const { categories, addCustomCategory, addSubCategory } = useFinance();
+    const [editingAmountId, setEditingAmountId] = useState(null);
     if (!isOpen) return null;
 
     const total = pendingImports.length;
-    const isAdminLocal = (user?.email || '').toLowerCase() === 'alenpdelgado@gmail.com';
+    const ADMINS = ['alenpdelgado@gmail.com', 'laraoliveirarodriguez8@gmail.com'];
+    const isAdminLocal = ADMINS.includes((user?.email || '').toLowerCase());
     const showCounter = !isAdminLocal && !aiQuota?.isAdmin;
     const counterText = typeof aiQuota?.remaining === 'number'
         ? `${aiQuota.remaining} / ${aiQuota.limit ?? 2} usos IA restantes`
@@ -131,36 +134,83 @@ const ImportModal = ({
                                                 />
                                                 <select
                                                     value={item.category}
-                                                    onChange={(e) => {
+                                                    onChange={async (e) => {
+                                                        const v = e.target.value;
+                                                        if (v === '__new__') {
+                                                            const name = window.prompt('Nombre de la nueva categoría:')?.trim();
+                                                            if (!name) return;
+                                                            await addCustomCategory(item.type, name);
+                                                            const next = [...pendingImports];
+                                                            next[idx] = { ...next[idx], category: name, subCategory: '' };
+                                                            setPendingImports(next);
+                                                            return;
+                                                        }
                                                         const next = [...pendingImports];
-                                                        next[idx] = { ...next[idx], category: e.target.value, subCategory: '' };
+                                                        next[idx] = { ...next[idx], category: v, subCategory: '' };
                                                         setPendingImports(next);
                                                     }}
                                                     className={`text-[10px] font-bold bg-transparent outline-none uppercase ${t.textSec} cursor-pointer`}
                                                 >
                                                     {Object.keys(categories[item.type] || {}).map(c => <option key={c} value={c}>{c}</option>)}
+                                                    <option value="__new__">+ Nueva categoría…</option>
                                                 </select>
-                                                {(categories[item.type]?.[item.category] || []).length > 0 && (
-                                                    <select
-                                                        value={item.subCategory || ''}
-                                                        onChange={(e) => {
+                                                <select
+                                                    value={item.subCategory || ''}
+                                                    onChange={async (e) => {
+                                                        const v = e.target.value;
+                                                        if (v === '__new__') {
+                                                            const name = window.prompt('Nombre de la nueva subcategoría:')?.trim();
+                                                            if (!name) return;
+                                                            await addSubCategory(item.type, item.category, name);
                                                             const next = [...pendingImports];
-                                                            next[idx] = { ...next[idx], subCategory: e.target.value };
+                                                            next[idx] = { ...next[idx], subCategory: name };
                                                             setPendingImports(next);
-                                                        }}
-                                                        className={`text-[10px] font-bold bg-transparent outline-none uppercase ${t.textSec} cursor-pointer`}
-                                                    >
-                                                        <option value="">— sub —</option>
-                                                        {(categories[item.type]?.[item.category] || []).map(s => <option key={s} value={s}>{s}</option>)}
-                                                    </select>
-                                                )}
+                                                            return;
+                                                        }
+                                                        const next = [...pendingImports];
+                                                        next[idx] = { ...next[idx], subCategory: v };
+                                                        setPendingImports(next);
+                                                    }}
+                                                    className={`text-[10px] font-bold bg-transparent outline-none uppercase ${t.textSec} cursor-pointer`}
+                                                >
+                                                    <option value="">— sub —</option>
+                                                    {(categories[item.type]?.[item.category] || []).map(s => <option key={s} value={s}>{s}</option>)}
+                                                    <option value="__new__">+ Nueva subcategoría…</option>
+                                                </select>
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="flex items-center gap-2">
-                                                <span className={`font-black text-lg ${item.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>
-                                                    {item.type === 'expense' ? '-' : '+'}{Number(item.amountVal).toFixed(2)}€
-                                                </span>
+                                                {editingAmountId === item.id ? (
+                                                    <div className={`flex items-center gap-0.5 font-black text-lg ${item.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>
+                                                        <span>{item.type === 'expense' ? '-' : '+'}</span>
+                                                        <input
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            step="0.01"
+                                                            autoFocus
+                                                            value={item.amountVal}
+                                                            onChange={(e) => {
+                                                                const v = e.target.value;
+                                                                const next = [...pendingImports];
+                                                                next[idx] = { ...next[idx], amountVal: v === '' ? 0 : Number(v) };
+                                                                setPendingImports(next);
+                                                            }}
+                                                            onBlur={() => setEditingAmountId(null)}
+                                                            onKeyDown={(e) => { if (e.key === 'Enter') setEditingAmountId(null); }}
+                                                            className="w-24 bg-transparent outline-none border-b border-current font-black text-lg"
+                                                        />
+                                                        <span>€</span>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setEditingAmountId(item.id)}
+                                                        className={`font-black text-lg cursor-text hover:underline decoration-dotted ${item.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}
+                                                        title="Tocar para editar importe"
+                                                    >
+                                                        {item.type === 'expense' ? '-' : '+'}{Number(item.amountVal).toFixed(2)}€
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => {
                                                         const next = [...pendingImports];

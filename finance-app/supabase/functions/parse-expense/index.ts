@@ -149,8 +149,12 @@ Deno.serve(async (req) => {
 
     if (rateLimited(user.id)) return json({ error: 'RATE_LIMITED' }, 429, cors);
 
-    const adminEmail = (Deno.env.get('ADMIN_EMAIL') ?? '').toLowerCase();
-    const isAdmin = !!adminEmail && user.email.toLowerCase() === adminEmail;
+    const adminEmails = (Deno.env.get('ADMIN_EMAIL') ?? '')
+        .toLowerCase()
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    const isAdmin = adminEmails.includes(user.email.toLowerCase());
 
     // Body validation
     const body = await req.json().catch(() => null);
