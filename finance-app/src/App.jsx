@@ -198,6 +198,9 @@ export default function App() {
 
 
     const [view, setView] = useState('dashboard');
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }, [view]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
