@@ -23,6 +23,9 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5';
 const MONTHLY_LIMIT = 2;
+// Claude Haiku 4.5 pricing (USD per token)
+const COST_INPUT_PER_TOKEN = 1 / 1_000_000;
+const COST_OUTPUT_PER_TOKEN = 5 / 1_000_000;
 
 // ---------- CORS ----------
 const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
@@ -247,6 +250,27 @@ Deno.serve(async (req) => {
         usage: raw?.usage,
         textHead: text ? text.slice(0, 400) : null,
     });
+
+    // Log ai_calls (best-effort, no falla request si peta)
+    try {
+        const inTok = Number(raw?.usage?.input_tokens ?? 0);
+        const outTok = Number(raw?.usage?.output_tokens ?? 0);
+        const cost = inTok * COST_INPUT_PER_TOKEN + outTok * COST_OUTPUT_PER_TOKEN;
+        await adminClient.from('ai_calls').insert({
+            user_id: user.id,
+            email: user.email,
+            input_tokens: inTok,
+            output_tokens: outTok,
+            cost_usd: cost,
+            ok: true,
+            text_len: text?.length ?? 0,
+            image_count: images.length,
+            item_count: items.length,
+            stop_reason: stopReason,
+        });
+    } catch (e) {
+        console.error('ai_calls insert failed', e);
+    }
 
     // Incrementar contador (no admin) — atómico via upsert + rpc-like fallback
     let remaining: number | null = null;

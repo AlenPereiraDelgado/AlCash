@@ -33,6 +33,7 @@ const FixedExpensesView = React.lazy(() => import('./components/views/FixedExpen
 const GoalsView = React.lazy(() => import('./components/views/GoalsView'));
 const DebtsView = React.lazy(() => import('./components/views/DebtsView'));
 const SettingsView = React.lazy(() => import('./components/views/SettingsView'));
+const AdminView = React.lazy(() => import('./components/views/AdminView'));
 
 import TransactionModal from './components/modals/TransactionModal';
 import AutomationModal from './components/modals/AutomationModal';
@@ -197,9 +198,19 @@ export default function App() {
 
 
 
-    const [view, setView] = useState('dashboard');
+    const [view, setView] = useState(() =>
+        typeof window !== 'undefined' && window.location.hash === '#admin' ? 'admin' : 'dashboard'
+    );
     useEffect(() => {
         window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }, [view]);
+    useEffect(() => {
+        const onHash = () => {
+            if (window.location.hash === '#admin') setView('admin');
+            else if (view === 'admin') setView('dashboard');
+        };
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
     }, [view]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -1021,7 +1032,7 @@ export default function App() {
                         <header className="flex justify-center mb-3">
                             <div className="relative inline-flex items-center px-4">
                                 <h2 className="relative text-2xl md:text-3xl font-black tracking-tight">
-                                    {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'settings' ? 'Configuración' : view === 'fixed' ? 'Gastos Fijos' : 'Gestión'}
+                                    {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'settings' ? 'Configuración' : view === 'fixed' ? 'Gastos Fijos' : view === 'admin' ? 'Panel Admin' : 'Gestión'}
                                 </h2>
                             </div>
                         </header>
@@ -1115,6 +1126,8 @@ export default function App() {
                         {view === 'debts' && <DebtsView />}
 
                         {view === 'settings' && <SettingsView />}
+
+                        {view === 'admin' && <AdminView />}
                     </React.Suspense>
                 </ErrorBoundary>
                 </>
