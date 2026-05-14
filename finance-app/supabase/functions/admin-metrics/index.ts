@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
                 tokens_out: v.tokensOut,
                 last_ts: v.lastTs,
             })).sort((a, b) => b.cost_usd - a.cost_usd),
-            recentCalls: (aiCalls ?? []).slice(0, 50),
+            allCalls: aiCalls ?? [],
         },
     }, 200, cors);
 });

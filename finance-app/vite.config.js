@@ -25,7 +25,7 @@ export default defineConfig({
         start_url: '/AlCash/',
         icons: [
           {
-            src: '/AlCash/alcash-favicon-v2.png',
+            src: '/AlCash/alcash-favicon-v3.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',

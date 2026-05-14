@@ -897,7 +897,7 @@ export default function App() {
                 <div className="w-full max-w-md bg-[#111111] border border-white/5 p-8 rounded-[40px] shadow-2xl">
                     <div className="flex justify-center mb-6">
                         <img
-                            src={`${import.meta.env.BASE_URL}alcash-favicon-v2.png`}
+                            src={`${import.meta.env.BASE_URL}alcash-favicon-v3.png`}
                             alt="AlCash"
                             className="w-24 h-24 rounded-3xl shadow-2xl shadow-amber-500/20"
                         />

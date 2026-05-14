@@ -1,19 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, Activity, Zap, DollarSign, RefreshCcw, Calendar, TrendingUp } from 'lucide-react';
+import { Users, DollarSign, RefreshCcw, Calendar, TrendingUp, Search } from 'lucide-react';
 
 const ADMIN_EMAILS = ['alenpdelgado@gmail.com', 'laraoliveirarodriguez8@gmail.com'];
 
 const fmtUsd = (n) => `$${(Number(n) || 0).toFixed(4)}`;
-const fmtEur = (n) => `${((Number(n) || 0) * 0.92).toFixed(4)}€`; // estimación USD→EUR
+const fmtEur = (n) => `${((Number(n) || 0) * 0.92).toFixed(4)}€`;
 const fmtDate = (s) => s ? new Date(s).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtDateOnly = (s) => s ? new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const daysAgoStr = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 
 const StatCard = ({ icon: Icon, label, value, sub, color, t }) => (
     <div className={`p-4 rounded-2xl border ${t.card}`}>
         <div className="flex items-center justify-between mb-2">
-            <span className={`text-[10px] font-black uppercase tracking-widest opacity-60`}>{label}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span>
             <Icon size={16} className={color} />
         </div>
         <p className={`text-2xl font-black tabular-nums ${color}`}>{value}</p>
@@ -21,11 +23,41 @@ const StatCard = ({ icon: Icon, label, value, sub, color, t }) => (
     </div>
 );
 
+const RangeBars = ({ entries, t, theme }) => {
+    if (!entries.length) {
+        return <p className="text-xs font-bold opacity-50 py-4 text-center">Sin datos en este rango.</p>;
+    }
+    const max = Math.max(...entries.map(([, v]) => v.cost), 0.0001);
+    return (
+        <div className="space-y-2">
+            {entries.map(([m, v]) => (
+                <div key={m} className="flex items-center gap-3">
+                    <span className="text-[11px] font-black tabular-nums w-16 shrink-0 opacity-70">{m}</span>
+                    <div className={`flex-1 h-6 rounded-md ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'} relative overflow-hidden`}>
+                        <div
+                            className="absolute inset-y-0 left-0 bg-purple-500/70 rounded-md transition-all"
+                            style={{ width: `${(v.cost / max) * 100}%` }}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-end pr-2 text-[10px] font-black tabular-nums text-white mix-blend-difference">
+                            {fmtUsd(v.cost)} · {v.calls} call
+                        </span>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const AdminView = () => {
     const { user, t, theme } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    const [rangePreset, setRangePreset] = useState('30d'); // today, 7d, 30d, month, all, custom
+    const [fromDate, setFromDate] = useState(daysAgoStr(30));
+    const [toDate, setToDate] = useState(todayStr());
+    const [search, setSearch] = useState('');
 
     const fetchMetrics = async () => {
         setLoading(true);
@@ -43,6 +75,69 @@ const AdminView = () => {
 
     useEffect(() => { fetchMetrics(); /* eslint-disable-next-line */ }, []);
 
+    const applyPreset = (p) => {
+        setRangePreset(p);
+        if (p === 'today') { setFromDate(todayStr()); setToDate(todayStr()); }
+        else if (p === '7d') { setFromDate(daysAgoStr(7)); setToDate(todayStr()); }
+        else if (p === '30d') { setFromDate(daysAgoStr(30)); setToDate(todayStr()); }
+        else if (p === 'month') {
+            const d = new Date();
+            const first = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+            setFromDate(first); setToDate(todayStr());
+        }
+        else if (p === 'all') { setFromDate('2020-01-01'); setToDate(todayStr()); }
+    };
+
+    // Filtrado y recálculo client-side
+    const filtered = useMemo(() => {
+        if (!data) return null;
+        const fromTs = new Date(fromDate + 'T00:00:00').getTime();
+        const toTs = new Date(toDate + 'T23:59:59').getTime();
+        const calls = (data.ai.allCalls || []).filter(c => {
+            const ts = new Date(c.ts).getTime();
+            return ts >= fromTs && ts <= toTs;
+        });
+        const byMonth = {};
+        const byUser = {};
+        let totalCalls = 0, totalCost = 0, totalIn = 0, totalOut = 0;
+        for (const c of calls) {
+            totalCalls += 1;
+            const cost = Number(c.cost_usd) || 0;
+            totalCost += cost;
+            totalIn += Number(c.input_tokens) || 0;
+            totalOut += Number(c.output_tokens) || 0;
+            const mk = c.ts.slice(0, 7);
+            if (!byMonth[mk]) byMonth[mk] = { calls: 0, cost: 0 };
+            byMonth[mk].calls += 1;
+            byMonth[mk].cost += cost;
+
+            const uk = c.user_id || c.email || 'desconocido';
+            if (!byUser[uk]) byUser[uk] = { email: c.email, calls: 0, cost: 0, in: 0, out: 0, last: null };
+            byUser[uk].calls += 1;
+            byUser[uk].cost += cost;
+            byUser[uk].in += Number(c.input_tokens) || 0;
+            byUser[uk].out += Number(c.output_tokens) || 0;
+            if (!byUser[uk].last || c.ts > byUser[uk].last) byUser[uk].last = c.ts;
+        }
+        return { calls, byMonth, byUser, totalCalls, totalCost, totalIn, totalOut };
+    }, [data, fromDate, toDate]);
+
+    // Filtrado tabla usuarios por search
+    const filteredUsers = useMemo(() => {
+        if (!data?.users?.list) return [];
+        const q = search.trim().toLowerCase();
+        const list = data.users.list.map(u => {
+            const u2 = filtered?.byUser[u.id];
+            return {
+                ...u,
+                ai_calls_range: u2?.calls ?? 0,
+                ai_cost_range: u2?.cost ?? 0,
+            };
+        });
+        if (!q) return list;
+        return list.filter(u => (u.email || '').toLowerCase().includes(q) || (u.id || '').toLowerCase().includes(q));
+    }, [data, filtered, search]);
+
     if (!user || !ADMIN_EMAILS.includes((user.email || '').toLowerCase())) {
         return (
             <div className="p-8 text-center">
@@ -51,10 +146,7 @@ const AdminView = () => {
             </div>
         );
     }
-
-    if (loading && !data) {
-        return <div className="p-8 text-center text-sm font-bold opacity-60">Cargando métricas…</div>;
-    }
+    if (loading && !data) return <div className="p-8 text-center text-sm font-bold opacity-60">Cargando métricas…</div>;
     if (error && !data) {
         return (
             <div className="p-8 text-center">
@@ -63,15 +155,40 @@ const AdminView = () => {
             </div>
         );
     }
-    if (!data) return null;
+    if (!data || !filtered) return null;
 
-    const { users, transactions, ai } = data;
-    const aiByMonthEntries = Object.entries(ai.byMonth || {}).sort((a, b) => b[0].localeCompare(a[0]));
+    const { users } = data;
+    const byMonthEntries = Object.entries(filtered.byMonth).sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Si no hay meses en rango, generar al menos los meses del rango con 0
+    const monthsInRange = (() => {
+        const r = [];
+        const start = new Date(fromDate);
+        const end = new Date(toDate);
+        const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+        while (cur <= end) {
+            const k = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`;
+            r.push(k);
+            cur.setMonth(cur.getMonth() + 1);
+        }
+        return r;
+    })();
+    const fullMonthEntries = monthsInRange.map(m => [m, filtered.byMonth[m] || { calls: 0, cost: 0 }]);
+
     const signupsByMonthEntries = Object.entries(users.signupsByMonth || {}).sort((a, b) => b[0].localeCompare(a[0]));
+
+    const presets = [
+        { id: 'today', label: 'Hoy' },
+        { id: '7d', label: '7d' },
+        { id: '30d', label: '30d' },
+        { id: 'month', label: 'Mes' },
+        { id: 'all', label: 'Todo' },
+        { id: 'custom', label: 'Custom' },
+    ];
 
     return (
         <div className="space-y-6 animate-in fade-in">
-            <header className="flex items-center justify-between">
+            <header className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-black tracking-tight">Panel Admin</h1>
                     <p className="text-xs font-bold opacity-50 mt-1">Generado {fmtDate(data.generated_at)}</p>
@@ -81,35 +198,56 @@ const AdminView = () => {
                 </button>
             </header>
 
-            {/* TOPLINE */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard t={t} icon={Users} label="Usuarios" value={users.total} sub={`${users.active7d} activos 7d · ${users.active30d} 30d`} color="text-blue-500" />
-                <StatCard t={t} icon={Activity} label="Transacciones" value={transactions.total} sub="total registradas" color="text-emerald-500" />
-                <StatCard t={t} icon={Zap} label="Llamadas IA" value={ai.totalCalls} sub={`${(ai.totalInputTokens / 1000).toFixed(1)}k in · ${(ai.totalOutputTokens / 1000).toFixed(1)}k out`} color="text-purple-500" />
-                <StatCard t={t} icon={DollarSign} label="Coste IA total" value={fmtUsd(ai.totalCostUsd)} sub={`≈ ${fmtEur(ai.totalCostUsd)}`} color="text-orange-500" />
-            </div>
-
-            {/* USER ACTIVITY BREAKDOWN */}
-            <div className={`p-4 rounded-2xl border ${t.card}`}>
-                <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70">Estado usuarios</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div><p className="text-2xl font-black text-emerald-500 tabular-nums">{users.active7d}</p><p className="text-[10px] font-bold opacity-60 uppercase">Activos 7 días</p></div>
-                    <div><p className="text-2xl font-black text-blue-500 tabular-nums">{users.active30d}</p><p className="text-[10px] font-bold opacity-60 uppercase">Activos 8-30 días</p></div>
-                    <div><p className="text-2xl font-black text-orange-500 tabular-nums">{users.inactive}</p><p className="text-[10px] font-bold opacity-60 uppercase">Inactivos +30d</p></div>
-                    <div><p className="text-2xl font-black text-red-500 tabular-nums">{users.neverUsed}</p><p className="text-[10px] font-bold opacity-60 uppercase">Nunca entraron</p></div>
+            {/* FILTRO RANGO */}
+            <div className={`p-3 rounded-2xl border ${t.card} flex flex-wrap items-center gap-2`}>
+                {presets.map(p => (
+                    <button
+                        key={p.id}
+                        onClick={() => applyPreset(p.id)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black ${rangePreset === p.id ? `${theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'}` : `${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}`}
+                    >
+                        {p.label}
+                    </button>
+                ))}
+                <div className="flex items-center gap-2 ml-auto">
+                    <input
+                        type="date"
+                        value={fromDate}
+                        onChange={e => { setFromDate(e.target.value); setRangePreset('custom'); }}
+                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
+                    />
+                    <span className="text-[11px] opacity-50">→</span>
+                    <input
+                        type="date"
+                        value={toDate}
+                        onChange={e => { setToDate(e.target.value); setRangePreset('custom'); }}
+                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
+                    />
                 </div>
             </div>
 
-            {/* COSTE IA POR MES */}
+            {/* TOPLINE: solo Usuarios + Coste rango */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard t={t} icon={Users} label="Usuarios total" value={users.total} sub={`${users.active7d} activos 7d`} color="text-blue-500" />
+                <StatCard t={t} icon={Users} label="Activos 30d" value={users.active30d + users.active7d} sub={`${users.inactive} inactivos · ${users.neverUsed} sin entrar`} color="text-emerald-500" />
+                <StatCard t={t} icon={DollarSign} label="Coste IA rango" value={fmtUsd(filtered.totalCost)} sub={`${filtered.totalCalls} llamadas · ≈ ${fmtEur(filtered.totalCost)}`} color="text-orange-500" />
+                <StatCard t={t} icon={TrendingUp} label="Tokens rango" value={`${(filtered.totalIn / 1000).toFixed(1)}k`} sub={`${(filtered.totalOut / 1000).toFixed(1)}k output`} color="text-purple-500" />
+            </div>
+
+            {/* GRÁFICA COSTE POR MES (siempre, aunque 0) */}
             <div className={`p-4 rounded-2xl border ${t.card}`}>
-                <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70 flex items-center gap-2"><TrendingUp size={14} /> Coste IA por mes</h2>
-                {aiByMonthEntries.length === 0 ? (
-                    <p className="text-xs font-bold opacity-50">Sin llamadas IA aún.</p>
-                ) : (
+                <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70 flex items-center gap-2"><TrendingUp size={14} /> Coste IA por mes ({fromDate} → {toDate})</h2>
+                <RangeBars entries={fullMonthEntries} t={t} theme={theme} />
+            </div>
+
+            {/* TABLA COSTE POR MES (con datos reales) */}
+            {byMonthEntries.length > 0 && (
+                <div className={`p-4 rounded-2xl border ${t.card}`}>
+                    <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70">Detalle por mes</h2>
                     <table className="w-full text-sm">
-                        <thead><tr className="text-left text-[10px] font-black uppercase opacity-60"><th className="py-2">Mes</th><th>Llamadas</th><th>Coste USD</th><th>Coste EUR ≈</th></tr></thead>
+                        <thead><tr className="text-left text-[10px] font-black uppercase opacity-60"><th className="py-2">Mes</th><th>Llamadas</th><th>Coste USD</th><th>≈ EUR</th></tr></thead>
                         <tbody>
-                            {aiByMonthEntries.map(([m, v]) => (
+                            {byMonthEntries.map(([m, v]) => (
                                 <tr key={m} className={`border-t ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
                                     <td className="py-2 font-bold">{m}</td>
                                     <td className="font-bold tabular-nums">{v.calls}</td>
@@ -119,14 +257,14 @@ const AdminView = () => {
                             ))}
                         </tbody>
                     </table>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* ALTAS POR MES */}
             <div className={`p-4 rounded-2xl border ${t.card}`}>
                 <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70 flex items-center gap-2"><Calendar size={14} /> Altas por mes</h2>
                 <table className="w-full text-sm">
-                    <thead><tr className="text-left text-[10px] font-black uppercase opacity-60"><th className="py-2">Mes</th><th>Nuevos usuarios</th></tr></thead>
+                    <thead><tr className="text-left text-[10px] font-black uppercase opacity-60"><th className="py-2">Mes</th><th>Nuevos</th></tr></thead>
                     <tbody>
                         {signupsByMonthEntries.map(([m, n]) => (
                             <tr key={m} className={`border-t ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
@@ -138,9 +276,20 @@ const AdminView = () => {
                 </table>
             </div>
 
-            {/* TABLA USUARIOS */}
+            {/* TABLA USUARIOS + buscador */}
             <div className={`p-4 rounded-2xl border ${t.card}`}>
-                <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70">Usuarios ({users.list.length})</h2>
+                <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <h2 className="text-sm font-black uppercase tracking-widest opacity-70">Usuarios ({filteredUsers.length}/{users.list.length})</h2>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
+                        <Search size={12} className="opacity-50" />
+                        <input
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Buscar email…"
+                            className="bg-transparent outline-none text-[12px] font-bold w-40 md:w-56"
+                        />
+                    </div>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                         <thead>
@@ -150,12 +299,14 @@ const AdminView = () => {
                                 <th className="pr-2">Última act.</th>
                                 <th className="pr-2">Días</th>
                                 <th className="pr-2">Tx</th>
-                                <th className="pr-2">IA</th>
-                                <th className="pr-2">Coste $</th>
+                                <th className="pr-2">IA rango</th>
+                                <th className="pr-2">$ rango</th>
+                                <th className="pr-2">IA total</th>
+                                <th className="pr-2">$ total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {users.list.map(u => {
+                            {filteredUsers.map(u => {
                                 const days = u.days_since_activity;
                                 const statusCls = days === null ? 'text-red-500'
                                     : days <= 7 ? 'text-emerald-500'
@@ -168,8 +319,10 @@ const AdminView = () => {
                                         <td className="pr-2 font-bold opacity-70">{fmtDateOnly(u.last_activity_at)}</td>
                                         <td className={`pr-2 font-black tabular-nums ${statusCls}`}>{days === null ? '∞' : days + 'd'}</td>
                                         <td className="pr-2 font-bold tabular-nums">{u.tx_count}</td>
-                                        <td className="pr-2 font-bold tabular-nums">{u.ai_calls}</td>
-                                        <td className="pr-2 font-bold tabular-nums">{u.ai_cost_usd ? fmtUsd(u.ai_cost_usd) : '—'}</td>
+                                        <td className="pr-2 font-bold tabular-nums text-purple-500">{u.ai_calls_range}</td>
+                                        <td className="pr-2 font-bold tabular-nums text-orange-500">{u.ai_cost_range ? fmtUsd(u.ai_cost_range) : '—'}</td>
+                                        <td className="pr-2 font-bold tabular-nums opacity-60">{u.ai_calls}</td>
+                                        <td className="pr-2 font-bold tabular-nums opacity-60">{u.ai_cost_usd ? fmtUsd(u.ai_cost_usd) : '—'}</td>
                                     </tr>
                                 );
                             })}
@@ -177,28 +330,6 @@ const AdminView = () => {
                     </table>
                 </div>
             </div>
-
-            {/* TOP IA USUARIOS */}
-            {ai.byUser?.length > 0 && (
-                <div className={`p-4 rounded-2xl border ${t.card}`}>
-                    <h2 className="text-sm font-black uppercase tracking-widest mb-3 opacity-70">Top consumo IA</h2>
-                    <table className="w-full text-xs">
-                        <thead><tr className="text-left text-[10px] font-black uppercase opacity-60"><th className="py-2">Email</th><th>Llamadas</th><th>Tok in</th><th>Tok out</th><th>Coste $</th><th>Última</th></tr></thead>
-                        <tbody>
-                            {ai.byUser.slice(0, 20).map(u => (
-                                <tr key={u.user_id} className={`border-t ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
-                                    <td className="py-2 font-bold truncate max-w-[180px]">{u.email || '—'}</td>
-                                    <td className="font-bold tabular-nums">{u.calls}</td>
-                                    <td className="font-bold tabular-nums opacity-70">{u.tokens_in}</td>
-                                    <td className="font-bold tabular-nums opacity-70">{u.tokens_out}</td>
-                                    <td className="font-bold tabular-nums">{fmtUsd(u.cost_usd)}</td>
-                                    <td className="font-bold opacity-70">{fmtDate(u.last_ts)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
         </div>
     );
 };
