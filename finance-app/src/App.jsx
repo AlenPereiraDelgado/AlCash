@@ -1029,7 +1029,16 @@ export default function App() {
                 ) : (
                     <>
 
-                        <header className="flex justify-center mb-3">
+                        <header className="relative flex justify-center items-center mb-3">
+                            {['alenpdelgado@gmail.com', 'laraoliveirarodriguez8@gmail.com'].includes((currentUser?.email || '').toLowerCase()) && (
+                                <button
+                                    onClick={() => setView(view === 'admin' ? 'dashboard' : 'admin')}
+                                    title={view === 'admin' ? 'Volver al panel' : 'Panel admin'}
+                                    className={`absolute left-0 top-1/2 -translate-y-1/2 w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center ${view === 'admin' ? `${activeColor.bg} text-white` : `${t.card}`} active:scale-95 transition-all`}
+                                >
+                                    <ShieldCheck size={18} />
+                                </button>
+                            )}
                             <div className="relative inline-flex items-center px-4">
                                 <h2 className="relative text-2xl md:text-3xl font-black tracking-tight">
                                     {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'settings' ? 'Configuración' : view === 'fixed' ? 'Gastos Fijos' : view === 'admin' ? 'Panel Admin' : 'Gestión'}
