@@ -279,21 +279,26 @@ const AdminView = () => {
                         </button>
                     ))}
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <input
-                        type="date"
-                        value={fromDate}
-                        onChange={e => { setFromDate(e.target.value); setRangePreset('custom'); }}
-                        className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
-                    />
-                    <span className="text-[11px] opacity-50">→</span>
-                    <input
-                        type="date"
-                        value={toDate}
-                        onChange={e => { setToDate(e.target.value); setRangePreset('custom'); }}
-                        className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
-                    />
-                </div>
+                {rangePreset === 'custom' && (
+                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1">
+                        <input
+                            type="date"
+                            value={fromDate}
+                            onChange={e => setFromDate(e.target.value)}
+                            className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
+                        />
+                        <span className="text-[11px] opacity-50">→</span>
+                        <input
+                            type="date"
+                            value={toDate}
+                            onChange={e => setToDate(e.target.value)}
+                            className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
+                        />
+                    </div>
+                )}
+                <p className="text-[10px] font-bold opacity-50 px-1">
+                    {fromDate} → {toDate}
+                </p>
             </div>
 
             {/* TOPLINE: solo Usuarios + Coste rango */}
