@@ -267,29 +267,31 @@ const AdminView = () => {
             </header>
 
             {/* FILTRO RANGO */}
-            <div className={`p-3 rounded-2xl border ${t.card} flex flex-wrap items-center gap-2`}>
-                {presets.map(p => (
-                    <button
-                        key={p.id}
-                        onClick={() => applyPreset(p.id)}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black ${rangePreset === p.id ? `${theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'}` : `${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}`}
-                    >
-                        {p.label}
-                    </button>
-                ))}
-                <div className="flex items-center gap-2 ml-auto">
+            <div className={`p-2 rounded-2xl border ${t.card} space-y-2`}>
+                <div className="grid grid-cols-6 gap-1">
+                    {presets.map(p => (
+                        <button
+                            key={p.id}
+                            onClick={() => applyPreset(p.id)}
+                            className={`px-1 py-1.5 rounded-lg text-[11px] font-black active:scale-95 transition-transform ${rangePreset === p.id ? `${theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'}` : `${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}`}
+                        >
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-1.5">
                     <input
                         type="date"
                         value={fromDate}
                         onChange={e => { setFromDate(e.target.value); setRangePreset('custom'); }}
-                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
+                        className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
                     />
                     <span className="text-[11px] opacity-50">→</span>
                     <input
                         type="date"
                         value={toDate}
                         onChange={e => { setToDate(e.target.value); setRangePreset('custom'); }}
-                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
+                        className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[11px] font-bold ${t.input}`}
                     />
                 </div>
             </div>
