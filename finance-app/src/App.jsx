@@ -742,29 +742,34 @@ export default function App() {
                 return;
             }
             const first = items[0];
-            setPendingMagicTx({
-                id: crypto.randomUUID(),
-                type: first.type || 'expense',
-                amountVal: Number(first.amountVal) || 0,
-                date: first.date || new Date().toISOString().split('T')[0],
-                category: first.category || guessCategory(first.note || text),
-                subCategory: first.subCategory || '',
-                note: first.note || '',
-            });
-            // Si hay más movimientos en la misma frase, mándalos al stepper
             if (items.length > 1) {
-                const extras = items.slice(1).map(it => ({
+                // Múltiples: stepper de import
+                const all = items.map(it => ({
                     id: crypto.randomUUID(),
                     type: it.type || 'expense',
                     amountVal: Number(it.amountVal) || 0,
                     date: it.date || new Date().toISOString().split('T')[0],
-                    category: it.category || 'Otros',
+                    category: it.category || guessCategory(it.note || ''),
                     subCategory: it.subCategory || '',
                     note: it.note || '',
                     status: 'pending',
                 }));
-                setPendingImports(prev => [...prev, ...extras]);
+                setPendingImports(prev => [...prev, ...all]);
                 setIsImportModalOpen(true);
+            } else {
+                // Único: abre directo modal añadir con campos prerellenados
+                setEditingId(null);
+                setEditingMeta(null);
+                setType(first.type || 'expense');
+                setCategory(first.category || guessCategory(first.note || text));
+                setSubCategory(first.subCategory || '');
+                setAmount(String(Number(first.amountVal) || 0));
+                setCurrency('EUR');
+                setExchangeRate(1);
+                setDate(first.date || new Date().toISOString().split('T')[0]);
+                setNote(first.note || '');
+                setTags([]);
+                setIsModalOpen(true);
             }
             if (!isAdmin && typeof remaining === 'number') {
                 showToast(`Movimiento detectado · ${remaining} usos IA restantes este mes.`, 'success');
