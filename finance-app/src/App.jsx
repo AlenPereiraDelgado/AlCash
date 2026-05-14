@@ -73,8 +73,8 @@ const EmptyState = ({ title, description, icon: Icon, action, t }) => (
 
 export default function App() {
     // --- ACCESO A CONTEXTOS ---
-    const { 
-        currentUser, theme, setTheme, accent, setAccent, 
+    const {
+        currentUser, user: authUser, theme, setTheme, accent, setAccent,
         privacyMode, setPrivacyMode,
         activeColor, t, authError, setAuthError, authInfo, setAuthInfo,
         isRegistering, setIsRegistering,
@@ -1030,7 +1030,7 @@ export default function App() {
                     <>
 
                         <header className="relative flex justify-center items-center mb-3">
-                            {['alenpdelgado@gmail.com', 'laraoliveirarodriguez8@gmail.com'].includes((currentUser?.email || '').toLowerCase()) && (
+                            {['alenpdelgado@gmail.com', 'laraoliveirarodriguez8@gmail.com'].includes((authUser?.email || '').toLowerCase()) && (
                                 <button
                                     onClick={() => setView(view === 'admin' ? 'dashboard' : 'admin')}
                                     title={view === 'admin' ? 'Volver al panel' : 'Panel admin'}
