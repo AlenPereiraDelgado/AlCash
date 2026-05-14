@@ -296,9 +296,6 @@ const AdminView = () => {
                         />
                     </div>
                 )}
-                <p className="text-[10px] font-bold opacity-50 px-1">
-                    {fromDate} → {toDate}
-                </p>
             </div>
 
             {/* TOPLINE: solo Usuarios + Coste rango */}
