@@ -177,10 +177,11 @@ const DashboardView = ({
         const monthlyIncomeEst = spanDays > 0 ? income * (30 / spanDays) : 0;
         const fixedRatio = monthlyIncomeEst > 0 ? Math.min(200, (fixedMonthly / monthlyIncomeEst) * 100) : 0;
 
+        const hasData = list.length > 0 || income > 0 || expense > 0;
         const sR = Math.max(0, Math.min((savingsRate || 0), 30)) / 30;
         const cF = Math.max(0, Math.min((emergencyFundMonths || 0), 6)) / 6;
-        const fR = Math.max(0, 1 - Math.min(fixedRatio, 100) / 100);
-        const score = Math.round((sR * 0.4 + cF * 0.4 + fR * 0.2) * 100);
+        const fR = monthlyIncomeEst > 0 ? Math.max(0, 1 - Math.min(fixedRatio, 100) / 100) : 0;
+        const score = hasData ? Math.round((sR * 0.4 + cF * 0.4 + fR * 0.2) * 100) : 0;
 
         let label = 'Crítica';
         let color = '#FF453A';
@@ -224,10 +225,11 @@ const DashboardView = ({
         const fixedRatio = monthlyIncomeEst > 0 ? Math.min(200, (fixedMonthly / monthlyIncomeEst) * 100) : 0;
         const savingsRateAll = income > 0 ? ((income - expense) / income) * 100 : 0;
         const emergencyFundMonthsAll = monthlyExpense > 0 ? Math.max(0, netWorth) / monthlyExpense : 0;
+        const hasData = list.length > 0 || income > 0 || expense > 0;
         const sR = Math.max(0, Math.min(savingsRateAll, 30)) / 30;
         const cF = Math.max(0, Math.min(emergencyFundMonthsAll, 6)) / 6;
-        const fR = Math.max(0, 1 - Math.min(fixedRatio, 100) / 100);
-        const score = Math.round((sR * 0.4 + cF * 0.4 + fR * 0.2) * 100);
+        const fR = monthlyIncomeEst > 0 ? Math.max(0, 1 - Math.min(fixedRatio, 100) / 100) : 0;
+        const score = hasData ? Math.round((sR * 0.4 + cF * 0.4 + fR * 0.2) * 100) : 0;
         let label = 'Crítica';
         let color = '#FF453A';
         if (score >= 75)      { label = 'Excelente'; color = '#30D158'; }
