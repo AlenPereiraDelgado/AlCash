@@ -59,6 +59,7 @@ const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
                 {leftNav.map(nav => (
                     <button
                         key={nav.id}
+                        data-tour={`nav-${nav.id === 'dashboard' ? 'panel' : nav.id}`}
                         onClick={() => setView(nav.id)}
                         className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${view === nav.id ? activeColor.text : t.textSec}`}
                     >
@@ -69,6 +70,7 @@ const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
 
                 {/* BOTÓN PRINCIPAL: AÑADIR */}
                 <button
+                    data-tour="nav-add"
                     onClick={() => onAdd?.()}
                     className="group flex flex-col items-center gap-1 -translate-y-3 transition-all active:scale-90"
                 >
@@ -83,6 +85,7 @@ const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
 
                 {/* TOGGLE MODO SOCIAL */}
                 <button
+                    data-tour="nav-social"
                     onClick={handleSocialToggle}
                     className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${isSocial ? 'text-[#D4AF37]' : t.textSec}`}
                     aria-pressed={isSocial}
@@ -102,6 +105,7 @@ const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
 
                 {/* GESTIÓN DEUDAS */}
                 <button
+                    data-tour="nav-debts"
                     onClick={() => setView('debts')}
                     className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${view === 'debts' ? activeColor.text : t.textSec}`}
                 >
@@ -111,6 +115,7 @@ const Navbar = ({ view, setView, onAdd, onOpenHouseholdGate }) => {
 
                 {/* AJUSTES */}
                 <button
+                    data-tour="nav-settings"
                     onClick={() => setView('settings')}
                     className={`flex flex-col items-center gap-1 p-1.5 rounded-2xl transition-all ${view === 'settings' ? activeColor.text : t.textSec}`}
                 >
