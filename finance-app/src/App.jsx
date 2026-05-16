@@ -34,6 +34,8 @@ const GoalsView = React.lazy(() => import('./components/views/GoalsView'));
 const DebtsView = React.lazy(() => import('./components/views/DebtsView'));
 const SettingsView = React.lazy(() => import('./components/views/SettingsView'));
 const AdminView = React.lazy(() => import('./components/views/AdminView'));
+const OnboardingTour = React.lazy(() => import('./components/onboarding/OnboardingTour'));
+const TOUR_KEY = 'alcash_tour_v1_done';
 
 import TransactionModal from './components/modals/TransactionModal';
 import AutomationModal from './components/modals/AutomationModal';
@@ -216,6 +218,17 @@ export default function App() {
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
     const [isSharedModalOpen, setIsSharedModalOpen] = useState(false);
+    const [isTourOpen, setIsTourOpen] = useState(false);
+
+    // Tour solo primera vez tras login. Tras finalizarlo (o saltarlo) se marca
+    // alcash_tour_v1_done en localStorage y no vuelve a aparecer.
+    useEffect(() => {
+        if (!authUser) return;
+        const done = typeof localStorage !== 'undefined' && localStorage.getItem(TOUR_KEY) === '1';
+        if (done) return;
+        const id = setTimeout(() => setIsTourOpen(true), 800);
+        return () => clearTimeout(id);
+    }, [authUser]);
     const [autoPrefill, setAutoPrefill] = useState(null);
     const switchAddTab = (tab) => {
         setIsModalOpen(tab === 'tx');
@@ -1039,7 +1052,7 @@ export default function App() {
                                     <ShieldCheck size={18} />
                                 </button>
                             )}
-                            <div className="relative inline-flex items-center px-4">
+                            <div className="relative inline-flex items-center px-4" data-tour="app-title">
                                 <h2 className="relative text-2xl md:text-3xl font-black tracking-tight">
                                     {view === 'dashboard' ? 'Panel de Control' : view === 'list' ? 'Movimientos' : view === 'debts' ? 'Gestión de Deudas' : view === 'settings' ? 'Configuración' : view === 'fixed' ? 'Gastos Fijos' : view === 'admin' ? 'Panel Admin' : 'Gestión'}
                                 </h2>
@@ -1265,6 +1278,11 @@ export default function App() {
                         </div>
                     </div>
                 )}
+
+                {/* TOUR ONBOARDING */}
+                <React.Suspense fallback={null}>
+                    {isTourOpen && <OnboardingTour open={isTourOpen} onClose={() => setIsTourOpen(false)} />}
+                </React.Suspense>
 
                 {/* SISTEMA DE NOTIFICACIONES */}
                 <ToastContainer toasts={toasts} removeToast={removeToast} />

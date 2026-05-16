@@ -1259,19 +1259,21 @@ const SettingsView = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setConfirmReset(true)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 font-black text-xs uppercase tracking-widest hover:bg-orange-500/15 active:scale-95 transition-all"
-                        >
-                            <Trash2 size={14} /> Borrar datos
-                        </button>
-                        <button
-                            onClick={logout}
-                            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 font-black text-xs uppercase tracking-widest hover:bg-red-500/15 active:scale-95 transition-all"
-                        >
-                            <LogOut size={14} /> Cerrar sesión
-                        </button>
+                    <div className="space-y-2">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setConfirmReset(true)}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 font-black text-xs uppercase tracking-widest hover:bg-orange-500/15 active:scale-95 transition-all"
+                            >
+                                <Trash2 size={14} /> Borrar datos
+                            </button>
+                            <button
+                                onClick={logout}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 font-black text-xs uppercase tracking-widest hover:bg-red-500/15 active:scale-95 transition-all"
+                            >
+                                <LogOut size={14} /> Cerrar sesión
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -266,13 +266,14 @@ const DashboardView = ({
         <div className="space-y-4 animate-in fade-in">
             {/* Controles de Fecha en Dashboard */}
             <div ref={dateBarRef} className={`p-4 md:p-6 rounded-[32px] border flex flex-col xl:flex-row justify-between items-center gap-6 ${t.card}`}>
-                <div className="w-full xl:max-w-xl">
+                <div className="w-full xl:max-w-xl" data-tour="magic-input">
                     <MagicInput
                         onParse={onMagicParse}
                         isLoading={isMagicLoading}
                         trailing={onImport ? (
                             <button
                                 type="button"
+                                data-tour="import-globe"
                                 onClick={onImport}
                                 title="Importar"
                                 className={`p-2 sm:p-2.5 rounded-2xl transition-all active:scale-95 shrink-0 ${theme === 'dark' ? 'bg-white/10 hover:bg-white/15' : 'bg-gray-100 hover:bg-gray-200'}`}
@@ -284,7 +285,7 @@ const DashboardView = ({
                     />
                 </div>
 
-                <div className={`p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'} flex items-center`}>
+                <div data-tour="date-selector" className={`p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-gray-100 border-gray-200'} flex items-center`}>
                     <button onClick={() => handleNavigate(-1)} disabled={dateMode === 'range'} className={`p-3 rounded-xl transition-colors ${t.hover} disabled:opacity-30`}><ChevronLeft size={20} /></button>
                     <div className="relative px-2">
                         <button onClick={() => setIsDateMenuOpen(!isDateMenuOpen)} className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${t.hover}`}>
@@ -735,7 +736,7 @@ const ReorderableWidgets = ({ editMode, setEditMode, dashboardWidgets, setDashbo
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext items={visible} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-6 md:space-y-8">
+                    <div className="space-y-6 md:space-y-8" data-tour="widgets-grid">
                         {visible.map(key => (
                             <SortableWidget key={key} id={key} editMode={editMode}>
                                 {widgets[key]}
@@ -2313,6 +2314,7 @@ const SaludWidget = ({ metrics, metricsAll, savingsRate, savingsRateAll, emergen
     return (
         <div
             ref={rootRef}
+            data-tour="salud-widget"
             onClick={() => setControlsOpen(true)}
             role="button"
             tabIndex={0}
